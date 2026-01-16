@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback, useMemo } from 'react'
-import { Layout, Header, ConnectionStatus, RaceSelector, OnCourseGrid, GateGroupSwitcher, GateGroupEditor, CheckProgress, Settings, useToast } from './components'
+import { Layout, Header, ConnectionStatus, RaceSelector, OnCourseGrid, GateGroupSwitcher, GateGroupEditor, CheckProgress, Settings, EmptyState, useToast } from './components'
 import { useC123WebSocket } from './hooks/useC123WebSocket'
 import { useConnectionStatus } from './hooks/useConnectionStatus'
 import { useSchedule } from './hooks/useSchedule'
@@ -288,7 +288,28 @@ function App() {
         />
       )}
 
-      {onCourse ? (
+      {/* Main content area with empty states */}
+      {connectionState === 'connecting' ? (
+        <EmptyState variant="loading" />
+      ) : connectionState === 'disconnected' || connectionState === 'error' ? (
+        <EmptyState
+          variant="disconnected"
+          action={{
+            label: 'Open Settings',
+            onClick: () => setShowSettings(true),
+          }}
+        />
+      ) : activeRaces.length === 0 ? (
+        <EmptyState variant="no-races" />
+      ) : !selectedRace ? (
+        <EmptyState
+          variant="no-races"
+          title="Select a race"
+          message="Choose a race from the selector above to start scoring."
+        />
+      ) : !onCourse || onCourse.competitors.filter(c => c.raceId === selectedRaceId).length === 0 ? (
+        <EmptyState variant="no-competitors" />
+      ) : (
         <OnCourseGrid
           competitors={onCourse.competitors}
           raceConfig={raceConfig}
@@ -304,12 +325,6 @@ function App() {
           onTiming={handleTiming}
           isC123Connected={isC123Connected}
         />
-      ) : (
-        <p className="placeholder">
-          {selectedRace
-            ? 'Waiting for competitors on course...'
-            : 'Select a race to start scoring'}
-        </p>
       )}
     </Layout>
   )
