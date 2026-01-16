@@ -299,12 +299,12 @@ Podrobný plán pro autonomní iterativní implementaci. Každá fáze je navrž
   - Pending state (odesílání)
   - Success/error feedback
   - Toast notifikace
-- [ ] 8.4: Vytvoření `components/Toast/Toast.tsx` (pokud není v DS)
+- [x] 8.4: Vytvoření `components/Toast/Toast.tsx` (pokud není v DS)
   - Success/error/warning varianty
   - Auto-dismiss
-- [ ] 8.5: Integration test s mock API
-- [ ] 8.6: Playwright test: zadání penalizace E2E
-- [ ] 8.7: Commit: `feat: add scoring API integration`
+- [ ] 8.5: Integration test s mock API (čeká na Fázi 2)
+- [ ] 8.6: Playwright test: zadání penalizace E2E (čeká na Fázi 2)
+- [x] 8.7: Commit: `feat: add scoring API integration` + `feat: add Toast notification component`
 
 **Výstup:** Funkční odesílání penalizací
 
@@ -316,7 +316,7 @@ Podrobný plán pro autonomní iterativní implementaci. Každá fáze je navrž
 
 ### Kroky
 
-- [ ] 9.1: Vytvoření `types/gateGroups.ts`
+- [x] 9.1: Vytvoření `types/gateGroups.ts`
   - GateGroup interface
   - Podpora překrývajících se skupin
 - [ ] 9.2: Vytvoření `hooks/useGateGroups.ts`
