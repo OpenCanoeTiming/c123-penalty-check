@@ -1,26 +1,131 @@
-# C123-SCORING implementační projekt
+# C123-SCORING - Projektový záměr
 
-Aplikace c123-scoring bude webová aplikace s vysoce optimalizovaným UX pro kontrolu, korekci a zadávání penalizací slalomových závodů měřených v systému Canoe123.
+Webová aplikace s vysoce optimalizovaným UX pro kontrolu, korekci a zadávání penalizací slalomových závodů měřených v systému Canoe123.
+
+## Architektura
+
+Aplikace běží jako **čistě frontendové řešení** (React + TypeScript) a komunikuje s **c123-server** jako backendem:
+
+```
+c123-scoring (tento projekt)
+    │
+    ├─► WebSocket ws://server:27123/ws  (čtení real-time dat)
+    │     - OnCourse, Results, RaceConfig, Schedule
+    │
+    └─► REST API http://server:27123/api/c123/*  (zápis)
+          - POST /api/c123/scoring
+          - POST /api/c123/remove-from-course
+          - POST /api/c123/timing
+```
+
+**Proč c123-server?**
+- Browser nemůže komunikovat přímo s C123 (TCP:27333)
+- c123-server již má implementované Write API pro odesílání penalizací
+- Sdílená infrastruktura se scoreboardem
+
+**Reference:** Připojení analogicky k `c123-scoreboard` - viz `../c123-scoreboard/src/types/c123server.ts`
+
+---
 
 ## Hlavní požadavky
 
-- zobrazení probíhajících závodů podle stavu, indikace aktivního (aktivních) závodů
-- zobrazení jezdců v probíhajícím závodu s vyznačením kdo pojede, kdo jede, kdo má dojeto a má dokončený výsledek, zobrazení stavu zadaných penalizací
-- aktualizace zobrazení podle nastavení závodu a trati (rozlišení typů branek)
+### Zobrazení dat
 
-- efektivní "inline" editace v tabulce penalizací, navigace pomocí šipek, obecně ovládání přes klávesnici, zadávání bez zbytečného klikání
-- penalizace odpovídají typu závodu ale s dostatečnou flexibilitou C123 ekosystému
-- velmi přehledná navigace v tabulce penalizací jezdců - vždy vidím, jakého jezdce a jakou branku edituji
+- Zobrazení probíhajících závodů podle stavu (Schedule), indikace aktivního závodu
+- Grid jezdců s vyznačením: kdo pojede, kdo jede, kdo má dojeto, stav penalizací
+- Aktualizace podle nastavení závodu a trati (RaceConfig - rozlišení typů branek N/R)
 
-- využití i pro kontrolu penalizací, tedy mohu si označovat, co už je zkontrolované a co není (v případě že kontrolor třeba neobdržel daný protokol)
-- možnost seskupování podle branek: kontrolor vždy dostává papírový protokol jen za několik branek a když je grid s brankami a výsledky velký, tak je snadné se ztratit. Výchozí skupiny podle segmentů nastavení Canoe123 trati, ale s možností předefinovat v scoring aplikaci. Navíc s možností definovat segmenty které se překrývají: např. 1. rozhodčí má brány (1,2,3,4), 2. rozhodčí (5,6,7,8), ale pomocný rozhodčí píše protokol pro (4,5,6) a je třeba kontrolovat vše.
-- presistence nastavení v local storage
+### Editace penalizací
 
-- auto discovery Canoe123 serveru podle UDP broadcastu, podobně jako ji dělá sousední projekt c123-server
+- Efektivní "inline" editace v tabulce penalizací
+- Navigace pomocí šipek, ovládání přes klávesnici
+- Zadávání bez zbytečného klikání
+- Penalizace odpovídají typu závodu (0 = čistě, 2 = dotek, 50 = nejetí)
+- Velmi přehledná navigace - vždy vidím jakého jezdce a jakou branku edituji
+- **Odesílání:** REST API `POST /api/c123/scoring`
 
+### Kontrola penalizací
+
+- Označování zkontrolovaných protokolů
+- Možnost seskupování podle branek:
+  - Kontrolor dostává papírový protokol jen za několik branek
+  - Výchozí skupiny podle segmentů nastavení C123 trati
+  - Možnost předefinovat v aplikaci
+  - Podpora překrývajících se segmentů (např. rozhodčí 1: brány 1-4, rozhodčí 2: brány 5-8, pomocný: brány 4-6)
+
+### Persistence
+
+- Nastavení v localStorage
+- Adresa serveru, vybraný závod, konfigurace skupin branek
+
+---
+
+## Komunikace s c123-server
+
+### WebSocket - čtení dat
+
+| Zpráva | Obsah | Použití |
+|--------|-------|---------|
+| `OnCourse` | Závodníci na trati, penalizace per branka | Hlavní data pro grid |
+| `Results` | Výsledky kategorie | Historická data, kontrola |
+| `RaceConfig` | nrGates, gateConfig (N/R) | Konfigurace gridu |
+| `Schedule` | Seznam závodů, raceStatus | Přepínání kategorií |
+
+### REST API - zápis
+
+```typescript
+// Penalizace
+POST /api/c123/scoring
+{ "bib": "10", "gate": 5, "value": 2 }
+
+// Status závodníka (DNS/DNF/CAP)
+POST /api/c123/remove-from-course
+{ "bib": "10", "reason": "DNS" }
+
+// Manuální časový impuls
+POST /api/c123/timing
+{ "bib": "10", "channelPosition": "Start" }
+```
+
+---
 
 ## Zdroje a dokumenty
 
-- striktně využívat timing-design-system, pokud nějaká základní komponenta chybí, udělat neostylovanou a vytvořit podnět pro rozšíření design systému. Velmi speciální komponenty jako grid pro zadávání penalizací udělat specificky přímo v aplikaci s využitím stylů design systému. 
-- c123-protocol-docs poslouží k dokumentaci rozhraní a formátů
-- pro získání původní business logiky využij dokumenty a zdrojové kódy ve složce resources-private, v nové aplikaci ani dokumentaci je ale nijak nezmiňuj
+### Pro implementaci
+
+| Zdroj | Účel |
+|-------|------|
+| `../c123-server/docs/REST-API.md` | REST API dokumentace |
+| `../c123-server/docs/C123-PROTOCOL.md` | WebSocket protokol |
+| `../c123-scoreboard/src/types/c123server.ts` | TypeScript typy (lze zkopírovat/adaptovat) |
+| `../timing-design-system/` | UI komponenty a tokeny |
+
+### Pro business logiku
+
+| Zdroj | Účel |
+|-------|------|
+| `./resources-private/` | Původní implementace (READONLY, nezmiňovat v kódu) |
+| `../c123-protocol-docs/c123-xml-format.md` | Formát penalizací (Gates field) |
+
+---
+
+## Technologie
+
+- **React** + TypeScript
+- **Vite** jako build tool
+- **@opencanoe/timing-design-system** pro UI
+- **localStorage** pro persistence
+- **WebSocket** pro real-time data
+- **fetch** pro REST API
+
+---
+
+## Odlišnosti od scoreboardu
+
+| Aspekt | c123-scoreboard | c123-scoring |
+|--------|-----------------|--------------|
+| Účel | Zobrazení výsledků | Zadávání penalizací |
+| Směr dat | Pouze čtení | Čtení + zápis |
+| Interakce | Pasivní | Aktivní (editace) |
+| API | Pouze WebSocket | WebSocket + REST |
+| Hlavní data | Results, OnCourse | OnCourse (penalizace per gate) |

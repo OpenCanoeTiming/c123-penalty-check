@@ -8,21 +8,99 @@ C123 Scoring - webová aplikace pro kontrolu, korekci a zadávání penalizací 
 
 ---
 
+## Architektura
+
+```
+┌─────────────────────────────────────────────────────────────┐
+│                    c123-scoring (FE)                        │
+│                      React + TypeScript                     │
+└─────────────────────────┬───────────────────────────────────┘
+                          │
+          ┌───────────────┴───────────────┐
+          │                               │
+          ▼                               ▼
+   WebSocket /ws                    REST API
+   (real-time data)              (scoring commands)
+          │                               │
+          └───────────────┬───────────────┘
+                          │
+                          ▼
+┌─────────────────────────────────────────────────────────────┐
+│                   c123-server :27123                        │
+│                      (Node.js)                              │
+└─────────────────────────┬───────────────────────────────────┘
+                          │
+                          ▼ TCP :27333
+┌─────────────────────────────────────────────────────────────┐
+│                       Canoe123                              │
+└─────────────────────────────────────────────────────────────┘
+```
+
+**Klíčový princip:** c123-scoring komunikuje výhradně s c123-server, nikdy přímo s C123.
+
+---
+
 ## Cesty a dokumentace
 
 | Účel | Cesta |
 |------|-------|
 | **Tento projekt** | `/workspace/timing/c123-scoring/` |
 | **Projektový záměr** | `./PROJECT.md` |
-| **Protokol docs** | `../c123-protocol-docs/` |
+| **C123 Server** | `../c123-server/` |
 | **Design system** | `../timing-design-system/` |
-| **C123 Server** | `../c123-server/` (reference pro UDP discovery) |
+| **Scoreboard (reference)** | `../c123-scoreboard/` |
+| **Protokol docs** | `../c123-protocol-docs/` |
 
-### Klíčové reference
+### Klíčové reference v c123-server
 
-- **`../c123-protocol-docs/c123-protocol.md`** - C123 protokol, UDP broadcast
-- **`../c123-protocol-docs/c123-xml-format.md`** - XML struktura penalizací
+- **`../c123-server/docs/REST-API.md`** - REST API včetně Write API
+- **`../c123-server/docs/C123-PROTOCOL.md`** - WebSocket protokol, typy zpráv
+- **`../c123-server/PLAN.md`** - Write API specifikace (Bloky G, H, I)
+
+### Klíčové reference v c123-scoreboard
+
+- **`../c123-scoreboard/src/types/c123server.ts`** - TypeScript typy pro WebSocket zprávy
+- **`../c123-scoreboard/src/App.tsx`** - Příklad WebSocket připojení
+
+### Privátní zdroje
+
 - **`./resources-private/`** - Původní business logika (READONLY, nezmiňovat v kódu)
+
+---
+
+## Komunikace s c123-server
+
+### WebSocket (čtení dat)
+
+Připojení: `ws://<server>:27123/ws`
+
+**Relevantní zprávy pro scoring:**
+| Typ | Obsah | Použití |
+|-----|-------|---------|
+| `OnCourse` | Závodníci na trati + penalizace | Hlavní data pro grid |
+| `Results` | Výsledky kategorie | Historická data |
+| `RaceConfig` | Počet branek, typy (N/R) | Konfigurace gridu |
+| `Schedule` | Seznam závodů + status | Přepínání kategorií |
+
+### REST API (zápis)
+
+**Scoring endpoint:**
+```
+POST /api/c123/scoring
+{ "bib": "10", "gate": 5, "value": 2 }
+```
+
+**Remove from course:**
+```
+POST /api/c123/remove-from-course
+{ "bib": "10", "reason": "DNS" }
+```
+
+**Timing (manuální impuls):**
+```
+POST /api/c123/timing
+{ "bib": "10", "channelPosition": "Start" }
+```
 
 ---
 
@@ -33,7 +111,7 @@ C123 Scoring - webová aplikace pro kontrolu, korekci a zadávání penalizací 
 
 ---
 
-## Architektura (plánovaná)
+## Struktura projektu (plánovaná)
 
 ```
 c123-scoring/
@@ -41,12 +119,17 @@ c123-scoring/
 │   ├── index.tsx             # Entry point
 │   ├── App.tsx               # Hlavní komponenta
 │   ├── components/           # UI komponenty
-│   │   ├── RaceList/         # Seznam závodů
-│   │   ├── RunnerGrid/       # Grid jezdců
-│   │   └── PenaltyEditor/    # Inline editace penalizací
+│   │   ├── RaceSelector/     # Výběr závodu
+│   │   ├── PenaltyGrid/      # Grid penalizací
+│   │   └── ConnectionStatus/ # Stav připojení
 │   ├── hooks/                # React hooks
-│   ├── services/             # C123 komunikace, UDP discovery
-│   └── store/                # State management
+│   │   ├── useWebSocket.ts   # WebSocket připojení
+│   │   └── useScoring.ts     # Scoring API volání
+│   ├── services/             # API komunikace
+│   │   └── scoringApi.ts     # REST API client
+│   ├── store/                # State management
+│   └── types/                # TypeScript typy
+│       └── c123server.ts     # Kopie/adaptace z scoreboardu
 ├── resources-private/        # Zdrojové materiály (NENÍ v gitu)
 └── package.json
 ```
@@ -55,13 +138,14 @@ c123-scoring/
 
 ## Klíčové funkce
 
-1. **Zobrazení závodů** - probíhající závody, indikace aktivních
-2. **Grid jezdců** - kdo pojede, kdo jede, kdo má dojeto, stav penalizací
-3. **Inline editace** - klávesnicové ovládání, navigace šipkami
-4. **Seskupování branek** - podle segmentů C123 nebo vlastní skupiny
-5. **Kontrola penalizací** - označování zkontrolovaných protokolů
-6. **Auto discovery** - UDP broadcast detekce C123 serveru
-7. **Persistence** - nastavení v localStorage
+1. **Připojení k serveru** - WebSocket k c123-server, analogicky jako c123-scoreboard
+2. **Zobrazení závodů** - probíhající závody podle Schedule, indikace aktivních
+3. **Grid jezdců** - kdo pojede, kdo jede, kdo má dojeto, stav penalizací
+4. **Inline editace** - klávesnicové ovládání, navigace šipkami
+5. **Odesílání penalizací** - REST API POST /api/c123/scoring
+6. **Seskupování branek** - podle segmentů nebo vlastní skupiny
+7. **Kontrola penalizací** - označování zkontrolovaných protokolů
+8. **Persistence** - nastavení v localStorage
 
 ---
 
@@ -91,6 +175,14 @@ npm run dev
 npm run build
 ```
 
+**Testování s c123-server:**
+```bash
+# V jiném terminálu spustit c123-server
+cd ../c123-server && npm start
+
+# Scoring app se připojí na ws://localhost:27123/ws
+```
+
 ---
 
 ## Proces
@@ -115,7 +207,7 @@ Psát deníček vývoje - co šlo, co nešlo, co se zkusilo.
 ```
 feat: add penalty grid with keyboard navigation
 fix: correct gate grouping logic
-refactor: extract UDP discovery to service
+refactor: extract WebSocket logic to hook
 ```
 
 ---
