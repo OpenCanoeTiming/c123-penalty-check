@@ -1,4 +1,4 @@
-import { useRef, useEffect, useCallback, useMemo } from 'react'
+import { useRef, useEffect, useCallback, useMemo, Fragment } from 'react'
 import type { C123OnCourseCompetitor, C123RaceConfigData } from '../../types/c123server'
 import type { GateGroup } from '../../types/ui'
 import {
@@ -45,10 +45,18 @@ export function OnCourseGrid({
     ? competitors.filter((c) => c.raceId === selectedRaceId)
     : competitors
 
-  // Sort by position (1 = closest to finish)
-  const sortedCompetitors = [...filteredCompetitors].sort(
-    (a, b) => a.position - b.position
-  )
+  // Separate finished and on-course competitors
+  const finishedCompetitors = filteredCompetitors
+    .filter((c) => c.completed)
+    .sort((a, b) => a.rank - b.rank) // Sort finished by rank
+
+  const onCourseCompetitors = filteredCompetitors
+    .filter((c) => !c.completed)
+    .sort((a, b) => a.position - b.position) // Sort on-course by position (1 = closest to finish)
+
+  // Primary view: finished first, then on-course
+  const sortedCompetitors = [...finishedCompetitors, ...onCourseCompetitors]
+  const finishedCount = finishedCompetitors.length
 
   const nrGates = raceConfig?.nrGates ?? 0
   const gateConfig = raceConfig?.gateConfig ?? ''
@@ -206,61 +214,74 @@ export function OnCourseGrid({
         <tbody>
           {sortedCompetitors.map((competitor, rowIndex) => {
             const penalties = parseGatesWithConfig(competitor.gates, gateConfig)
+            const isOnCourseSection = rowIndex === finishedCount && onCourseCompetitors.length > 0
 
             return (
-              <tr
-                key={competitor.bib}
-                className={`competitor-row ${competitor.completed ? 'completed' : 'on-course'} ${isChecked?.(competitor.bib) ? 'row-checked' : ''}`}
-                role="row"
-              >
-                <td className="col-check" role="gridcell">
-                  <button
-                    type="button"
-                    className={`check-button ${isChecked?.(competitor.bib) ? 'checked' : ''}`}
-                    onClick={(e) => {
-                      e.stopPropagation()
-                      onToggleChecked?.(competitor.bib)
-                    }}
-                    aria-label={isChecked?.(competitor.bib) ? 'Uncheck' : 'Check'}
-                    aria-pressed={isChecked?.(competitor.bib) ?? false}
-                    disabled={!competitor.completed}
-                    title={competitor.completed ? 'Toggle checked' : 'Can only check finished competitors'}
-                  >
-                    {isChecked?.(competitor.bib) ? '✓' : ''}
-                  </button>
-                </td>
-                <td className="col-pos" role="gridcell">{competitor.position}</td>
-                <td className="col-bib" role="gridcell">{competitor.bib}</td>
-                <td className="col-name" role="gridcell">
-                  <span className="name">{competitor.name}</span>
-                  <span className="club">{competitor.club}</span>
-                </td>
-                <td className="col-time" role="gridcell">{competitor.time}s</td>
-                <td className="col-pen" role="gridcell">
-                  {competitor.pen > 0 ? `+${competitor.pen}` : ''}
-                </td>
-                {visibleGateIndices.map((gateIndex, visibleColIndex) => {
-                  const gateNum = gateIndex + 1
-                  const penalty = penalties.find((p) => p.gate === gateNum)
-                  const cellIsFocused = isFocused(rowIndex, visibleColIndex)
-                  const isBoundary = groupBoundaries.has(gateNum)
+              <Fragment key={competitor.bib}>
+                {/* Section separator between finished and on-course */}
+                {isOnCourseSection && (
+                  <tr key="section-separator" className="section-separator" role="presentation">
+                    <td colSpan={6 + visibleGateIndices.length}>
+                      <span className="section-label">On Course ({onCourseCompetitors.length})</span>
+                    </td>
+                  </tr>
+                )}
+                <tr
+                  key={competitor.bib}
+                  className={`competitor-row ${competitor.completed ? 'completed' : 'on-course'} ${isChecked?.(competitor.bib) ? 'row-checked' : ''}`}
+                  role="row"
+                >
+                  <td className="col-check" role="gridcell">
+                    <button
+                      type="button"
+                      className={`check-button ${isChecked?.(competitor.bib) ? 'checked' : ''}`}
+                      onClick={(e) => {
+                        e.stopPropagation()
+                        onToggleChecked?.(competitor.bib)
+                      }}
+                      aria-label={isChecked?.(competitor.bib) ? 'Uncheck' : 'Check'}
+                      aria-pressed={isChecked?.(competitor.bib) ?? false}
+                      disabled={!competitor.completed}
+                      title={competitor.completed ? 'Toggle checked' : 'Can only check finished competitors'}
+                    >
+                      {isChecked?.(competitor.bib) ? '✓' : ''}
+                    </button>
+                  </td>
+                  <td className="col-pos" role="gridcell">
+                    {competitor.completed ? competitor.rank : competitor.position}
+                  </td>
+                  <td className="col-bib" role="gridcell">{competitor.bib}</td>
+                  <td className="col-name" role="gridcell">
+                    <span className="name">{competitor.name}</span>
+                    <span className="club">{competitor.club}</span>
+                  </td>
+                  <td className="col-time" role="gridcell">{competitor.time}s</td>
+                  <td className="col-pen" role="gridcell">
+                    {competitor.pen > 0 ? `+${competitor.pen}` : ''}
+                  </td>
+                  {visibleGateIndices.map((gateIndex, visibleColIndex) => {
+                    const gateNum = gateIndex + 1
+                    const penalty = penalties.find((p) => p.gate === gateNum)
+                    const cellIsFocused = isFocused(rowIndex, visibleColIndex)
+                    const isBoundary = groupBoundaries.has(gateNum)
 
-                  return (
-                    <GridCell
-                      key={gateNum}
-                      ref={cellIsFocused ? focusedCellRef : undefined}
-                      gate={gateNum}
-                      value={(penalty?.value as PenaltyValue | null) ?? null}
-                      pendingValue={cellIsFocused ? pendingValue : null}
-                      gateType={(penalty?.type ?? gateConfig[gateIndex] ?? 'N') as 'N' | 'R'}
-                      isFocused={cellIsFocused}
-                      isGroupBoundary={isBoundary}
-                      id={getCellId(rowIndex, visibleColIndex)}
-                      onClick={() => handleCellClick(rowIndex, visibleColIndex)}
-                    />
-                  )
-                })}
-              </tr>
+                    return (
+                      <GridCell
+                        key={gateNum}
+                        ref={cellIsFocused ? focusedCellRef : undefined}
+                        gate={gateNum}
+                        value={(penalty?.value as PenaltyValue | null) ?? null}
+                        pendingValue={cellIsFocused ? pendingValue : null}
+                        gateType={(penalty?.type ?? gateConfig[gateIndex] ?? 'N') as 'N' | 'R'}
+                        isFocused={cellIsFocused}
+                        isGroupBoundary={isBoundary}
+                        id={getCellId(rowIndex, visibleColIndex)}
+                        onClick={() => handleCellClick(rowIndex, visibleColIndex)}
+                      />
+                    )
+                  })}
+                </tr>
+              </Fragment>
             )
           })}
         </tbody>

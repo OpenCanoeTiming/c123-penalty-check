@@ -505,17 +505,17 @@ Standalone server v `c123-protocol-docs/tools/`, který emuluje Canoe123 na TCP:
 **Problém:** Grid aktuálně zobrazuje všechny závodníky a řadí podle `position` (pozice na trati).
 Správné chování: hlavní use case je kontrola penalizací u DOJETÝCH závodníků.
 
-- [ ] 13.0.1: Změnit filtrování v OnCourseGrid
+- [x] 13.0.1: Změnit filtrování v OnCourseGrid
   - Primárně zobrazovat dojeté (`completed: true`)
   - Závodníci na trati pouze jako sekundární sekce nebo skrytí
-- [ ] 13.0.2: Změnit řazení
+- [x] 13.0.2: Změnit řazení
   - Dojetí: podle pořadí dojezdu (rank nebo čas)
   - Ne podle `position` (to je pozice na trati)
-- [ ] 13.0.3: Vizuální oddělení sekcí
+- [x] 13.0.3: Vizuální oddělení sekcí
   - "Dojetí" - hlavní sekce pro kontrolu
   - "Na trati" - volitelně viditelná sekce
 - [ ] 13.0.4: Toggle v Settings nebo tlačítko pro zobrazení závodníků na trati
-- [ ] 13.0.5: Commit: `fix: show finished competitors primarily for penalty checking`
+- [x] 13.0.5: Commit: `fix: show finished competitors primarily for penalty checking`
 
 #### Další kroky
 

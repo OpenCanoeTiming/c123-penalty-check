@@ -189,6 +189,40 @@ replay-server (TCP:27333) → c123-server (:27123) → c123-scoring (:5173)
 
 ---
 
+## 2026-01-16 - Fáze 13.0: Oprava zobrazení gridu
+
+### Cíl iterace
+
+Opravit grid tak, aby primárně zobrazoval dojeté závodníky (pro kontrolu penalizací), ne závodníky na trati.
+
+### Dokončeno
+
+- [x] Rozdělení závodníků na "finished" a "on-course"
+- [x] Dojetí se řadí podle `rank` (pořadí), ne podle `position`
+- [x] Závodníci na trati se řadí podle `position` (1 = nejblíž cíli)
+- [x] Dojetí závodníci jsou primárně nahoře, na trati jsou jako sekundární sekce
+- [x] Vizuální separátor "ON COURSE (X)" mezi sekcemi
+- [x] Sloupec "#" zobrazuje rank pro dojeté, position pro na trati
+- [x] CSS úpravy - dojetí mají plnou opacity, na trati mají sníženou (0.85)
+
+### Změny
+
+**OnCourseGrid.tsx:**
+- Nová logika pro separaci a řazení závodníků
+- Fragment wrapper pro vložení section separátoru
+- Dynamické zobrazení rank vs position
+
+**OnCourseGrid.css:**
+- Nové styly pro `.section-separator` a `.section-label`
+- Invertovaná opacity - teď dojetí jsou plně viditelní, na trati tlumení
+
+### Poznámky
+
+- Toggle pro skrývání závodníků na trati (13.0.4) odložen na později - není kritické
+- Keyboard navigace funguje přes obě sekce (row index je konzistentní)
+
+---
+
 ## Template pro další záznamy
 
 ```markdown
