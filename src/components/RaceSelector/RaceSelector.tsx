@@ -26,8 +26,7 @@ export function RaceSelector({ races, selectedRaceId, onSelectRace }: RaceSelect
         {races.map((race) => (
           <option key={race.raceId} value={race.raceId}>
             {race.isRunning ? '▶ ' : ''}
-            {race.mainTitle}
-            {race.subTitle ? ` - ${race.subTitle}` : ''}
+            {race.shortTitle}
           </option>
         ))}
       </select>

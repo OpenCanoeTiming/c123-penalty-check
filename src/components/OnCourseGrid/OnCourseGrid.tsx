@@ -66,21 +66,26 @@ export function OnCourseGrid({
     position: { x: number; y: number }
   } | null>(null)
 
+  // Helper to check if competitor has finished (based on dtFinish, not completed flag)
+  const hasFinished = (c: C123OnCourseCompetitor) =>
+    c.dtFinish !== null && c.dtFinish !== ''
+
   // Filter competitors by selected race
   const filteredCompetitors = selectedRaceId
     ? competitors.filter((c) => c.raceId === selectedRaceId)
     : competitors
 
   // Separate finished and on-course competitors
+  // Use dtFinish for detection: null/empty = on course, timestamp = finished
   const finishedCompetitors = showFinished
     ? filteredCompetitors
-        .filter((c) => c.completed)
+        .filter((c) => c.dtFinish !== null && c.dtFinish !== '')
         .sort((a, b) => a.rank - b.rank) // Sort finished by rank
     : []
 
   const onCourseCompetitors = showOnCourse
     ? filteredCompetitors
-        .filter((c) => !c.completed)
+        .filter((c) => c.dtFinish === null || c.dtFinish === '')
         .sort((a, b) => a.position - b.position) // Sort on-course by position (1 = closest to finish)
     : []
 
@@ -174,8 +179,8 @@ export function OnCourseGrid({
       setContextMenu({
         bib: competitor.bib,
         name: competitor.name,
-        isOnCourse: !competitor.completed,
-        isFinished: competitor.completed,
+        isOnCourse: !hasFinished(competitor),
+        isFinished: hasFinished(competitor),
         position: { x: event.clientX, y: event.clientY },
       })
     },
@@ -196,7 +201,7 @@ export function OnCourseGrid({
       }
 
       // Competitor action shortcuts (D = DNS, F = DNF, C = CAP)
-      if (currentCompetitor && onRemoveFromCourse && !currentCompetitor.completed) {
+      if (currentCompetitor && onRemoveFromCourse && !hasFinished(currentCompetitor)) {
         const key = event.key.toUpperCase()
         if (key === 'D' && !event.ctrlKey && !event.metaKey && !event.altKey) {
           event.preventDefault()
@@ -300,7 +305,7 @@ export function OnCourseGrid({
                 )}
                 <tr
                   key={competitor.bib}
-                  className={`competitor-row ${competitor.completed ? 'completed' : 'on-course'} ${isChecked?.(competitor.bib) ? 'row-checked' : ''}`}
+                  className={`competitor-row ${hasFinished(competitor) ? 'completed' : 'on-course'} ${isChecked?.(competitor.bib) ? 'row-checked' : ''}`}
                   role="row"
                   onContextMenu={(e) => handleContextMenu(e, competitor)}
                 >
@@ -314,14 +319,14 @@ export function OnCourseGrid({
                       }}
                       aria-label={isChecked?.(competitor.bib) ? 'Uncheck' : 'Check'}
                       aria-pressed={isChecked?.(competitor.bib) ?? false}
-                      disabled={!competitor.completed}
-                      title={competitor.completed ? 'Toggle checked' : 'Can only check finished competitors'}
+                      disabled={!hasFinished(competitor)}
+                      title={hasFinished(competitor) ? 'Toggle checked' : 'Can only check finished competitors'}
                     >
                       {isChecked?.(competitor.bib) ? '✓' : ''}
                     </button>
                   </td>
                   <td className="col-pos" role="gridcell">
-                    {competitor.completed ? competitor.rank : competitor.position}
+                    {hasFinished(competitor) ? competitor.rank : competitor.position}
                   </td>
                   <td className="col-bib" role="gridcell">{competitor.bib}</td>
                   <td className="col-name" role="gridcell">
