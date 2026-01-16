@@ -18,3 +18,9 @@ export {
   type KeyboardInputOptions,
   type KeyboardInputResult,
 } from './useKeyboardInput'
+export {
+  useScoring,
+  type PendingOperation,
+  type ScoringState,
+  type UseScoringReturn,
+} from './useScoring'

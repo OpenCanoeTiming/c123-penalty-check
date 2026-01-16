@@ -285,17 +285,17 @@ Podrobný plán pro autonomní iterativní implementaci. Každá fáze je navrž
 
 ### Kroky
 
-- [ ] 8.1: Vytvoření `services/scoringApi.ts`
+- [x] 8.1: Vytvoření `services/scoringApi.ts`
   - sendScoring(bib, gate, value)
   - sendRemoveFromCourse(bib, reason)
   - sendTiming(bib, channelPosition)
   - Error handling, retry logika
-- [ ] 8.2: Vytvoření `hooks/useScoring.ts`
+- [x] 8.2: Vytvoření `hooks/useScoring.ts`
   - Wrapper nad scoringApi
   - Optimistic updates
   - Loading/error states
   - Queue pro offline režim
-- [ ] 8.3: Update `GridCell.tsx`
+- [x] 8.3: Update `GridCell.tsx`
   - Pending state (odesílání)
   - Success/error feedback
   - Toast notifikace
