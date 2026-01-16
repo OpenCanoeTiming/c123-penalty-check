@@ -2,6 +2,18 @@
 
 Webová aplikace s vysoce optimalizovaným UX pro kontrolu, korekci a zadávání penalizací slalomových závodů měřených v systému Canoe123.
 
+## Motivace
+
+Reimplementace stávajícího C123 terminálu. Důvody:
+
+- **Ergonomie pro celodenní práci** - na závodech se s aplikací pracuje mnoho hodin v kuse
+- **Přehlednost** - původní terminál je malý a nepřehledný, zvlášť při únavě
+- **Čitelnost** - dostatečná velikost písma a prvků, jasné vizuální odlišení stavů
+- **Snížení chybovosti** - zřetelná indikace aktivní buňky, potvrzení akcí
+- **Komfort obsluhy** - minimalizace klikání, efektivní klávesové zkratky
+
+---
+
 ## Architektura
 
 Aplikace běží jako **čistě frontendové řešení** (React + TypeScript) a komunikuje s **c123-server** jako backendem:
