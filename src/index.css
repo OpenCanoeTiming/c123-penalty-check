@@ -1,0 +1,22 @@
+/* Base styles for c123-scoring app */
+/* Design system provides most styling via timing.css */
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+html,
+body,
+#root {
+  height: 100%;
+  margin: 0;
+  padding: 0;
+}
+
+body {
+  font-family: var(--font-family-base, system-ui, sans-serif);
+  background-color: var(--color-background, #ffffff);
+  color: var(--color-text, #1a1a1a);
+}
