@@ -10,16 +10,16 @@ C123 Scoring - webová aplikace pro kontrolu, korekci a zadávání penalizací 
 
 ## Důležitá pravidla
 
-1. **NEMĚNIT JINÉ PROJEKTY** - Pracuj pouze v tomto projektu (`c123-scoring`). Nikdy neměň:
-   - `../c123-server/`
-   - `../c123-scoreboard/`
-   - `../c123-protocol-docs/`
-   - `../timing-design-system/`
-   - Jakýkoliv jiný projekt mimo tento adresář
+1. **NEMĚNIT c123-server** - Server je stabilní, změny jen po explicitním schválení.
 
-2. Jiné projekty jsou **pouze pro čtení** - jako reference pro typy, API, protokol.
+2. **Povolené projekty pro úpravy:**
+   - `c123-scoring` (tento projekt) - hlavní práce
+   - `c123-protocol-docs/tools/` - pomocné nástroje (replay-server, recorder)
 
-3. Pokud je potřeba změna v jiném projektu, **zapiš to jako poznámku/TODO** a informuj uživatele.
+3. **Pouze pro čtení:**
+   - `../c123-server/` - reference pro API, protokol
+   - `../c123-scoreboard/` - reference pro typy, WebSocket
+   - `../timing-design-system/` - UI komponenty
 
 ---
 
