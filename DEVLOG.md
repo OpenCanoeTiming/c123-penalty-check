@@ -370,6 +370,41 @@ Použit `@media (pointer: coarse)` media query pro detekci dotykových zařízen
 
 ---
 
+## 2026-01-16 - Fáze 13.10: Bundle size optimalizace
+
+### Cíl iterace
+
+Analyzovat a optimalizovat velikost produkčního bundlu.
+
+### Dokončeno
+
+- [x] Analýza bundle pomocí rollup-plugin-visualizer
+- [x] Správné oddělení vendor chunku (React/ReactDOM)
+- [x] Konfigurace Vite pro optimální build:
+  - Target ES2020 (moderní JS bez polyfillů)
+  - Drop console/debugger v produkci
+  - Odstranění legal comments
+
+### Výsledky
+
+**Před optimalizací:**
+- Celkem: 479 kB (136 kB gzip)
+- Vše v jednom bundlu
+
+**Po optimalizaci:**
+- Vendor (React): 330 kB (100.5 kB gzip) - cacheable
+- App code: 88.5 kB (19.7 kB gzip)
+- Celkem: 418 kB (120.2 kB gzip) - **12% menší**
+
+### Poznámky
+
+- React 19 má větší runtime než React 18 (~330kB vs ~140kB)
+- Vendor chunk je oddělen pro lepší cacheování - React se nemění často
+- App code 88.5 kB je přiměřené pro aplikaci s 3300 řádky TypeScriptu
+- source-map-explorer a rollup-plugin-visualizer přidány jako dev dependencies
+
+---
+
 ## Template pro další záznamy
 
 ```markdown

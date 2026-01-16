@@ -528,7 +528,7 @@ Správné chování: hlavní use case je kontrola penalizací u DOJETÝCH závod
 - [ ] 13.6: Screen reader testing
 - [ ] 13.7: High contrast mode testing
 - [ ] 13.9: Performance profiling (React DevTools)
-- [ ] 13.10: Bundle size optimalizace
+- [x] 13.10: Bundle size optimalizace
 - [ ] 13.11: Commit: `refactor: polish UX and accessibility`
 
 **Výstup:** Produkčně připravená aplikace
