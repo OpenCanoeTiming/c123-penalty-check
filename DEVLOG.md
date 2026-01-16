@@ -223,6 +223,26 @@ Opravit grid tak, aby primárně zobrazoval dojeté závodníky (pro kontrolu pe
 
 ---
 
+## 2026-01-16 - Fáze 13.2: Error Boundaries
+
+### Cíl iterace
+
+Přidat ErrorBoundary komponentu pro zachytávání React chyb a zobrazení fallback UI.
+
+### Dokončeno
+
+- [x] Vytvořena `ErrorBoundary` komponenta (class component s getDerivedStateFromError)
+- [x] Fallback UI s detaily chyby, tlačítky "Try Again" a "Reload Page"
+- [x] CSS styly konzistentní s design systémem
+- [x] Integrace do main.tsx (wraps ToastProvider a App)
+
+### Poznámky
+
+- ErrorBoundary musí být class component (React hooks nepodporují error boundaries)
+- Wraps celou aplikaci včetně ToastProvider pro maximální ochranu
+
+---
+
 ## Template pro další záznamy
 
 ```markdown

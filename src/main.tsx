@@ -3,12 +3,14 @@ import { createRoot } from 'react-dom/client'
 import '@opencanoetiming/timing-design-system/dist/timing.css'
 import './index.css'
 import App from './App.tsx'
-import { ToastProvider } from './components'
+import { ToastProvider, ErrorBoundary } from './components'
 
 createRoot(document.getElementById('root')!).render(
   <StrictMode>
-    <ToastProvider>
-      <App />
-    </ToastProvider>
+    <ErrorBoundary>
+      <ToastProvider>
+        <App />
+      </ToastProvider>
+    </ErrorBoundary>
   </StrictMode>,
 )
