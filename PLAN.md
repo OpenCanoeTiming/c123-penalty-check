@@ -730,7 +730,7 @@ Původní Canoe123Term aplikace má **4 panely**:
 2. [x] Přidat Results state do App.tsx (již existuje `results` state)
 3. [x] ResultsGrid bude používat `C123ResultsData.rows` jako zdroj
 4. [x] OnCourseGrid ponechat jako menší info panel (nebo skrýt)
-5. [ ] Race selector - upravit na shortTitle
+5. [x] Race selector - upravit na shortTitle (již implementováno v useSchedule.ts:55)
 6. [ ] Otestovat s replay-serverem
 
 ### Reference z originálu
