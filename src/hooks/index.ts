@@ -24,3 +24,8 @@ export {
   type ScoringState,
   type UseScoringReturn,
 } from './useScoring'
+export {
+  useGateGroups,
+  type UseGateGroupsOptions,
+  type UseGateGroupsReturn,
+} from './useGateGroups'

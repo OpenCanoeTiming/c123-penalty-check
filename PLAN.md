@@ -319,7 +319,7 @@ Podrobný plán pro autonomní iterativní implementaci. Každá fáze je navrž
 - [x] 9.1: Vytvoření `types/gateGroups.ts`
   - GateGroup interface
   - Podpora překrývajících se skupin
-- [ ] 9.2: Vytvoření `hooks/useGateGroups.ts`
+- [x] 9.2: Vytvoření `hooks/useGateGroups.ts`
   - Parsování segmentů z RaceConfig
   - Custom groups z localStorage
   - CRUD operace pro skupiny
