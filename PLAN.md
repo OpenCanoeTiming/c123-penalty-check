@@ -566,7 +566,7 @@ Správné chování: hlavní use case je kontrola penalizací u DOJETÝCH závod
 
 ### Kroky
 
-- [ ] 15.1: README.md s instrukcemi pro:
+- [x] 15.1: README.md s instrukcemi pro:
   - Instalaci
   - Vývoj
   - Build
