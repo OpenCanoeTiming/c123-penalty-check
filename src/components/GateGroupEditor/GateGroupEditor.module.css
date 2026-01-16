@@ -1,0 +1,381 @@
+.editor {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-md, 16px);
+  padding: var(--spacing-md, 16px);
+  background-color: var(--color-surface, #fff);
+  border: 1px solid var(--color-border, #ccc);
+  border-radius: var(--border-radius-md, 8px);
+  max-width: 400px;
+}
+
+.header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.title {
+  margin: 0;
+  font-size: var(--font-size-lg, 18px);
+  font-weight: 600;
+  color: var(--color-text, #333);
+}
+
+.closeButton {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  padding: 0;
+  border: none;
+  background: transparent;
+  color: var(--color-text-muted, #666);
+  font-size: 20px;
+  cursor: pointer;
+  border-radius: var(--border-radius-sm, 4px);
+}
+
+.closeButton:hover {
+  background-color: var(--color-surface-hover, #f0f0f0);
+  color: var(--color-text, #333);
+}
+
+/* Groups list */
+.groupsList {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-xs, 4px);
+}
+
+.groupItem {
+  display: flex;
+  align-items: center;
+  border: 1px solid var(--color-border, #ccc);
+  border-radius: var(--border-radius-sm, 4px);
+  overflow: hidden;
+}
+
+.groupItem:hover {
+  border-color: var(--color-border-hover, #999);
+}
+
+.groupActive {
+  border-color: var(--color-primary, #0066cc);
+  background-color: var(--color-primary-bg, #e6f0ff);
+}
+
+.groupButton {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-sm, 8px);
+  padding: var(--spacing-sm, 8px);
+  border: none;
+  background: transparent;
+  cursor: pointer;
+  text-align: left;
+  font-family: inherit;
+  font-size: var(--font-size-base, 14px);
+}
+
+.groupButton:focus {
+  outline: 2px solid var(--color-primary, #0066cc);
+  outline-offset: -2px;
+}
+
+.groupColor {
+  width: 12px;
+  height: 12px;
+  border-radius: 2px;
+  flex-shrink: 0;
+}
+
+.groupName {
+  font-weight: 500;
+  color: var(--color-text, #333);
+}
+
+.groupGates {
+  margin-left: auto;
+  font-size: var(--font-size-sm, 12px);
+  color: var(--color-text-muted, #666);
+}
+
+.groupActions {
+  display: flex;
+  align-items: center;
+  padding-right: var(--spacing-xs, 4px);
+}
+
+.iconButton {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 24px;
+  padding: 0;
+  border: none;
+  background: transparent;
+  color: var(--color-text-muted, #666);
+  font-size: 14px;
+  cursor: pointer;
+  border-radius: var(--border-radius-sm, 4px);
+}
+
+.iconButton:hover {
+  background-color: var(--color-surface-hover, #f0f0f0);
+  color: var(--color-text, #333);
+}
+
+/* Add button */
+.addButton {
+  padding: var(--spacing-sm, 8px) var(--spacing-md, 16px);
+  border: 1px dashed var(--color-border, #ccc);
+  border-radius: var(--border-radius-sm, 4px);
+  background: transparent;
+  color: var(--color-text-muted, #666);
+  font-family: inherit;
+  font-size: var(--font-size-base, 14px);
+  cursor: pointer;
+}
+
+.addButton:hover {
+  border-color: var(--color-primary, #0066cc);
+  color: var(--color-primary, #0066cc);
+  background-color: var(--color-primary-bg, #e6f0ff);
+}
+
+.addButton:focus {
+  outline: 2px solid var(--color-primary, #0066cc);
+  outline-offset: 2px;
+}
+
+/* Edit form */
+.editForm {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-md, 16px);
+  padding: var(--spacing-md, 16px);
+  background-color: var(--color-surface-alt, #f9f9f9);
+  border-radius: var(--border-radius-sm, 4px);
+}
+
+.formTitle {
+  margin: 0;
+  font-size: var(--font-size-base, 14px);
+  font-weight: 600;
+  color: var(--color-text, #333);
+}
+
+.formField {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-xs, 4px);
+}
+
+.label {
+  font-size: var(--font-size-sm, 12px);
+  font-weight: 500;
+  color: var(--color-text-muted, #666);
+  text-transform: uppercase;
+  letter-spacing: 0.025em;
+}
+
+.input {
+  padding: var(--spacing-sm, 8px);
+  border: 1px solid var(--color-border, #ccc);
+  border-radius: var(--border-radius-sm, 4px);
+  font-family: inherit;
+  font-size: var(--font-size-base, 14px);
+  background-color: var(--color-surface, #fff);
+  color: var(--color-text, #333);
+}
+
+.input:focus {
+  outline: 2px solid var(--color-primary, #0066cc);
+  outline-offset: -1px;
+  border-color: var(--color-primary, #0066cc);
+}
+
+/* Color picker */
+.colorPicker {
+  display: flex;
+  gap: var(--spacing-xs, 4px);
+  flex-wrap: wrap;
+}
+
+.colorSwatch {
+  width: 24px;
+  height: 24px;
+  border: 2px solid transparent;
+  border-radius: var(--border-radius-sm, 4px);
+  cursor: pointer;
+  padding: 0;
+}
+
+.colorSwatch:hover {
+  transform: scale(1.1);
+}
+
+.colorSwatch:focus {
+  outline: 2px solid var(--color-primary, #0066cc);
+  outline-offset: 2px;
+}
+
+.colorSelected {
+  border-color: var(--color-text, #333);
+  box-shadow: 0 0 0 2px var(--color-surface, #fff);
+}
+
+/* Gates header */
+.gatesHeader {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.gatesActions {
+  display: flex;
+  gap: var(--spacing-sm, 8px);
+}
+
+.textButton {
+  padding: 0;
+  border: none;
+  background: transparent;
+  color: var(--color-primary, #0066cc);
+  font-family: inherit;
+  font-size: var(--font-size-sm, 12px);
+  cursor: pointer;
+  text-decoration: underline;
+}
+
+.textButton:hover {
+  color: var(--color-primary-dark, #0052a3);
+}
+
+/* Quick ranges */
+.quickRanges {
+  display: flex;
+  gap: var(--spacing-xs, 4px);
+  flex-wrap: wrap;
+  margin-bottom: var(--spacing-xs, 4px);
+}
+
+.rangeButton {
+  padding: var(--spacing-xxs, 2px) var(--spacing-xs, 4px);
+  border: 1px solid var(--color-border, #ccc);
+  border-radius: var(--border-radius-sm, 4px);
+  background-color: var(--color-surface, #fff);
+  color: var(--color-text-muted, #666);
+  font-family: inherit;
+  font-size: var(--font-size-xs, 11px);
+  cursor: pointer;
+}
+
+.rangeButton:hover {
+  border-color: var(--color-primary, #0066cc);
+  color: var(--color-primary, #0066cc);
+}
+
+/* Gates grid */
+.gatesGrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(36px, 1fr));
+  gap: var(--spacing-xxs, 2px);
+}
+
+.gateCheckbox {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 36px;
+  border: 1px solid var(--color-border, #ccc);
+  border-radius: var(--border-radius-sm, 4px);
+  background-color: var(--color-surface, #fff);
+  color: var(--color-text, #333);
+  font-family: inherit;
+  font-size: var(--font-size-base, 14px);
+  font-weight: 500;
+  cursor: pointer;
+  transition: background-color 0.1s, border-color 0.1s;
+}
+
+.gateCheckbox:hover {
+  border-color: var(--color-primary, #0066cc);
+}
+
+.gateCheckbox:focus {
+  outline: 2px solid var(--color-primary, #0066cc);
+  outline-offset: 1px;
+}
+
+.gateSelected {
+  background-color: var(--color-primary, #0066cc);
+  border-color: var(--color-primary, #0066cc);
+  color: var(--color-text-inverse, #fff);
+}
+
+.gateSelected:hover {
+  background-color: var(--color-primary-dark, #0052a3);
+  border-color: var(--color-primary-dark, #0052a3);
+}
+
+/* Error */
+.error {
+  padding: var(--spacing-sm, 8px);
+  background-color: var(--color-error-bg, #f8d7da);
+  color: var(--color-error, #dc3545);
+  border-radius: var(--border-radius-sm, 4px);
+  font-size: var(--font-size-sm, 12px);
+}
+
+/* Form actions */
+.formActions {
+  display: flex;
+  justify-content: flex-end;
+  gap: var(--spacing-sm, 8px);
+}
+
+.cancelButton {
+  padding: var(--spacing-sm, 8px) var(--spacing-md, 16px);
+  border: 1px solid var(--color-border, #ccc);
+  border-radius: var(--border-radius-sm, 4px);
+  background-color: var(--color-surface, #fff);
+  color: var(--color-text, #333);
+  font-family: inherit;
+  font-size: var(--font-size-base, 14px);
+  cursor: pointer;
+}
+
+.cancelButton:hover {
+  background-color: var(--color-surface-hover, #f0f0f0);
+}
+
+.cancelButton:focus {
+  outline: 2px solid var(--color-primary, #0066cc);
+  outline-offset: 2px;
+}
+
+.saveButton {
+  padding: var(--spacing-sm, 8px) var(--spacing-md, 16px);
+  border: none;
+  border-radius: var(--border-radius-sm, 4px);
+  background-color: var(--color-primary, #0066cc);
+  color: var(--color-text-inverse, #fff);
+  font-family: inherit;
+  font-size: var(--font-size-base, 14px);
+  font-weight: 500;
+  cursor: pointer;
+}
+
+.saveButton:hover {
+  background-color: var(--color-primary-dark, #0052a3);
+}
+
+.saveButton:focus {
+  outline: 2px solid var(--color-primary, #0066cc);
+  outline-offset: 2px;
+}

@@ -323,10 +323,10 @@ Podrobný plán pro autonomní iterativní implementaci. Každá fáze je navrž
   - Parsování segmentů z RaceConfig
   - Custom groups z localStorage
   - CRUD operace pro skupiny
-- [ ] 9.3: Vytvoření `components/GateGroupEditor/GateGroupEditor.tsx`
+- [x] 9.3: Vytvoření `components/GateGroupEditor/GateGroupEditor.tsx`
   - Vizuální editor skupin
-  - Drag & drop nebo checkboxy
-  - Pojmenování skupin
+  - Checkboxy s quick range selectory
+  - Pojmenování skupin a výběr barvy
 - [ ] 9.4: Update `PenaltyGrid.tsx`
   - Zobrazení pouze vybraných branek
   - Vizuální oddělovače skupin
