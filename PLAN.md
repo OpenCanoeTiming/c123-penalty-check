@@ -116,11 +116,12 @@ Soubory:
 
 ### Kroky
 
-#### 2A: C123 Replay Server (standalone)
+#### 2A: C123 Replay Server (EXTERNÍ ZÁVISLOST)
+
+> **⚠️ MIMO SCOPE TOHOTO PROJEKTU**
+> Replay server patří do `c123-protocol-docs/tools/` - implementovat samostatně.
 
 Samostatný server, který emuluje Canoe123 na TCP:27333. C123-server se k němu připojí jako k autentickému C123.
-
-**Umístění:** `../c123-protocol-docs/tools/replay-server.js`
 
 ```
 ┌─────────────────┐      TCP:27333      ┌─────────────────┐
@@ -129,15 +130,13 @@ Samostatný server, který emuluje Canoe123 na TCP:27333. C123-server se k němu
 └─────────────────┘                     └─────────────────┘
 ```
 
-- [ ] 2A.1: Vytvořit `replay-server.js` v c123-protocol-docs/tools
-  - TCP server na portu 27333
-  - Parsování JSONL souboru
-  - Filtrování na `src: "tcp"` zprávy
-  - Přehrávání s respektováním `ts` timestampů
-  - Podpora zrychlení (`--speed 2`)
-  - Podpora loopování (`--loop`)
-- [ ] 2A.2: Dokumentace v `recordings/README.md`
-- [ ] 2A.3: Commit do c123-protocol-docs: `feat: add replay-server for JSONL recordings`
+**TODO pro c123-protocol-docs:**
+- Vytvořit `tools/replay-server.js`
+- TCP server na portu 27333
+- Parsování JSONL, filtrování `src: "tcp"`
+- Přehrávání s timestampy, `--speed`, `--loop`
+
+**Dokud není replay-server:** Testovat se statickým XML (`--xml` parametr c123-server)
 
 #### 2B: Unit testy (c123-scoring)
 
