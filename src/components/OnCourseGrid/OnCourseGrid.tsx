@@ -21,6 +21,10 @@ export interface OnCourseGridProps {
   allGateGroups?: GateGroup[]
   /** Callback when a penalty is submitted */
   onPenaltySubmit?: (bib: string, gate: number, value: PenaltyValue) => void
+  /** Check if a competitor is checked */
+  isChecked?: (bib: string) => boolean
+  /** Callback when a competitor's checked state changes */
+  onToggleChecked?: (bib: string) => void
 }
 
 export function OnCourseGrid({
@@ -30,6 +34,8 @@ export function OnCourseGrid({
   activeGateGroup = null,
   allGateGroups = [],
   onPenaltySubmit,
+  isChecked,
+  onToggleChecked,
 }: OnCourseGridProps) {
   const gridRef = useRef<HTMLDivElement>(null)
   const focusedCellRef = useRef<HTMLTableCellElement>(null)
@@ -172,6 +178,10 @@ export function OnCourseGrid({
       <table className="on-course-table">
         <thead>
           <tr role="row">
+            <th className="col-check" role="columnheader">
+              <span className="visually-hidden">Checked</span>
+              ✓
+            </th>
             <th className="col-pos" role="columnheader">#</th>
             <th className="col-bib" role="columnheader">Bib</th>
             <th className="col-name" role="columnheader">Name</th>
@@ -200,9 +210,25 @@ export function OnCourseGrid({
             return (
               <tr
                 key={competitor.bib}
-                className={`competitor-row ${competitor.completed ? 'completed' : 'on-course'}`}
+                className={`competitor-row ${competitor.completed ? 'completed' : 'on-course'} ${isChecked?.(competitor.bib) ? 'row-checked' : ''}`}
                 role="row"
               >
+                <td className="col-check" role="gridcell">
+                  <button
+                    type="button"
+                    className={`check-button ${isChecked?.(competitor.bib) ? 'checked' : ''}`}
+                    onClick={(e) => {
+                      e.stopPropagation()
+                      onToggleChecked?.(competitor.bib)
+                    }}
+                    aria-label={isChecked?.(competitor.bib) ? 'Uncheck' : 'Check'}
+                    aria-pressed={isChecked?.(competitor.bib) ?? false}
+                    disabled={!competitor.completed}
+                    title={competitor.completed ? 'Toggle checked' : 'Can only check finished competitors'}
+                  >
+                    {isChecked?.(competitor.bib) ? '✓' : ''}
+                  </button>
+                </td>
                 <td className="col-pos" role="gridcell">{competitor.position}</td>
                 <td className="col-bib" role="gridcell">{competitor.bib}</td>
                 <td className="col-name" role="gridcell">

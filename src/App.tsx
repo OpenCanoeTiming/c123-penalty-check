@@ -1,10 +1,11 @@
-import { useState, useEffect, useCallback } from 'react'
-import { Layout, Header, ConnectionStatus, RaceSelector, OnCourseGrid, GateGroupSwitcher, GateGroupEditor } from './components'
+import { useState, useEffect, useCallback, useMemo } from 'react'
+import { Layout, Header, ConnectionStatus, RaceSelector, OnCourseGrid, GateGroupSwitcher, GateGroupEditor, CheckProgress } from './components'
 import { useC123WebSocket } from './hooks/useC123WebSocket'
 import { useConnectionStatus } from './hooks/useConnectionStatus'
 import { useSchedule } from './hooks/useSchedule'
 import { useGateGroups } from './hooks/useGateGroups'
 import { useGateGroupShortcuts } from './hooks/useGateGroupShortcuts'
+import { useCheckedState } from './hooks/useCheckedState'
 import './App.css'
 
 const DEFAULT_SERVER_URL = 'ws://localhost:27123/ws'
@@ -85,6 +86,29 @@ function App() {
     enabled: !showGateGroupEditor, // Disable when editor is open
   })
 
+  // Protocol check state
+  const {
+    isChecked,
+    toggleChecked,
+    getProgress,
+  } = useCheckedState({
+    raceId: selectedRaceId,
+    groupId: activeGroupId,
+  })
+
+  // Get list of finished competitor bibs for progress calculation
+  const finishedCompetitorBibs = useMemo(() => {
+    if (!onCourse?.competitors) return []
+    return onCourse.competitors
+      .filter((c) => c.completed && c.raceId === selectedRaceId)
+      .map((c) => c.bib)
+  }, [onCourse?.competitors, selectedRaceId])
+
+  // Calculate check progress
+  const checkProgress = useMemo(() => {
+    return getProgress(finishedCompetitorBibs)
+  }, [getProgress, finishedCompetitorBibs])
+
   return (
     <Layout
       header={
@@ -103,7 +127,16 @@ function App() {
         />
       }
       footer={
-        <span>C123 Scoring v0.1.0 &bull; Open Canoe Timing</span>
+        <div className="footer-content">
+          <span>C123 Scoring v0.1.0 &bull; Open Canoe Timing</span>
+          {finishedCompetitorBibs.length > 0 && (
+            <CheckProgress
+              progress={checkProgress}
+              label={activeGroup ? `${activeGroup.name}` : 'Checked'}
+              compact
+            />
+          )}
+        </div>
       }
     >
       {/* Gate Group Switcher */}
@@ -141,6 +174,8 @@ function App() {
           selectedRaceId={selectedRaceId}
           activeGateGroup={activeGroup}
           allGateGroups={allGroups}
+          isChecked={isChecked}
+          onToggleChecked={toggleChecked}
         />
       ) : (
         <p className="placeholder">

@@ -34,6 +34,11 @@
 }
 
 /* Column widths */
+.col-check {
+  width: 40px;
+  padding: var(--spacing-xs);
+}
+
 .col-pos {
   width: 40px;
 }
@@ -167,4 +172,67 @@
 /* Group boundary separator */
 .gate-group-boundary {
   border-right: 3px solid var(--color-primary, #0066cc);
+}
+
+/* Check button */
+.check-button {
+  width: 28px;
+  height: 28px;
+  border-radius: var(--border-radius-sm, 4px);
+  border: 2px solid var(--color-border);
+  background: var(--color-surface);
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: var(--font-size-md);
+  color: var(--color-success);
+  transition: all 0.15s ease;
+}
+
+.check-button:hover:not(:disabled) {
+  border-color: var(--color-success);
+  background: var(--color-success-subtle, rgba(40, 167, 69, 0.1));
+}
+
+.check-button:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+.check-button.checked {
+  background: var(--color-success);
+  border-color: var(--color-success);
+  color: white;
+}
+
+.check-button.checked:hover:not(:disabled) {
+  background: var(--color-success-hover, #218838);
+}
+
+/* Checked row styling */
+.competitor-row.row-checked {
+  background: var(--color-success-subtle, rgba(40, 167, 69, 0.05));
+}
+
+.competitor-row.row-checked:hover {
+  background: var(--color-success-subtle, rgba(40, 167, 69, 0.1));
+}
+
+.competitor-row.row-checked .col-bib,
+.competitor-row.row-checked .col-name .name {
+  opacity: 0.7;
+}
+
+/* Visually hidden for accessibility */
+.visually-hidden {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
 }

@@ -27,3 +27,12 @@
   overflow: auto;
   margin: var(--spacing-md, 1rem);
 }
+
+/* Footer content layout */
+.footer-content {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--spacing-md, 1rem);
+  width: 100%;
+}

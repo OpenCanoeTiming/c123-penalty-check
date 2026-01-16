@@ -33,3 +33,8 @@ export {
   useGateGroupShortcuts,
   type UseGateGroupShortcutsOptions,
 } from './useGateGroupShortcuts'
+export {
+  useCheckedState,
+  type UseCheckedStateOptions,
+  type UseCheckedStateReturn,
+} from './useCheckedState'

@@ -167,3 +167,56 @@ export function calculateTotalPenalty(gates: GateInfo[]): number {
 export function isValidPenalty(value: number): value is PenaltyValue {
   return value === 0 || value === 2 || value === 50
 }
+
+// =============================================================================
+// Protocol Check Types
+// =============================================================================
+
+/**
+ * Checked state for a competitor within a specific gate group
+ */
+export interface CheckedState {
+  /** Competitor bib number */
+  bib: string
+  /** Gate group ID (null = all gates) */
+  groupId: string | null
+  /** Whether the protocol has been checked */
+  checked: boolean
+  /** Timestamp when checked (ISO string) */
+  checkedAt: string | null
+}
+
+/**
+ * Map of checked states keyed by "bib:groupId"
+ */
+export type CheckedStateMap = Map<string, CheckedState>
+
+/**
+ * Create a unique key for the checked state map
+ */
+export function createCheckedKey(bib: string, groupId: string | null): string {
+  return `${bib}:${groupId ?? 'all'}`
+}
+
+/**
+ * Parse a checked key back to bib and groupId
+ */
+export function parseCheckedKey(key: string): { bib: string; groupId: string | null } {
+  const [bib, groupIdStr] = key.split(':')
+  return {
+    bib,
+    groupId: groupIdStr === 'all' ? null : groupIdStr,
+  }
+}
+
+/**
+ * Progress statistics for protocol checking
+ */
+export interface CheckProgress {
+  /** Number of checked competitors */
+  checked: number
+  /** Total number of competitors to check */
+  total: number
+  /** Percentage complete (0-100) */
+  percentage: number
+}
