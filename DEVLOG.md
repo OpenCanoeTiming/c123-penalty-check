@@ -153,6 +153,8 @@ Opravit chybějící dokumentaci a aktualizovat testovací plán.
 replay-server (TCP:27333) → c123-server → c123-scoring
 ```
 
+**Důležité pravidlo:** Z tohoto projektu NEMĚNIT jiné projekty (c123-server, c123-protocol-docs, atd.) - pouze číst jako reference. Replay-server implementovat samostatně v c123-protocol-docs.
+
 ---
 
 ## Template pro další záznamy
