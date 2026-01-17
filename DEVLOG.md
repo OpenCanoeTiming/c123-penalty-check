@@ -622,6 +622,44 @@ Refaktoring ResultsGrid na použití design system Table komponent a vytvoření
 
 ---
 
+## 2026-01-17 - Fáze 17A: Header redesign
+
+### Cíl iterace
+
+Redesign headeru podle vzoru c123-server admin - přehlednější layout s prominentním race selectorem.
+
+### Dokončeno
+
+- [x] Prozkoumat c123-server admin pro inspiraci (event-bar pattern)
+- [x] Zjednodušit Header komponentu:
+  - Pouze HeaderBrand ("C123 Scoring") + HeaderStatus + settings button
+  - Odstraněn subtitle/raceInfo z headeru
+- [x] Vytvořit novou RaceBar komponentu:
+  - Prominentní h1 s názvem vybraného závodu
+  - Select size="lg" pro velký race selector
+  - LIVE/Finished badge u race selectoru
+- [x] Upravit Layout pro podporu race bar slotu
+- [x] Sticky footer (position: sticky, bottom: 0)
+- [x] Změnit ⚙ ikonu u gate groups na ✎ (edit) - odlišení od settings
+
+### Změny souborů
+
+- `src/components/Header/Header.tsx` - zjednodušeno, odstraněn raceInfo prop
+- `src/components/RaceBar/` - nová komponenta (RaceBar.tsx, RaceBar.css, index.ts)
+- `src/components/Layout/Layout.tsx` - přidán raceBar slot
+- `src/components/Layout/Layout.module.css` - grid-template-rows: auto auto 1fr auto, sticky footer
+- `src/components/GateGroupSwitcher/GateGroupSwitcher.tsx` - změna ikony ⚙ → ✎
+- `src/App.tsx` - použití nového RaceBar místo RaceSelector v headeru
+- `src/components/index.ts` - export RaceBar
+
+### Poznámky
+
+- Vzor z c123-server admin: header má pouze brand + status indikátory, event info je v samostatném "event-bar"
+- RaceBar se zobrazuje vždy, i když není vybrán závod ("No race selected")
+- Footer je nyní sticky - vždy viditelný na spodku obrazovky
+
+---
+
 ## Template pro další záznamy
 
 ```markdown

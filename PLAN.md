@@ -8,7 +8,7 @@
 |------|-------|------|
 | 1-15 | Základní implementace | ✅ Hotovo (v1.0.0) |
 | 16 | Design System integrace | ✅ Hotovo |
-| 17 | UX Polish a Tablet | 🔜 Připraveno |
+| 17 | UX Polish a Tablet | 🔄 Probíhá |
 
 ---
 
@@ -73,21 +73,20 @@ npx playwright test screenshots-with-data.spec.ts
 
 ---
 
-### 17A: Header redesign (KRITICKÉ)
+### 17A: Header redesign (KRITICKÉ) ✅
 
 **Problém:** Header je nepřehledný - titěrný selector, dva indikátory, 3× settings ikona.
 
-- [ ] 17A.1: Prozkoumat c123-server admin pro inspiraci
-- [ ] 17A.2: Přepsat Header:
+- [x] 17A.1: Prozkoumat c123-server admin pro inspiraci
+- [x] 17A.2: Přepsat Header:
   - `HeaderBrand` - "C123 Scoring"
-  - `HeaderTitle` + subtitle - vybraný závod (VELKÝ)
-  - `HeaderActions` - pouze LIVE badge
+  - `HeaderActions` - pouze settings tlačítko
   - `HeaderStatus` - pouze vodácký StatusIndicator
-- [ ] 17A.3: Race selector - zvětšit (použít `Select size="lg"`)
-- [ ] 17A.4: Odstranit duplicitní settings ikony (nechat jen v headeru)
-- [ ] 17A.5: Commit
+- [x] 17A.3: Race selector - zvětšit (použít `Select size="lg"`) v novém RaceBar
+- [x] 17A.4: Změnit ⚙ ikonu u gate groups na ✎ (edit)
+- [x] 17A.5: Commit
 
-**Prerekvizita:** DS Select size prop
+**Řešení:** Nová RaceBar komponenta pod headerem s velkým názvem závodu a select size="lg"
 
 ---
 
