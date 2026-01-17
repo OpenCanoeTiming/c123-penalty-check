@@ -759,6 +759,46 @@ Dokončit sticky footer (17D) a přidat možnost řazení závodníků (17E).
 
 ---
 
+## 2026-01-17 - Fáze 17F: Tablet optimalizace
+
+### Cíl iterace
+
+Přidat tablet breakpointy a zvýšit touch targets na 48px pro lepší ergonomii na dotykových zařízeních.
+
+### Dokončeno
+
+- [x] Přidány tablet breakpointy:
+  - 1366px: iPad Pro landscape, Surface Pro landscape
+  - 1024px: iPad landscape, Surface Pro portrait
+  - 768px: iPad portrait (již existovalo)
+- [x] Touch targets zvětšeny z 44px na 48px:
+  - Globální min-height v app.css
+  - Penalty cells v ResultsGrid
+  - Check buttons v ResultsGrid
+  - Group buttons v GateGroupSwitcher
+  - History items v Settings
+- [x] Tablet-specifické úpravy:
+  - Menší padding na 1024px a 1366px
+  - Menší font-size pro labels na 1024px
+  - Race bar title zmenšen na tablet
+
+### Změny souborů
+
+- `src/styles/app.css` - globální tablet breakpointy a touch targets 48px
+- `src/components/Layout/Layout.module.css` - tablet padding
+- `src/components/ResultsGrid/ResultsGrid.css` - tablet breakpointy, touch 48px
+- `src/components/RaceBar/RaceBar.css` - tablet breakpointy
+- `src/components/GateGroupSwitcher/GateGroupSwitcher.module.css` - tablet breakpointy, touch 48px
+- `src/components/Settings/Settings.css` - touch 48px
+
+### Poznámky
+
+- Aplikace je navržena pro velké tablety (iPad Pro, Surface Pro), ne pro mobily
+- 48px touch targets jsou lepší než 44px pro ergonomii (snadnější trefit prstem)
+- Screenshoty pro tablet odloženy - E2E testy jsou zastaralé a vyžadují refaktoring
+
+---
+
 ## Template pro další záznamy
 
 ```markdown

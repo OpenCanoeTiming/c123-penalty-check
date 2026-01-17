@@ -34,3 +34,20 @@
   color: var(--color-text-secondary);
   z-index: 10;
 }
+
+/* Tablet breakpoints */
+@media (max-width: 1366px) {
+  .main {
+    padding: var(--space-4);
+  }
+}
+
+@media (max-width: 1024px) {
+  .main {
+    padding: var(--space-3);
+  }
+
+  .footer {
+    padding: var(--space-2) var(--space-4);
+  }
+}

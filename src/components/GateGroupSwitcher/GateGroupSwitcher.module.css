@@ -96,12 +96,29 @@
 
   .groupButton {
     padding: var(--space-2) var(--space-4);
-    min-height: 44px;
+    min-height: 48px;
     font-size: var(--text-base);
   }
 
   .colorDot {
     width: 12px;
     height: 12px;
+  }
+}
+
+/* Tablet breakpoints */
+@media (max-width: 1024px) {
+  .switcher {
+    padding: var(--space-2) var(--space-4);
+    gap: var(--space-3);
+  }
+
+  .label {
+    font-size: var(--text-xs);
+  }
+
+  .groupButton {
+    padding: var(--space-1) var(--space-2);
+    font-size: var(--text-xs);
   }
 }

@@ -240,13 +240,49 @@ body {
    ========================================================================== */
 
 @media (pointer: coarse) {
-  /* Ensure minimum touch target sizes */
+  /* Ensure minimum touch target sizes (48px for better ergonomics) */
   button,
   [role="button"],
   input,
   select,
   textarea {
-    min-height: 44px;
+    min-height: 48px;
+  }
+}
+
+/* ==========================================================================
+   Tablet Breakpoints
+   ========================================================================== */
+
+/*
+ * Tablet optimization breakpoints:
+ * - 1366px: iPad Pro landscape, Surface Pro landscape
+ * - 1024px: iPad landscape, Surface Pro portrait, iPad Pro portrait
+ * - 768px: iPad portrait (already handled)
+ *
+ * The app is designed for large tablets, not mobile phones.
+ */
+
+/* Large tablet landscape (1366px) */
+@media (max-width: 1366px) {
+  .app-main {
+    padding: var(--space-3);
+  }
+}
+
+/* Tablet landscape / Large tablet portrait (1024px) */
+@media (max-width: 1024px) {
+  .app-main {
+    padding: var(--space-2);
+  }
+
+  .app-footer {
+    padding: var(--space-2) var(--space-4);
+  }
+
+  .toolbar-content {
+    padding: var(--space-2) var(--space-4);
+    flex-wrap: wrap;
   }
 }
 

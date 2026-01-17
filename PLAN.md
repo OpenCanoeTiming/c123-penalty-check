@@ -10,7 +10,8 @@
 | 16 | Design System integrace | ✅ Hotovo |
 | 17A-C | UX Polish (Header, Grid, Gate Groups) | ✅ Hotovo |
 | 17D-E | UX Polish (Footer, Sorting) | ✅ Hotovo |
-| 17F-H | UX Polish (Tablet, Screenshots, Settings) | 🔄 Probíhá |
+| 17F | UX Polish (Tablet) | ✅ Hotovo |
+| 17G-H | UX Polish (Screenshots, Settings) | 🔄 Probíhá |
 
 ---
 
@@ -148,14 +149,19 @@ npx playwright test screenshots-with-data.spec.ts
 
 ---
 
-### 17F: Tablet optimalizace
+### 17F: Tablet optimalizace ✅
 
 **Problém:** Optimalizace pro mobil místo tabletu.
 
-- [ ] 17F.1: Tablet breakpointy (1366×1024, 1024×1366, atd.)
-- [ ] 17F.2: Touch targets min 48px
-- [ ] 17F.3: Screenshoty: `18-tablet-landscape.png`, `19-tablet-portrait.png`
-- [ ] 17F.4: Commit
+- [x] 17F.1: Tablet breakpointy (1366×1024, 1024×1366, atd.)
+- [x] 17F.2: Touch targets min 48px
+- [ ] 17F.3: Screenshoty: `18-tablet-landscape.png`, `19-tablet-portrait.png` (odloženo - E2E testy zastaralé)
+- [x] 17F.4: Commit
+
+**Řešení:**
+- Přidány tablet breakpointy 1366px (iPad Pro landscape) a 1024px (iPad landscape)
+- Touch targets zvětšeny z 44px na 48px pro lepší ergonomii
+- Upraveny padding a font-size pro tablet obrazovky
 
 ---
 
@@ -191,4 +197,4 @@ npx playwright test screenshots-with-data.spec.ts
 
 ---
 
-*Poslední aktualizace: 2026-01-17 (Phase 17E)*
+*Poslední aktualizace: 2026-01-17 (Phase 17F)*

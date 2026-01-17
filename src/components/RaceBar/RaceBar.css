@@ -42,7 +42,22 @@
   }
 }
 
-/* Tablet and smaller */
+/* Tablet landscape (1024px) */
+@media (max-width: 1024px) {
+  .race-bar {
+    padding: var(--space-3) var(--space-4);
+  }
+
+  .race-bar-title {
+    font-size: var(--text-xl);
+  }
+
+  .race-bar-select {
+    min-width: 240px;
+  }
+}
+
+/* Tablet portrait (768px) */
 @media (max-width: 768px) {
   .race-bar-main {
     flex-direction: column;
@@ -50,7 +65,7 @@
   }
 
   .race-bar-title {
-    font-size: var(--text-xl);
+    font-size: var(--text-lg);
     width: 100%;
   }
 

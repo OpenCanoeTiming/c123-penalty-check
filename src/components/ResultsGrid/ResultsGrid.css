@@ -248,19 +248,35 @@ th.gate-header--in-group {
 /* Touch device optimizations */
 @media (pointer: coarse) {
   .penalty-cell {
-    width: 44px;
-    min-width: 44px;
-    height: 44px;
+    width: 48px;
+    min-width: 48px;
+    height: 48px;
     padding: var(--space-2);
   }
 
   .check-btn {
-    width: 44px;
-    height: 44px;
+    width: 48px;
+    height: 48px;
   }
 
   .col-check {
-    width: 52px;
+    width: 56px;
+  }
+}
+
+/* Tablet breakpoints */
+@media (max-width: 1024px) {
+  .results-grid {
+    padding: var(--space-2);
+  }
+
+  .col-name {
+    min-width: 120px;
+  }
+
+  .col-time,
+  .col-pen {
+    width: 70px;
   }
 }
 
