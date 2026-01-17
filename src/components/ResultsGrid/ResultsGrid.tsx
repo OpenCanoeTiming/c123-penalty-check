@@ -1,4 +1,13 @@
 import { useRef, useEffect, useCallback, useMemo, useState } from 'react'
+import {
+  Table,
+  TableHead,
+  TableBody,
+  TableRow,
+  TableCell,
+  TableHeaderCell,
+  Badge,
+} from '@opencanoetiming/timing-design-system/react'
 import type { C123ResultRow, C123RaceConfigData } from '../../types/c123server'
 import type { GateGroup } from '../../types/ui'
 import type { RemoveReason, ChannelPosition } from '../../types/scoring'
@@ -9,9 +18,9 @@ import {
 } from '../../hooks'
 import { parseResultsGatesWithConfig } from '../../utils/gates'
 import { isGateInGroup } from '../../types/gateGroups'
-import { GridCell } from '../OnCourseGrid/GridCell'
+import { PenaltyCell } from './PenaltyCell'
 import { CompetitorActions } from '../CompetitorActions'
-import '../OnCourseGrid/OnCourseGrid.css' // Reuse same styles
+import './ResultsGrid.css'
 
 export interface ResultsGridProps {
   rows: C123ResultRow[]
@@ -78,7 +87,7 @@ export function ResultsGrid({
 
   // Create a mapping from visible column index to actual gate index
   const visibleColumnToGate = useMemo(() => {
-    return visibleGateIndices.map((i) => i + 1) // 1-based gate numbers
+    return visibleGateIndices.map((i) => i + 1)
   }, [visibleGateIndices])
 
   // Detect group boundaries for visual separators
@@ -123,10 +132,7 @@ export function ResultsGrid({
   const currentGate = visibleColumnToGate[position.column] ?? 1
 
   // Keyboard input for penalty values
-  const {
-    pendingValue,
-    handleKeyDown: handleInputKeyDown,
-  } = useKeyboardInput({
+  const { pendingValue, handleKeyDown: handleInputKeyDown } = useKeyboardInput({
     enabled: sortedRows.length > 0 && nrGates > 0,
     onPenaltyInput: (value) => {
       if (!currentRow || !onPenaltySubmit) return
@@ -164,10 +170,7 @@ export function ResultsGrid({
         setContextMenu(null)
       }
 
-      // First try input handling (numbers, enter, escape)
       if (handleInputKeyDown(event)) return
-
-      // Then try navigation (arrows, home, end, etc)
       handleNavKeyDown(event)
     },
     [handleInputKeyDown, handleNavKeyDown, contextMenu]
@@ -189,9 +192,16 @@ export function ResultsGrid({
     [setPosition]
   )
 
+  // Map status to badge variant
+  const getStatusVariant = (status: string): 'error' | 'warning' | 'neutral' => {
+    if (status === 'DSQ') return 'error'
+    if (status === 'DNF') return 'warning'
+    return 'neutral'
+  }
+
   if (sortedRows.length === 0) {
     return (
-      <div className="on-course-grid on-course-grid--empty">
+      <div className="results-grid results-grid--empty">
         <p>No results available</p>
       </div>
     )
@@ -200,83 +210,103 @@ export function ResultsGrid({
   return (
     <div
       ref={gridRef}
-      className="on-course-grid"
+      className="results-grid"
       role="grid"
       aria-label="Results grid"
       aria-activedescendant={activeCellId ?? undefined}
       tabIndex={0}
       onKeyDown={handleKeyDown}
     >
-      <table className="on-course-table">
-        <thead>
-          <tr role="row">
-            <th className="col-check" role="columnheader">
+      <Table striped hover>
+        <TableHead>
+          <TableRow>
+            <TableHeaderCell className="col-check">
               <span className="visually-hidden">Checked</span>
               ✓
-            </th>
-            <th className="col-pos" role="columnheader">#</th>
-            <th className="col-bib" role="columnheader">Bib</th>
-            <th className="col-name" role="columnheader">Name</th>
-            <th className="col-time" role="columnheader">Time</th>
-            <th className="col-pen" role="columnheader">Pen</th>
+            </TableHeaderCell>
+            <TableHeaderCell numeric className="col-pos">
+              #
+            </TableHeaderCell>
+            <TableHeaderCell numeric className="col-bib">
+              Bib
+            </TableHeaderCell>
+            <TableHeaderCell className="col-name">Name</TableHeaderCell>
+            <TableHeaderCell numeric className="col-time">
+              Time
+            </TableHeaderCell>
+            <TableHeaderCell numeric className="col-pen">
+              Pen
+            </TableHeaderCell>
             {visibleGateIndices.map((gateIndex) => {
               const gateNum = gateIndex + 1
               const gateType = gateConfig[gateIndex] ?? 'N'
-              const isBoundary = groupBoundaries.has(gateNum)
               return (
-                <th
+                <TableHeaderCell
                   key={gateNum}
-                  className={`col-gate ${gateType === 'R' ? 'gate-reverse' : 'gate-normal'} ${isBoundary ? 'gate-group-boundary' : ''}`}
-                  role="columnheader"
+                  numeric
+                  className={gateType === 'R' ? 'gate-header--reverse' : undefined}
                 >
                   {gateNum}
-                </th>
+                </TableHeaderCell>
               )
             })}
-          </tr>
-        </thead>
-        <tbody>
+          </TableRow>
+        </TableHead>
+        <TableBody>
           {sortedRows.map((row, rowIndex) => {
             const penalties = parseResultsGatesWithConfig(row.gates, gateConfig)
             const hasStatus = !!row.status
+            const checked = isChecked?.(row.bib) ?? false
+
+            const rowClassNames = [
+              checked && 'results-row--checked',
+              hasStatus && 'results-row--status',
+            ]
+              .filter(Boolean)
+              .join(' ')
 
             return (
-              <tr
+              <TableRow
                 key={row.bib}
-                className={`competitor-row completed ${isChecked?.(row.bib) ? 'row-checked' : ''} ${hasStatus ? 'row-status' : ''}`}
-                role="row"
+                className={rowClassNames || undefined}
                 onContextMenu={(e) => handleContextMenu(e, row)}
               >
-                <td className="col-check" role="gridcell">
+                <TableCell className="col-check">
                   <button
                     type="button"
-                    className={`check-button ${isChecked?.(row.bib) ? 'checked' : ''}`}
+                    className={`check-btn ${checked ? 'check-btn--checked' : ''}`}
                     onClick={(e) => {
                       e.stopPropagation()
                       onToggleChecked?.(row.bib)
                     }}
-                    aria-label={isChecked?.(row.bib) ? 'Uncheck' : 'Check'}
-                    aria-pressed={isChecked?.(row.bib) ?? false}
+                    aria-label={checked ? 'Uncheck' : 'Check'}
+                    aria-pressed={checked}
                     disabled={hasStatus}
                     title={hasStatus ? `Cannot check ${row.status}` : 'Toggle checked'}
                   >
-                    {isChecked?.(row.bib) ? '✓' : ''}
+                    {checked ? '✓' : ''}
                   </button>
-                </td>
-                <td className="col-pos" role="gridcell">
-                  {hasStatus ? row.status : row.rank}
-                </td>
-                <td className="col-bib" role="gridcell">{row.bib}</td>
-                <td className="col-name" role="gridcell">
+                </TableCell>
+                <TableCell numeric className="col-pos">
+                  {hasStatus ? (
+                    <Badge variant={getStatusVariant(row.status!)}>{row.status}</Badge>
+                  ) : (
+                    row.rank
+                  )}
+                </TableCell>
+                <TableCell numeric className="col-bib">
+                  {row.bib}
+                </TableCell>
+                <TableCell className="col-name">
                   <span className="name">{row.name}</span>
                   <span className="club">{row.club}</span>
-                </td>
-                <td className="col-time" role="gridcell">
+                </TableCell>
+                <TableCell numeric className="col-time">
                   {hasStatus ? '-' : `${row.time}s`}
-                </td>
-                <td className="col-pen" role="gridcell">
+                </TableCell>
+                <TableCell numeric className="col-pen">
                   {!hasStatus && row.pen > 0 ? `+${row.pen}` : ''}
-                </td>
+                </TableCell>
                 {visibleGateIndices.map((gateIndex, visibleColIndex) => {
                   const gateNum = gateIndex + 1
                   const penalty = penalties.find((p) => p.gate === gateNum)
@@ -284,11 +314,11 @@ export function ResultsGrid({
                   const isBoundary = groupBoundaries.has(gateNum)
 
                   return (
-                    <GridCell
+                    <PenaltyCell
                       key={gateNum}
                       ref={cellIsFocused ? focusedCellRef : undefined}
                       gate={gateNum}
-                      value={hasStatus ? null : (penalty?.value as PenaltyValue | null) ?? null}
+                      value={hasStatus ? null : ((penalty?.value as PenaltyValue | null) ?? null)}
                       pendingValue={cellIsFocused ? pendingValue : null}
                       gateType={(penalty?.type ?? gateConfig[gateIndex] ?? 'N') as 'N' | 'R'}
                       isFocused={cellIsFocused}
@@ -298,11 +328,11 @@ export function ResultsGrid({
                     />
                   )
                 })}
-              </tr>
+              </TableRow>
             )
           })}
-        </tbody>
-      </table>
+        </TableBody>
+      </Table>
 
       {/* Context menu for competitor actions */}
       {contextMenu && (

@@ -1,0 +1,261 @@
+/* ResultsGrid - DS Table extension for penalty grid */
+
+/* Grid container */
+.results-grid {
+  overflow-x: auto;
+  padding: var(--space-4, 1rem);
+}
+
+.results-grid--empty {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 200px;
+  color: var(--color-text-secondary);
+}
+
+/* Table header sticky */
+.results-grid .table thead th {
+  position: sticky;
+  top: 0;
+  z-index: 1;
+  background: var(--color-bg-surface);
+}
+
+/* Column widths */
+.col-check {
+  width: 40px;
+  padding: var(--space-1, 0.25rem);
+}
+
+.col-pos {
+  width: 48px;
+}
+
+.col-bib {
+  width: 60px;
+  font-weight: var(--font-weight-semibold, 600);
+}
+
+.col-name {
+  text-align: left;
+  min-width: 180px;
+}
+
+.col-name .name {
+  display: block;
+  font-weight: var(--font-weight-semibold, 600);
+}
+
+.col-name .club {
+  display: block;
+  font-size: var(--font-size-sm, 0.875rem);
+  color: var(--color-text-secondary);
+}
+
+.col-time,
+.col-pen {
+  width: 80px;
+  font-variant-numeric: tabular-nums;
+}
+
+.col-pen {
+  color: var(--color-error);
+}
+
+/* Penalty cell base */
+.penalty-cell {
+  width: 36px;
+  min-width: 36px;
+  cursor: pointer;
+  user-select: none;
+  text-align: center;
+  font-family: var(--font-mono, 'JetBrains Mono', monospace);
+  transition: background-color 0.15s ease, color 0.15s ease;
+}
+
+.penalty-cell:hover:not(.penalty-cell--focused) {
+  filter: brightness(0.95);
+}
+
+/* Penalty values - using DS color tokens */
+.penalty-cell--empty {
+  background: var(--color-bg-surface);
+}
+
+.penalty-cell--clear {
+  background: var(--color-success-subtle, rgba(5, 150, 105, 0.1));
+  color: var(--color-success);
+}
+
+.penalty-cell--touch {
+  background: var(--color-warning-subtle, rgba(217, 119, 6, 0.15));
+  color: var(--color-warning);
+  font-weight: var(--font-weight-semibold, 600);
+}
+
+.penalty-cell--miss {
+  background: var(--color-error-subtle, rgba(220, 38, 38, 0.15));
+  color: var(--color-error);
+  font-weight: var(--font-weight-semibold, 600);
+}
+
+/* Reverse gate indication */
+.penalty-cell--reverse {
+  border-bottom: 2px solid var(--color-warning);
+}
+
+/* Gate header for reverse gates */
+th.gate-header--reverse {
+  background: var(--color-warning-subtle, rgba(217, 119, 6, 0.1));
+  color: var(--color-warning);
+}
+
+/* Focus state */
+.penalty-cell--focused {
+  outline: 3px solid var(--color-accent);
+  outline-offset: -3px;
+  box-shadow: inset 0 0 0 2px var(--color-bg-surface);
+  position: relative;
+  z-index: 2;
+}
+
+.penalty-cell--focused::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: var(--color-accent-subtle, rgba(0, 102, 204, 0.1));
+  pointer-events: none;
+}
+
+/* Pending edit state */
+.penalty-cell--pending {
+  animation: penalty-pulse 0.5s ease-in-out infinite alternate;
+}
+
+@keyframes penalty-pulse {
+  from {
+    box-shadow: inset 0 0 0 2px var(--color-bg-surface);
+  }
+  to {
+    box-shadow: inset 0 0 8px var(--color-accent);
+  }
+}
+
+/* Group boundary */
+.penalty-cell--boundary {
+  border-right: 3px solid var(--color-accent);
+}
+
+/* Row states */
+.results-row--checked {
+  background: var(--color-success-subtle, rgba(5, 150, 105, 0.05));
+}
+
+.results-row--checked:hover {
+  background: var(--color-success-subtle, rgba(5, 150, 105, 0.1));
+}
+
+.results-row--status {
+  opacity: 0.7;
+}
+
+/* Check button styling */
+.check-btn {
+  width: 28px;
+  height: 28px;
+  border-radius: var(--radius-sm, 4px);
+  border: 2px solid var(--color-border);
+  background: var(--color-bg-surface);
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: var(--font-size-base, 1rem);
+  color: var(--color-success);
+  transition: all 0.15s ease;
+}
+
+.check-btn:hover:not(:disabled) {
+  border-color: var(--color-success);
+  background: var(--color-success-subtle, rgba(5, 150, 105, 0.1));
+}
+
+.check-btn:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+.check-btn--checked {
+  background: var(--color-success);
+  border-color: var(--color-success);
+  color: white;
+}
+
+.check-btn--checked:hover:not(:disabled) {
+  background: var(--color-success-hover, #047857);
+}
+
+/* Section separator */
+.section-separator td {
+  background: var(--color-bg-muted, #e5e7eb);
+  padding: var(--space-1, 0.25rem) var(--space-4, 1rem);
+  text-align: left;
+  font-weight: var(--font-weight-semibold, 600);
+  color: var(--color-text-secondary);
+  font-size: var(--font-size-sm, 0.875rem);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  border-top: 2px solid var(--color-border);
+  border-bottom: 2px solid var(--color-border);
+}
+
+/* Focus on grid container */
+.results-grid:focus {
+  outline: none;
+}
+
+/* Touch device optimizations */
+@media (pointer: coarse) {
+  .penalty-cell {
+    width: 44px;
+    min-width: 44px;
+    height: 44px;
+    padding: var(--space-2, 0.5rem);
+  }
+
+  .check-btn {
+    width: 44px;
+    height: 44px;
+  }
+
+  .col-check {
+    width: 52px;
+  }
+}
+
+/* Reduced motion */
+@media (prefers-reduced-motion: reduce) {
+  .penalty-cell,
+  .check-btn {
+    transition: none;
+  }
+
+  .penalty-cell--pending {
+    animation: none;
+    box-shadow: inset 0 0 4px var(--color-accent);
+  }
+}
+
+/* Visually hidden for accessibility */
+.visually-hidden {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
