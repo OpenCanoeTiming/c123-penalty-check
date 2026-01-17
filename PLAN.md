@@ -11,7 +11,8 @@
 | 17A-C | UX Polish (Header, Grid, Gate Groups) | ✅ Hotovo |
 | 17D-E | UX Polish (Footer, Sorting) | ✅ Hotovo |
 | 17F | UX Polish (Tablet) | ✅ Hotovo |
-| 17G-H | UX Polish (Screenshots, Settings) | 🔄 Probíhá |
+| 17G | UX Polish (Screenshots) | ✅ Hotovo |
+| 17H | UX Polish (Settings) | 📋 Další |
 
 ---
 
@@ -165,12 +166,12 @@ npx playwright test screenshots-with-data.spec.ts
 
 ---
 
-### 17G: Cleanup screenshoty
+### 17G: Cleanup screenshoty ✅
 
-- [ ] 17G.1: Smazat `scoring-live-replay.png` (starý)
-- [ ] 17G.2: Odstranit mobilní screenshoty (15, 16)
-- [ ] 17G.3: Přidat tablet screenshoty
-- [ ] 17G.4: Commit
+- [x] 17G.1: Smazat `scoring-live-replay.png` (starý)
+- [x] 17G.2: Odstranit mobilní screenshoty (15, 16)
+- [ ] 17G.3: Přidat tablet screenshoty (odloženo - E2E testy zastaralé)
+- [x] 17G.4: Commit
 
 ---
 
@@ -197,4 +198,4 @@ npx playwright test screenshots-with-data.spec.ts
 
 ---
 
-*Poslední aktualizace: 2026-01-17 (Phase 17F)*
+*Poslední aktualizace: 2026-01-17 (Phase 17G)*

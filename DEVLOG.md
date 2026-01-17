@@ -799,6 +799,26 @@ Přidat tablet breakpointy a zvýšit touch targets na 48px pro lepší ergonomi
 
 ---
 
+## 2026-01-17 - Fáze 17G: Cleanup screenshoty
+
+### Cíl iterace
+
+Vyčistit screenshot složku - smazat zastaralé a mobilní screenshoty.
+
+### Dokončeno
+
+- [x] Smazán `scoring-live-replay.png` - starý screenshot před redesignem
+- [x] Smazány mobilní screenshoty `15-mobile-view.png` a `16-mobile-settings.png`
+- [x] Aktualizován PLAN.md
+
+### Poznámky
+
+- Tablet screenshoty (17G.3) odloženy - E2E testy jsou zastaralé (používají staré selektory)
+- Zůstává 15 screenshotů dokumentujících aktuální stav aplikace
+- Aplikace je optimalizována pro tablet, ne pro mobil
+
+---
+
 ## Template pro další záznamy
 
 ```markdown
