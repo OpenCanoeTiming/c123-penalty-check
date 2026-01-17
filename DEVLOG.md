@@ -592,6 +592,36 @@ Refaktoring Settings komponenty na použití design system komponent místo vlas
 
 ---
 
+## 2026-01-17 - Fáze 16D: Grid redesign
+
+### Cíl iterace
+
+Refaktoring ResultsGrid na použití design system Table komponent a vytvoření PenaltyCell komponenty s DS tokeny.
+
+### Dokončeno
+
+- [x] Použití DS `Table`, `TableHead`, `TableBody`, `TableRow`, `TableCell`, `TableHeaderCell`
+- [x] Vytvoření `PenaltyCell` komponenty jako custom cell s DS tokeny
+- [x] Použití DS `Badge` pro zobrazení DNS/DNF/DSQ statusů
+- [x] Nový `ResultsGrid.css` s DS color tokeny pro penalty stavy
+- [x] Barevné kódování: clear (success), touch (warning), miss (error)
+- [x] Zachována keyboard navigace a focus management
+
+### Změny souborů
+
+- `src/components/ResultsGrid/ResultsGrid.tsx` - přepsáno na DS Table komponenty
+- `src/components/ResultsGrid/PenaltyCell.tsx` - nová komponenta pro penalty buňky
+- `src/components/ResultsGrid/ResultsGrid.css` - nové styly s DS tokeny
+- `src/components/ResultsGrid/index.ts` - export PenaltyCell
+
+### Poznámky
+
+- DS Checkbox nebyl použit pro check button - vlastní implementace lépe sedí do kompaktního gridu
+- OnCourseGrid.css ponechán pro referenci, ResultsGrid má vlastní CSS
+- Přechod na DS Table zjednodušuje styling a zajišťuje konzistenci s ostatními timing projekty
+
+---
+
 ## Template pro další záznamy
 
 ```markdown

@@ -855,25 +855,25 @@ Před začátkem práce je třeba do DS přidat:
 
 **Cíl:** Čitelnější a vizuálně atraktivnější tabulka
 
-- [ ] 16D.1: Použít DS `Table` jako základ
+- [x] 16D.1: Použít DS `Table` jako základ
   - `TableHead`, `TableBody`, `TableRow`
   - `TableHeaderCell` pro záhlaví
   - `TableCell` pro data (numeric prop pro čísla)
-- [ ] 16D.2: Vytvořit `PenaltyCell` jako custom komponentu
+- [x] 16D.2: Vytvořit `PenaltyCell` jako custom komponentu
   - Využít DS tokeny pro barvy (success/warning/error)
   - Zachovat keyboard focus logiku
   - Přidat gate pole indikátory z DS (`.gate-pole-success`, `.gate-pole-error`)
-- [ ] 16D.3: Použít DS `Checkbox` pro "checked" sloupec
-- [ ] 16D.4: Použít DS `Badge` pro status (DNS/DNF/DSQ)
-- [ ] 16D.5: Přepracovat barevné kódování penalizací
+- [x] 16D.3: Použít vlastní check button (DS Checkbox nevhodný pro kompaktní grid)
+- [x] 16D.4: Použít DS `Badge` pro status (DNS/DNF/DSQ)
+- [x] 16D.5: Přepracovat barevné kódování penalizací
   - 0 = subtle success (zelený podklad)
   - 2 = warning (oranžový)
   - 50 = error (červený)
   - null/prázdné = neutrální
-- [ ] 16D.6: Přidat vizuální oddělovače skupin branek
-- [ ] 16D.7: Optimalizovat pro čitelnost (větší font, kontrasty)
-- [ ] 16D.8: Smazat OnCourseGrid.css (316 řádků)
-- [ ] 16D.9: Commit: `refactor: use design system Table for penalty grid`
+- [x] 16D.6: Přidat vizuální oddělovače skupin branek
+- [x] 16D.7: Optimalizovat pro čitelnost (větší font, kontrasty)
+- [x] 16D.8: Vytvořit nový ResultsGrid.css s DS tokeny (OnCourseGrid.css ponechán pro referenci)
+- [x] 16D.9: Commit: `refactor: use design system Table for penalty grid`
 
 ### Fáze 16E: Formuláře a akce
 
