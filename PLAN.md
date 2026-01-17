@@ -341,7 +341,7 @@ Standalone server v `c123-protocol-docs/tools/`, který emuluje Canoe123 na TCP:
   - Modal s přehledem zkratek
   - Trigger: ? nebo F1
   - *Poznámka: Implementováno jako součást Settings panelu (Keyboard tab)*
-- [ ] 7.6: Unit testy pro useFocusNavigation
+- [x] 7.6: Unit testy pro useFocusNavigation
 - [ ] 7.7: Playwright test: navigace šipkami
 - [ ] 7.8: Playwright test: zadání hodnoty
 - [x] 7.9: Commit: `feat: add keyboard navigation to penalty grid`
