@@ -580,7 +580,7 @@ Správné chování: hlavní use case je kontrola penalizací u DOJETÝCH závod
   - Test
   - Visual regression
 - [x] 15.6: Finální code review - completed, ESLint errors fixed
-- [ ] 15.7: Tag: v1.0.0
+- [x] 15.7: Tag: v1.0.0
 
 **Výstup:** Release-ready v1.0.0
 
@@ -685,7 +685,7 @@ node recorder.js <C123_IP>
 | 12 | RemoveFromCourse a Timing | ✅ Hotovo |
 | 13 | Polish a UX | ✅ Hotovo |
 | 14 | Vizuální testy | ✅ Hotovo (15 screenshotů) |
-| 15 | Dokumentace | ✅ Hotovo (README, CHANGELOG, CI, docs, code review) |
+| 15 | Dokumentace | ✅ Hotovo (README, CHANGELOG, CI, docs, code review, v1.0.0 tag) |
 | **16** | **Vizuální redesign** | ⏳ **Naplánováno** |
 
 ---
