@@ -30,10 +30,10 @@ async function waitForDataAndSelectRace(page: Page) {
   await page.waitForTimeout(2000);
 
   // Try to select K1m 2. jízda (the race with Results data in replay)
-  const raceSelector = page.locator('select');
+  const raceSelector = page.getByLabel('Select race');
   if (await raceSelector.isVisible()) {
     // Find K1m 2. jízda option specifically
-    const k1m2Option = page.locator('select option:has-text("K1m"):has-text("2. jízda")').first();
+    const k1m2Option = page.locator('select[aria-label="Select race"] option:has-text("K1m"):has-text("2. jízda")').first();
     if (await k1m2Option.count() > 0) {
       const value = await k1m2Option.getAttribute('value');
       if (value) {
@@ -132,10 +132,20 @@ test.describe('Screenshot Tests - With Data', () => {
     await takeDocScreenshot(page, '14-check-progress');
   });
 
-  test('15 - mobile view', async ({ page }) => {
-    await page.setViewportSize({ width: 390, height: 844 });
+  // Mobile view removed - targeting tablets, not phones
+
+  test('18 - tablet landscape', async ({ page }) => {
+    // iPad Pro 12.9" landscape
+    await page.setViewportSize({ width: 1366, height: 1024 });
     await waitForDataAndSelectRace(page);
-    await takeDocScreenshot(page, '15-mobile-view');
+    await takeDocScreenshot(page, '18-tablet-landscape');
+  });
+
+  test('19 - tablet portrait', async ({ page }) => {
+    // iPad Pro 12.9" portrait
+    await page.setViewportSize({ width: 1024, height: 1366 });
+    await waitForDataAndSelectRace(page);
+    await takeDocScreenshot(page, '19-tablet-portrait');
   });
 
   test('17 - dark mode', async ({ page }) => {
