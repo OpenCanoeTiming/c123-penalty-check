@@ -686,7 +686,7 @@ node recorder.js <C123_IP>
 | 13 | Polish a UX | ✅ Hotovo |
 | 14 | Vizuální testy | ✅ Hotovo (15 screenshotů) |
 | 15 | Dokumentace | ✅ Hotovo (README, CHANGELOG, CI, docs, code review, v1.0.0 tag) |
-| **16** | **Vizuální redesign** | ⏳ **Naplánováno** |
+| **16** | **Vizuální redesign** | ⏳ **V průběhu** (16B hotovo) |
 
 ---
 
@@ -822,18 +822,18 @@ Před začátkem práce je třeba do DS přidat:
 
 **Cíl:** Profesionální header s vodáckou identitou
 
-- [ ] 16B.1: Nahradit vlastní Header za DS `Header` komponentu
+- [x] 16B.1: Nahradit vlastní Header za DS `Header` komponentu
   - Použít `HeaderBrand` s názvem aplikace
   - Použít `HeaderTitle` pro info o závodě
   - Použít `HeaderActions` pro tlačítka (Settings)
   - Použít `HeaderStatus` pro connection status
-- [ ] 16B.2: Integrovat DS `StatusIndicator` místo vlastního ConnectionStatus
+- [x] 16B.2: Integrovat DS `StatusIndicator` místo vlastního ConnectionStatus
   - Mapovat stavy: connected/connecting/disconnected/error
   - Využít pulse animaci pro "connecting"
-- [ ] 16B.3: Použít DS `Select` pro race selector
-- [ ] 16B.4: Přidat DS `LiveBadge` když je závod "RUNNING"
-- [ ] 16B.5: Smazat staré Header CSS soubory
-- [ ] 16B.6: Commit: `refactor: use design system Header component`
+- [x] 16B.3: Použít DS `Select` pro race selector
+- [x] 16B.4: Přidat DS `LiveBadge` když je závod "RUNNING"
+- [x] 16B.5: Smazat staré Header CSS soubory
+- [x] 16B.6: Commit: `refactor: use design system Header component`
 
 ### Fáze 16C: Settings modal redesign
 

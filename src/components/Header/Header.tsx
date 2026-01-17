@@ -1,5 +1,11 @@
 import type { ReactNode } from 'react'
-import styles from './Header.module.css'
+import {
+  Header as DSHeader,
+  HeaderBrand,
+  HeaderTitle,
+  HeaderActions,
+  HeaderStatus,
+} from '@opencanoetiming/timing-design-system'
 
 interface HeaderProps {
   title?: string
@@ -15,15 +21,16 @@ export function Header({
   actions,
 }: HeaderProps) {
   return (
-    <div className={styles.header}>
-      <div className={styles.left}>
-        <h1 className={styles.title}>{title}</h1>
-        {raceInfo && <span className={styles.raceInfo}>{raceInfo}</span>}
-      </div>
-      <div className={styles.right}>
+    <DSHeader>
+      <HeaderBrand>
+        <HeaderTitle subtitle={raceInfo}>{title}</HeaderTitle>
+      </HeaderBrand>
+      <HeaderActions>
         {actions}
+      </HeaderActions>
+      <HeaderStatus>
         {connectionStatus}
-      </div>
-    </div>
+      </HeaderStatus>
+    </DSHeader>
   )
 }

@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback, useMemo } from 'react'
+import { Button } from '@opencanoetiming/timing-design-system'
 import { Layout, Header, ConnectionStatus, RaceSelector, ResultsGrid, GateGroupSwitcher, GateGroupEditor, CheckProgress, Settings, EmptyState, useToast } from './components'
 import { useC123WebSocket } from './hooks/useC123WebSocket'
 import { useConnectionStatus } from './hooks/useConnectionStatus'
@@ -215,14 +216,15 @@ function App() {
                 selectedRaceId={effectiveSelectedRaceId}
                 onSelectRace={handleSelectRace}
               />
-              <button
-                className="settings-button"
+              <Button
+                variant="ghost"
+                icon
                 onClick={() => setShowSettings(true)}
                 aria-label="Settings"
                 title="Settings (Ctrl+,)"
               >
                 ⚙
-              </button>
+              </Button>
             </>
           }
         />

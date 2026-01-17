@@ -1,5 +1,5 @@
+import { StatusIndicator } from '@opencanoetiming/timing-design-system'
 import type { ConnectionStatus as ConnectionStatusType } from '../../hooks/useConnectionStatus'
-import styles from './ConnectionStatus.module.css'
 
 interface ConnectionStatusProps {
   status: ConnectionStatusType
@@ -7,28 +7,52 @@ interface ConnectionStatusProps {
   showDetails?: boolean
 }
 
+// Map internal status classes to DS StatusIndicator status
+function mapStatusToIndicator(
+  statusClass: ConnectionStatusType['statusClass']
+): 'connected' | 'connecting' | 'disconnected' {
+  switch (statusClass) {
+    case 'success':
+      return 'connected'
+    case 'warning':
+    case 'connecting':
+      return 'connecting'
+    case 'error':
+    case 'neutral':
+    default:
+      return 'disconnected'
+  }
+}
+
 export function ConnectionStatus({
   status,
   serverUrl,
   showDetails = false,
 }: ConnectionStatusProps) {
-  const indicatorClass = styles[`indicator--${status.statusClass}`] || ''
+  const indicatorStatus = mapStatusToIndicator(status.statusClass)
+
+  // Build label with optional details
+  let label = status.statusText
+  if (showDetails) {
+    const details: string[] = []
+    if (serverUrl) {
+      details.push(serverUrl)
+    }
+    if (status.latency !== null && status.isHealthy) {
+      details.push(formatLatency(status.latency))
+    }
+    if (details.length > 0) {
+      label = `${status.statusText} (${details.join(' / ')})`
+    }
+  }
 
   return (
-    <div className={styles.container} data-testid="connection-status" data-status={status.statusClass}>
-      <div className={`${styles.indicator} ${indicatorClass}`} />
-      <div className={styles.content}>
-        <span className={styles.text}>{status.statusText}</span>
-        {showDetails && (
-          <div className={styles.details}>
-            {serverUrl && <span className={styles.server}>{serverUrl}</span>}
-            {status.latency !== null && status.isHealthy && (
-              <span className={styles.latency}>{formatLatency(status.latency)}</span>
-            )}
-          </div>
-        )}
-      </div>
-    </div>
+    <StatusIndicator
+      label={label}
+      status={indicatorStatus}
+      data-testid="connection-status"
+      data-status={status.statusClass}
+    />
   )
 }
 
