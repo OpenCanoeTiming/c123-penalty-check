@@ -689,6 +689,43 @@ Přidat vizuální highlighting řádků a sloupců při navigaci v gridu pro le
 
 ---
 
+## 2026-01-17 - Fáze 17C: Gate Groups viditelnost
+
+### Cíl iterace
+
+Zlepšit viditelnost gate groups - přesunout switcher na prominentnější místo a vizuálně označit aktivní skupinu.
+
+### Dokončeno
+
+- [x] Přidán `toolbar` slot do Layout komponenty
+- [x] GateGroupSwitcher přesunut z footeru do toolbaru nad gridem
+- [x] Přidán label s názvem aktivní skupiny a počtem branek
+- [x] Odstraněn `compact` mód (již není potřeba)
+- [x] Přidána vizuální indikace aktivní skupiny v gridu:
+  - `gate-header--in-group` třída pro header buňky
+  - `penalty-cell--in-group` třída pro penalty buňky
+  - Accent barva jako `box-shadow: inset 0 3px 0` na vrchu sloupců
+- [x] PenaltyCell rozšířen o `isInActiveGroup` prop
+
+### Změny souborů
+
+- `src/components/Layout/Layout.tsx` - přidán toolbar slot
+- `src/components/Layout/Layout.module.css` - grid-template-rows: auto auto auto 1fr auto
+- `src/components/GateGroupSwitcher/GateGroupSwitcher.tsx` - nový design s labelem
+- `src/components/GateGroupSwitcher/GateGroupSwitcher.module.css` - přepracované styly
+- `src/components/ResultsGrid/ResultsGrid.tsx` - isInActiveGroup prop
+- `src/components/ResultsGrid/ResultsGrid.css` - styly pro in-group indikaci
+- `src/components/ResultsGrid/PenaltyCell.tsx` - nový prop
+- `src/App.tsx` - přesun GateGroupSwitcher do toolbar slotu
+
+### Poznámky
+
+- E2E screenshotové testy jsou zastaralé (používají staré selektory jako `.gate-cell`, `.competitor-row`)
+- Vizuální ověření provedeno manuálně přes build
+- Footer je nyní jednodušší - obsahuje pouze verzi a check progress
+
+---
+
 ## Template pro další záznamy
 
 ```markdown

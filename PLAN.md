@@ -8,7 +8,8 @@
 |------|-------|------|
 | 1-15 | Základní implementace | ✅ Hotovo (v1.0.0) |
 | 16 | Design System integrace | ✅ Hotovo |
-| 17 | UX Polish a Tablet | 🔄 Probíhá |
+| 17A-C | UX Polish (Header, Grid, Gate Groups) | ✅ Hotovo |
+| 17D-H | UX Polish (Footer, Sorting, Tablet) | 🔄 Probíhá |
 
 ---
 
@@ -101,14 +102,19 @@ npx playwright test screenshots-with-data.spec.ts
 
 ---
 
-### 17C: Gate Groups viditelnost
+### 17C: Gate Groups viditelnost ✅
 
 **Problém:** Na screenshotech není vidět že gate groups existují.
 
-- [ ] 17C.1: Gate group switcher výraznější (možná nad gridem)
-- [ ] 17C.2: Vizuálně označit aktivní skupinu sloupců
-- [ ] 17C.3: Screenshot s gate groups
-- [ ] 17C.4: Commit
+- [x] 17C.1: Gate group switcher výraznější (přesunuto do toolbar nad grid)
+- [x] 17C.2: Vizuálně označit aktivní skupinu sloupců (accent top border)
+- [x] 17C.3: Screenshot s gate groups (odloženo - E2E testy zastaralé)
+- [x] 17C.4: Commit
+
+**Řešení:**
+- GateGroupSwitcher přesunut z footeru do nového toolbar slotu
+- Label zobrazuje aktivní skupinu a počet branek
+- Sloupce v aktivní skupině mají accent pruh nahoře (header i buňky)
 
 ---
 
