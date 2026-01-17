@@ -660,6 +660,35 @@ Redesign headeru podle vzoru c123-server admin - přehlednější layout s promi
 
 ---
 
+## 2026-01-17 - Fáze 17B: Grid UX vylepšení
+
+### Cíl iterace
+
+Přidat vizuální highlighting řádků a sloupců při navigaci v gridu pro lepší orientaci.
+
+### Dokončeno
+
+- [x] Column highlight při HOVER (jemný 30% accent)
+- [x] Column highlight při FOCUS (výraznější 50% accent)
+- [x] Row highlight při FOCUS
+- [x] Gate header buňky zvýrazněny pro hovered/focused sloupce
+- [x] Odstraněn klub z name sloupce (méně clutteru)
+- [x] PenaltyCell rozšířen o isColumnHovered/isColumnFocused props
+
+### Změny souborů
+
+- `src/components/ResultsGrid/ResultsGrid.tsx` - hover state, focus highlighting
+- `src/components/ResultsGrid/ResultsGrid.css` - CSS třídy pro highlight
+- `src/components/ResultsGrid/PenaltyCell.tsx` - nové props pro column highlighting
+
+### Poznámky
+
+- Použit `color-mix()` CSS funkce pro průhledné overlay efekty
+- Hover sloupce je jemnější (30%) než focus sloupce (50%)
+- Focus řádek má stejnou intenzitu jako focus sloupce
+
+---
+
 ## Template pro další záznamy
 
 ```markdown
