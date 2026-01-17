@@ -686,7 +686,7 @@ node recorder.js <C123_IP>
 | 13 | Polish a UX | ✅ Hotovo |
 | 14 | Vizuální testy | ✅ Hotovo (15 screenshotů) |
 | 15 | Dokumentace | ✅ Hotovo (README, CHANGELOG, CI, docs, code review, v1.0.0 tag) |
-| **16** | **Vizuální redesign** | ⏳ **V průběhu** (16A-16F hotovo) |
+| **16** | **Vizuální redesign** | ⏳ **V průběhu** (16A-16G hotovo) |
 
 ---
 
@@ -898,14 +898,14 @@ Před začátkem práce je třeba do DS přidat:
   - Vpravo: gate group switcher
 - [x] 16F.3: Commit: `refactor: use design system ProgressBar and move gate groups to footer`
 
-### Fáze 16G: Toast a notifikace
+### Fáze 16G: Toast a notifikace ✅
 
 **Cíl:** Konzistentní notifikace
 
-- [ ] 16G.1: Nahradit vlastní Toast za DS `Toast` + `ToastContainer`
-- [ ] 16G.2: Nakonfigurovat pozici (bottom-right)
-- [ ] 16G.3: Smazat Toast.css
-- [ ] 16G.4: Commit: `refactor: use design system Toast`
+- [x] 16G.1: Nahradit vlastní Toast za DS `Toast` + `ToastContainer`
+- [x] 16G.2: Nakonfigurovat pozici (bottom-right)
+- [x] 16G.3: Smazat Toast.css
+- [x] 16G.4: Commit: `refactor: use design system Toast`
 
 ### Fáze 16H: Empty states a loading
 
