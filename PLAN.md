@@ -209,7 +209,7 @@ Standalone server v `c123-protocol-docs/tools/`, který emuluje Canoe123 na TCP:
 - [x] 3.5: Vytvoření `hooks/useConnectionStatus.ts`
   - ConnectionState: connecting, connected, disconnected, error
   - Latency tracking
-- [ ] 3.6: Unit testy pro WebSocket hook s MockWebSocket
+- [x] 3.6: Unit testy pro WebSocket hook s MockWebSocket
 - [x] 3.7: Commit: `feat: add TypeScript types and WebSocket hook`
 
 **Výstup:** Typy a funkční WebSocket připojení ✅
