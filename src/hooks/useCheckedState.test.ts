@@ -1,4 +1,4 @@
-import { describe, it, expect, beforeEach, vi } from 'vitest'
+import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest'
 import { renderHook, act } from '@testing-library/react'
 import { useCheckedState } from './useCheckedState'
 
@@ -201,9 +201,6 @@ describe('useCheckedState', () => {
       act(() => {
         result.current.setChecked('10', true) // This will be in group-1
       })
-
-      // Add another state in different group using direct Map access
-      const initialStates = new Map(result.current.checkedStates)
 
       act(() => {
         result.current.clearChecked()

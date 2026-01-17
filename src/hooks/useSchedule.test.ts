@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest'
 import { renderHook } from '@testing-library/react'
-import { useSchedule, type ProcessedRace } from './useSchedule'
+import { useSchedule } from './useSchedule'
 import type { C123ScheduleData } from '../types/c123server'
 
 // =============================================================================

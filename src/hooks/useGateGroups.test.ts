@@ -398,7 +398,7 @@ describe('useGateGroups', () => {
     it('resets to default state', () => {
       const { result } = renderHook(() => useGateGroups())
 
-      let groupId: string
+      let groupId = ''
 
       act(() => {
         const group = result.current.addGroup('Group 1', [1])
