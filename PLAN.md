@@ -575,7 +575,7 @@ Správné chování: hlavní use case je kontrola penalizací u DOJETÝCH závod
 - [x] 15.2: CHANGELOG.md pro v1.0.0
 - [x] 15.3: Dokumentace API v `docs/`
 - [x] 15.4: Příklady konfigurace
-- [ ] 15.5: GitHub Actions workflow
+- [x] 15.5: GitHub Actions workflow
   - Build
   - Test
   - Visual regression

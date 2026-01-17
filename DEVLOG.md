@@ -537,6 +537,29 @@ Opravit zobrazení penalizací v gridu (byly "ob-sloupec") a aktualizovat screen
 
 ---
 
+## 2026-01-17 - Fáze 15.5: GitHub Actions workflow
+
+### Cíl iterace
+
+Přidat CI/CD pipeline pro automatické buildování a testování při push/PR.
+
+### Dokončeno
+
+- [x] Vytvořen `.github/workflows/ci.yml`
+  - Build job: checkout obou repozitářů, lint, typecheck, unit testy, build
+  - E2E job: Playwright testy (statické screenshoty)
+  - Upload artifacts pro build a test reporty
+- [x] Řešení lokální závislosti na timing-design-system:
+  - CI checkoutuje oba repozitáře
+  - Dynamicky mění path v package.json
+
+### Poznámky
+
+- E2E testy spouští pouze `screenshots-static.spec.ts` (nevyžadují mock server)
+- Plná E2E sada vyžaduje replay-server, což je mimo scope CI
+
+---
+
 ## Template pro další záznamy
 
 ```markdown
