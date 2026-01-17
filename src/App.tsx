@@ -228,6 +228,17 @@ function App() {
           selectedRace={selectedRace ?? null}
         />
       }
+      toolbar={
+        raceConfig && (
+          <GateGroupSwitcher
+            groups={allGroups}
+            activeGroupId={activeGroupId}
+            onSelectGroup={setActiveGroup}
+            onOpenEditor={() => setShowGateGroupEditor(true)}
+            totalGates={raceConfig.nrGates}
+          />
+        )
+      }
       footer={
         <div className="footer-content">
           {/* Left: Version and organization */}
@@ -240,22 +251,11 @@ function App() {
             )}
           </span>
 
-          {/* Center: Check progress */}
+          {/* Right: Check progress */}
           {finishedCompetitorBibs.length > 0 && (
             <CheckProgress
               progress={checkProgress}
               label={activeGroup ? `${activeGroup.name}` : 'Checked'}
-              compact
-            />
-          )}
-
-          {/* Right: Gate group switcher */}
-          {raceConfig && (
-            <GateGroupSwitcher
-              groups={allGroups}
-              activeGroupId={activeGroupId}
-              onSelectGroup={setActiveGroup}
-              onOpenEditor={() => setShowGateGroupEditor(true)}
               compact
             />
           )}

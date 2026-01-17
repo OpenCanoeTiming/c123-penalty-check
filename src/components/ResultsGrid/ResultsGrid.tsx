@@ -1,4 +1,4 @@
-import { useRef, useEffect, useCallback, useMemo, useState, CSSProperties } from 'react'
+import { useRef, useEffect, useCallback, useMemo, useState, type CSSProperties } from 'react'
 import {
   Table,
   TableHead,
@@ -257,10 +257,13 @@ export function ResultsGrid({
               const gateType = gateConfig[gateIndex] ?? 'N'
               const isHovered = hoverColumn === visibleColIndex
               const isFocusedCol = focusedColumn === visibleColIndex
+              const isInActiveGroup =
+                activeGateGroup && activeGateGroup.gates.length > 0 && activeGateGroup.gates.includes(gateNum)
               const headerClasses = [
                 gateType === 'R' && 'gate-header--reverse',
                 isHovered && 'gate-header--hover',
                 isFocusedCol && 'gate-header--focus',
+                isInActiveGroup && 'gate-header--in-group',
               ]
                 .filter(Boolean)
                 .join(' ')
@@ -338,6 +341,8 @@ export function ResultsGrid({
                   const isBoundary = groupBoundaries.has(gateNum)
                   const isColHovered = hoverColumn === visibleColIndex
                   const isColFocused = focusedColumn === visibleColIndex
+                  const isInActiveGroup =
+                    activeGateGroup && activeGateGroup.gates.length > 0 && activeGateGroup.gates.includes(gateNum)
 
                   return (
                     <PenaltyCell
@@ -351,6 +356,7 @@ export function ResultsGrid({
                       isColumnHovered={isColHovered}
                       isColumnFocused={isColFocused}
                       isGroupBoundary={isBoundary}
+                      isInActiveGroup={!!isInActiveGroup}
                       id={getCellId(rowIndex, visibleColIndex)}
                       onClick={() => handleCellClick(rowIndex, visibleColIndex)}
                       onMouseEnter={() => setHoverColumn(visibleColIndex)}

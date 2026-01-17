@@ -20,6 +20,8 @@ export interface PenaltyCellProps {
   isColumnFocused?: boolean
   /** Whether this cell is at a group boundary (shows right border) */
   isGroupBoundary?: boolean
+  /** Whether this gate is in the active group (for visual indication) */
+  isInActiveGroup?: boolean
   /** Cell ID for accessibility */
   id: string
   /** Click handler */
@@ -55,6 +57,7 @@ export const PenaltyCell = forwardRef<HTMLTableCellElement, PenaltyCellProps>(
       isColumnHovered,
       isColumnFocused,
       isGroupBoundary,
+      isInActiveGroup,
       id,
       onClick,
       onMouseEnter,
@@ -73,6 +76,7 @@ export const PenaltyCell = forwardRef<HTMLTableCellElement, PenaltyCellProps>(
       isColumnFocused && !isFocused && 'penalty-cell--col-focus',
       pendingValue !== null && 'penalty-cell--pending',
       isGroupBoundary && 'penalty-cell--boundary',
+      isInActiveGroup && 'penalty-cell--in-group',
     ]
       .filter(Boolean)
       .join(' ')

@@ -1,35 +1,45 @@
 .switcher {
   display: flex;
-  flex-wrap: wrap;
-  gap: var(--space-1);
-  padding: var(--space-1) var(--space-4);
+  align-items: center;
+  gap: var(--space-4);
+  padding: var(--space-2) var(--space-6);
   background: var(--color-bg-elevated);
   border-bottom: 1px solid var(--color-border);
 }
 
-/* Compact mode for footer */
-.compact {
-  padding: 0;
-  background: transparent;
-  border-bottom: none;
-  gap: var(--space-1);
+/* Label section */
+.label {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  font-size: var(--text-sm);
+  color: var(--color-text-secondary);
+  white-space: nowrap;
 }
 
-.compact .groupButton {
-  padding: var(--space-1) var(--space-2);
+.label strong {
+  color: var(--color-text-primary);
+  font-weight: var(--font-semibold);
+}
+
+.gateCount {
+  color: var(--color-text-tertiary);
   font-size: var(--text-xs);
 }
 
-.compact .colorDot {
-  width: 6px;
-  height: 6px;
+/* Buttons container */
+.buttons {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-1);
+  align-items: center;
 }
 
 .groupButton {
   display: inline-flex;
   align-items: center;
   gap: var(--space-1);
-  padding: var(--space-1) var(--space-2);
+  padding: var(--space-1) var(--space-3);
   border: 1px solid var(--color-border);
   border-radius: var(--radius-sm);
   background: var(--color-bg-surface);
@@ -59,8 +69,8 @@
 
 /* Group color dot */
 .colorDot {
-  width: 8px;
-  height: 8px;
+  width: 10px;
+  height: 10px;
   border-radius: var(--radius-full);
   flex-shrink: 0;
 }
@@ -75,15 +85,19 @@
 
 /* Edit button */
 .editButton {
-  margin-left: auto;
+  margin-left: var(--space-2);
 }
 
 /* Touch device optimizations */
 @media (pointer: coarse) {
+  .switcher {
+    padding: var(--space-3) var(--space-6);
+  }
+
   .groupButton {
     padding: var(--space-2) var(--space-4);
     min-height: 44px;
-    font-size: var(--text-lg);
+    font-size: var(--text-base);
   }
 
   .colorDot {

@@ -18,8 +18,8 @@ export interface GateGroupSwitcherProps {
   onSelectGroup: (groupId: string | null) => void
   /** Optional callback to open the gate group editor */
   onOpenEditor?: () => void
-  /** Compact mode for footer display */
-  compact?: boolean
+  /** Total number of gates in race (for display) */
+  totalGates?: number
 }
 
 /**
@@ -31,22 +31,38 @@ export function GateGroupSwitcher({
   activeGroupId,
   onSelectGroup,
   onOpenEditor,
-  compact = false,
+  totalGates,
 }: GateGroupSwitcherProps) {
   // Filter to only show groups with gates (exclude "all" as it's the default)
   const customGroups = groups.filter((g) => g.gates.length > 0)
 
+  // Get active group for display
+  const activeGroup = activeGroupId ? groups.find((g) => g.id === activeGroupId) : null
+  const activeGatesDisplay = activeGroup
+    ? `${activeGroup.gates.length} gates`
+    : totalGates
+      ? `${totalGates} gates`
+      : 'All gates'
+
   return (
-    <div className={`${styles.switcher} ${compact ? styles.compact : ''}`} role="toolbar" aria-label="Gate group switcher">
-      {/* All Gates button */}
-      <button
-        type="button"
-        className={`${styles.groupButton} ${activeGroupId === null ? styles.active : ''}`}
-        onClick={() => onSelectGroup(null)}
-        title="Show all gates (key: 0)"
-      >
-        All
-      </button>
+    <div className={styles.switcher} role="toolbar" aria-label="Gate group switcher">
+      {/* Label showing active group info */}
+      <span className={styles.label}>
+        Gates: <strong>{activeGroup?.name ?? 'All'}</strong>
+        <span className={styles.gateCount}>({activeGatesDisplay})</span>
+      </span>
+
+      {/* Group buttons */}
+      <div className={styles.buttons}>
+        {/* All Gates button */}
+        <button
+          type="button"
+          className={`${styles.groupButton} ${activeGroupId === null ? styles.active : ''}`}
+          onClick={() => onSelectGroup(null)}
+          title="Show all gates (key: 0)"
+        >
+          All
+        </button>
 
       {/* Custom group buttons */}
       {customGroups.map((group, index) => {
@@ -80,20 +96,21 @@ export function GateGroupSwitcher({
         )
       })}
 
-      {/* Edit groups button */}
-      {onOpenEditor && (
-        <Button
-          variant="ghost"
-          size="sm"
-          icon
-          onClick={onOpenEditor}
-          title="Edit gate groups"
-          aria-label="Edit gate groups"
-          className={styles.editButton}
-        >
-          ✎
-        </Button>
-      )}
+        {/* Edit groups button */}
+        {onOpenEditor && (
+          <Button
+            variant="ghost"
+            size="sm"
+            icon
+            onClick={onOpenEditor}
+            title="Edit gate groups"
+            aria-label="Edit gate groups"
+            className={styles.editButton}
+          >
+            ✎
+          </Button>
+        )}
+      </div>
     </div>
   )
 }
