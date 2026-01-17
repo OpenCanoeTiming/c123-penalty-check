@@ -73,7 +73,7 @@ export function RaceSelector({
         </option>
         {races.map((race) => (
           <option key={race.raceId} value={race.raceId}>
-            {race.isRunning ? '▶ ' : ''}
+            {race.isRunning ? '● ' : ''}
             {race.shortTitle}
           </option>
         ))}

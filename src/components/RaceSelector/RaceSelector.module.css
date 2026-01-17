@@ -25,9 +25,6 @@
   font-size: var(--text-sm);
   color: var(--color-text-tertiary);
   white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  max-width: 160px;
 }
 
 .noRaces {

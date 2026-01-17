@@ -97,12 +97,16 @@ fi
 if [ "$STATIC_ONLY" = true ]; then
     echo -e "${YELLOW}Running static tests only (no servers needed)${NC}"
     cd "$PROJECT_DIR"
-    npx playwright test screenshots-static.spec.ts
-    echo -e "${GREEN}Static screenshots complete!${NC}"
+    npx playwright test screenshots-static.spec.ts --reporter=list
+    echo ""
+    echo -e "${GREEN}=== Static screenshots complete! ===${NC}"
+    echo "Screenshots saved to: $PROJECT_DIR/docs/screenshots/"
+    echo ""
+    ls -la "$PROJECT_DIR/docs/screenshots/" | grep -E "^-" | head -10
     exit 0
 fi
 
-echo "Step 1/5: Starting replay-server..."
+echo "Step 1/6: Starting replay-server..."
 cd "$PROTOCOL_DOCS_DIR/tools"
 node replay-server.js "$RECORDING" --speed 10 --loop > /tmp/replay-server.log 2>&1 &
 REPLAY_PID=$!
@@ -116,7 +120,7 @@ if ! kill -0 "$REPLAY_PID" 2>/dev/null; then
     exit 1
 fi
 
-echo "Step 2/5: Starting c123-server..."
+echo "Step 2/6: Starting c123-server..."
 cd "$C123_SERVER_DIR"
 npm start -- --host localhost --port 27333 > /tmp/c123-server.log 2>&1 &
 C123_PID=$!
@@ -130,7 +134,7 @@ if ! kill -0 "$C123_PID" 2>/dev/null; then
     exit 1
 fi
 
-echo "Step 3/5: Starting Vite dev server..."
+echo "Step 3/6: Starting Vite dev server..."
 cd "$PROJECT_DIR"
 npm run dev > /tmp/vite-server.log 2>&1 &
 VITE_PID=$!
@@ -144,7 +148,7 @@ if ! kill -0 "$VITE_PID" 2>/dev/null; then
     exit 1
 fi
 
-echo "Step 4/5: Waiting for servers to be ready..."
+echo "Step 4/6: Waiting for servers to be ready..."
 # Wait for WebSocket to be available
 for i in {1..10}; do
     if curl -s http://localhost:27123/health > /dev/null 2>&1; then
@@ -173,8 +177,11 @@ done
 echo "  Waiting for data to flow through system..."
 sleep 5
 
-echo "Step 5/5: Running Playwright screenshot tests..."
+echo "Step 5/6: Running static screenshot tests..."
 cd "$PROJECT_DIR"
+npx playwright test screenshots-static.spec.ts --reporter=list
+
+echo "Step 6/6: Running data screenshot tests..."
 npx playwright test screenshots-with-data.spec.ts --reporter=list
 
 echo ""
