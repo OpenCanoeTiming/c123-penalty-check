@@ -686,7 +686,7 @@ node recorder.js <C123_IP>
 | 13 | Polish a UX | ✅ Hotovo |
 | 14 | Vizuální testy | ✅ Hotovo (15 screenshotů) |
 | 15 | Dokumentace | ✅ Hotovo (README, CHANGELOG, CI, docs, code review, v1.0.0 tag) |
-| **16** | **Vizuální redesign** | ⏳ **V průběhu** (16B hotovo) |
+| **16** | **Vizuální redesign** | ⏳ **V průběhu** (16B, 16C hotovo) |
 
 ---
 
@@ -839,17 +839,17 @@ Před začátkem práce je třeba do DS přidat:
 
 **Cíl:** Konzistentní modal s DS komponenty
 
-- [ ] 16C.1: Nahradit vlastní modal za DS `Modal`
+- [x] 16C.1: Nahradit vlastní modal za DS `Modal`
   - `ModalHeader` s title a close button
   - `ModalBody` pro obsah
   - `ModalFooter` pro akce (pokud potřeba)
-- [ ] 16C.2: Použít DS `Tabs` pro Server/Display/Keyboard
-- [ ] 16C.3: Použít DS `Input` pro server URL
-- [ ] 16C.4: Použít DS `Checkbox` pro display options
-- [ ] 16C.5: Použít DS `Button` pro akce (Test/Save)
-- [ ] 16C.6: Použít DS `Kbd` pro keyboard shortcuts
-- [ ] 16C.7: Smazat Settings.module.css (387 řádků!)
-- [ ] 16C.8: Commit: `refactor: use design system Modal and form components`
+- [x] 16C.2: Použít DS `Tabs` pro Server/Display/Keyboard
+- [x] 16C.3: Použít DS `Input` pro server URL
+- [x] 16C.4: Použít DS `Checkbox` pro display options
+- [x] 16C.5: Použít DS `Button` pro akce (Test/Save)
+- [x] 16C.6: Použít DS `Kbd` pro keyboard shortcuts
+- [x] 16C.7: Smazat Settings.module.css (387 řádků!)
+- [x] 16C.8: Commit: `refactor: use design system Modal and form components`
 
 ### Fáze 16D: Grid redesign
 

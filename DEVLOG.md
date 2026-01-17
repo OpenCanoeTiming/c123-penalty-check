@@ -560,6 +560,38 @@ Přidat CI/CD pipeline pro automatické buildování a testování při push/PR.
 
 ---
 
+## 2026-01-17 - Fáze 16C: Settings modal redesign
+
+### Cíl iterace
+
+Refaktoring Settings komponenty na použití design system komponent místo vlastních CSS stylů.
+
+### Dokončeno
+
+- [x] Nahrazení vlastního modalu za DS `Modal`, `ModalHeader`, `ModalTitle`, `ModalClose`, `ModalBody`
+- [x] Použití DS `Tabs`, `TabList`, `Tab`, `TabPanels`, `TabPanel` pro přepínání záložek
+- [x] Použití DS `Input` pro server URL vstup
+- [x] Použití DS `Checkbox` pro display options
+- [x] Použití DS `Button` pro akce (Test Connection, Save & Reconnect)
+- [x] Použití DS `Kbd` pro zobrazení klávesových zkratek
+- [x] Použití DS `Badge` pro status připojení
+- [x] Smazání Settings.module.css (387 řádků)
+- [x] Vytvoření minimálního Settings.css (130 řádků) pro layout-specifické styly
+
+### Změny souborů
+
+- `src/components/Settings/Settings.tsx` - kompletní refaktoring na DS komponenty
+- `src/components/Settings/Settings.css` - nový minimální CSS soubor
+- `src/components/Settings/Settings.module.css` - smazáno
+
+### Poznámky
+
+- DS Modal má vlastní focus trap, takže useFocusTrap hook už není potřeba
+- Badge komponenta dobře nahrazuje vlastní status indikátory
+- Celkově ušetřeno ~260 řádků CSS kódu
+
+---
+
 ## Template pro další záznamy
 
 ```markdown
