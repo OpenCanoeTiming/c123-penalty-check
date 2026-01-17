@@ -492,6 +492,51 @@ Refaktoring hlavního gridu z OnCourse dat na Results data pro správnou kontrol
 
 ---
 
+## 2026-01-17 - Oprava parsování gates + screenshoty
+
+### Cíl iterace
+
+Opravit zobrazení penalizací v gridu (byly "ob-sloupec") a aktualizovat screenshoty pro dokumentaci.
+
+### Dokončeno
+
+- [x] **Bug fix: parseResultsGatesString** - C123 Results data mají dvojité mezery mezi hodnotami (`"0  0  0  2  0  ..."` místo `"0 0 0 2 0 ..."`). Parser teď používá regex `/\s+/` pro split.
+- [x] Přidán unit test pro dvojité mezery v gates stringu
+- [x] Aktualizovány všechny screenshoty (07-15) s reálnými Results daty
+- [x] Vylepšeny E2E testy:
+  - `waitForDataAndSelectRace()` helper funkce
+  - Automatický výběr K1m 2. jízda (má data v replay)
+  - Čištění localStorage pro konzistentní výsledky
+- [x] Opraven mock-ws-server pro posílání Results zpráv
+- [x] Opravena mock-data.ts s korektními typy zpráv (Connected, Results)
+
+### Commity
+
+- `7772537` fix: parse Results gates string with multiple spaces
+- `877e1cc` test: update screenshots and improve E2E test reliability
+
+### Problémy a řešení
+
+1. **Problém:** Penalizace se zobrazovaly "ob-sloupec" (gate 5 ve sloupci 9, atd.)
+   **Řešení:** Gates string z C123 má dvojité mezery. Split podle ` ` vytvářel prázdné položky. Opraveno na `/\s+/` regex.
+
+2. **Problém:** Screenshoty ukazovaly "No competitors" - data nedorazila
+   **Řešení:**
+   - Výběr správného závodu (K1m 2. jízda má Results data)
+   - Delší čekání na načtení dat
+   - Čištění localStorage před testem
+
+3. **Problém:** Mock server posílal ServerInfo místo Connected, chyběly Results
+   **Řešení:** Opraveny typy zpráv v mock-data.ts, přidáno posílání Results v mock-ws-server.ts
+
+### Poznámky
+
+- C123 posílá gates ve formátu `"0  0  0  2  ..."` s dvojitými mezerami
+- Results zprávy nejsou posílány pravidelně (jen při změně), proto screenshoty závisí na správném načasování replay-serveru
+- Screenshoty ukazují stabilní stav z K1m - střední trať - 2. jízda
+
+---
+
 ## Template pro další záznamy
 
 ```markdown
