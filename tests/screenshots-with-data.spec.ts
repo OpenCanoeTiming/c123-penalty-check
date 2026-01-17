@@ -137,4 +137,11 @@ test.describe('Screenshot Tests - With Data', () => {
     await waitForDataAndSelectRace(page);
     await takeDocScreenshot(page, '15-mobile-view');
   });
+
+  test('17 - dark mode', async ({ page }) => {
+    // Enable dark mode via media query emulation
+    await page.emulateMedia({ colorScheme: 'dark' });
+    await waitForDataAndSelectRace(page);
+    await takeDocScreenshot(page, '17-dark-mode');
+  });
 });

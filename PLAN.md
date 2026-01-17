@@ -686,7 +686,7 @@ node recorder.js <C123_IP>
 | 13 | Polish a UX | ✅ Hotovo |
 | 14 | Vizuální testy | ✅ Hotovo (15 screenshotů) |
 | 15 | Dokumentace | ✅ Hotovo (README, CHANGELOG, CI, docs, code review, v1.0.0 tag) |
-| **16** | **Vizuální redesign** | ⏳ **V průběhu** (16A-16I hotovo) |
+| 16 | Vizuální redesign | ✅ Hotovo (16A-16J, 17 screenshotů, dark mode) |
 
 ---
 
@@ -932,14 +932,14 @@ Před začátkem práce je třeba do DS přidat:
 - [x] 16I.6: Dark mode dokumentace (automaticky podporován přes DS tokeny)
 - [x] 16I.7: Commit: `refactor: consolidate CSS to design system tokens`
 
-### Fáze 16J: Vizuální testy - aktualizace
+### Fáze 16J: Vizuální testy - aktualizace ✅
 
 **Cíl:** Nové baseline screenshoty
 
-- [ ] 16J.1: Aktualizovat všechny screenshoty
-- [ ] 16J.2: Přidat screenshot: dark mode
-- [ ] 16J.3: Vizuální porovnání před/po
-- [ ] 16J.4: Commit: `test: update screenshots after design system integration`
+- [x] 16J.1: Aktualizovat všechny screenshoty
+- [x] 16J.2: Přidat screenshot: dark mode
+- [x] 16J.3: Vizuální porovnání před/po (N/A - staré screenshoty nebyly uloženy)
+- [x] 16J.4: Commit: `test: update screenshots after design system integration`
 
 ### Výstup Fáze 16
 
