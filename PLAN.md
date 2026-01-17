@@ -173,11 +173,11 @@ Standalone server v `c123-protocol-docs/tools/`, který emuluje Canoe123 na TCP:
 
 #### 2D: Dokumentace
 
-- [ ] 2D.1: Vytvořit `docs/TESTING.md`
+- [x] 2D.1: Vytvořit `docs/TESTING.md`
   - Popis testovacích dat (captures vs recordings)
   - Jak spustit testy
   - Jak přidat nové fixtures
-- [ ] 2D.2: Commit: `docs: add testing documentation`
+- [x] 2D.2: Commit: `docs: add testing documentation`
 
 **Výstup:** Kompletní testovací pipeline s unit testy, E2E testy a replay simulací
 
@@ -686,6 +686,7 @@ node recorder.js <C123_IP>
 | 13 | Polish a UX | ✅ Hotovo (většina) |
 | 14 | Vizuální testy | ✅ Hotovo (15 screenshotů) |
 | 15 | Dokumentace | ⏳ Částečně (README, CHANGELOG, docs hotovo) |
+| **16** | **Vizuální redesign** | ⏳ **Naplánováno** |
 
 ---
 
@@ -755,3 +756,204 @@ interface C123ResultRow {
 
 **gridControl sloupce:**
 - RaceID, Bib, Jméno, Nat, Pen, Time, Total, GATE1...GATE24
+
+---
+
+## Fáze 16: Vizuální redesign - Design System integrace
+
+**Problém:** Aplikace je funkční, ale vizuálně slabá. Design systém je použit jen částečně - většina komponent je custom s hardcoded styly místo DS komponent.
+
+**Cíl:** Přepsat UI na komponenty z `@opencanoetiming/timing-design-system`, získat vodáckou identitu a konzistentní vzhled.
+
+### Analýza aktuálního stavu
+
+| Komponenta | Aktuálně | Cíl (DS) |
+|------------|----------|----------|
+| Header | Vlastní `<div>` s CSS module | DS `Header` + `StatusIndicator` + vlnka |
+| Settings modal | Vlastní modal s CSS | DS `Modal` + `ModalHeader/Body/Footer` |
+| Buttons | Vlastní CSS třídy | DS `Button` (primary/secondary/ghost) |
+| Input fields | Vlastní CSS | DS `Input` |
+| Checkboxes | Vlastní CSS | DS `Checkbox` |
+| Select (race) | Vlastní `<select>` | DS `Select` |
+| Grid tabulka | Vlastní `<table>` | DS `Table` + custom buňky |
+| Toast | Vlastní komponenta | DS `Toast` + `ToastContainer` |
+| Badges | Vlastní CSS | DS `Badge`, `StatusDot` |
+
+### Chybějící komponenty v Design Systému
+
+Před začátkem práce je třeba do DS přidat:
+
+1. **Tabs / TabGroup** ⚠️
+   - Pro přepínání záložek (Settings: Server/Display/Keyboard)
+   - Props: `tabs`, `activeTab`, `onChange`
+   - Varianty: underline, pills, bordered
+
+2. **Kbd / KeyboardKey** ⚠️
+   - Pro zobrazení klávesových zkratek
+   - Props: `children` (text klávesy)
+   - Příklad: `<Kbd>Ctrl</Kbd> + <Kbd>,</Kbd>`
+
+3. **ProgressBar** ⚠️
+   - Pro CheckProgress (X/Y zkontrolováno)
+   - Props: `value`, `max`, `variant`, `showLabel`
+   - Varianty: default, success, warning
+
+4. **ContextMenu / DropdownMenu** ⚠️
+   - Pro CompetitorActions (DNS/DNF/timing akce)
+   - Props: `trigger`, `items`, `position`
+   - Podpora keyboard navigation
+
+5. **EmptyState** (nice to have)
+   - Pro "No active races", "No competitors"
+   - Props: `icon`, `title`, `description`, `action`
+
+### Fáze 16A: Příprava Design Systému
+
+**Prerekvizita:** Přidat chybějící komponenty do `timing-design-system`
+
+- [ ] 16A.1: Přidat `Tabs` komponentu do DS
+- [ ] 16A.2: Přidat `Kbd` komponentu do DS
+- [ ] 16A.3: Přidat `ProgressBar` komponentu do DS
+- [ ] 16A.4: Přidat `ContextMenu` komponentu do DS
+- [ ] 16A.5: Publikovat novou verzi DS
+- [ ] 16A.6: Aktualizovat DS závislost v c123-scoring
+
+### Fáze 16B: Header redesign
+
+**Cíl:** Profesionální header s vodáckou identitou
+
+- [ ] 16B.1: Nahradit vlastní Header za DS `Header` komponentu
+  - Použít `HeaderBrand` s názvem aplikace
+  - Použít `HeaderTitle` pro info o závodě
+  - Použít `HeaderActions` pro tlačítka (Settings)
+  - Použít `HeaderStatus` pro connection status
+- [ ] 16B.2: Integrovat DS `StatusIndicator` místo vlastního ConnectionStatus
+  - Mapovat stavy: connected/connecting/disconnected/error
+  - Využít pulse animaci pro "connecting"
+- [ ] 16B.3: Použít DS `Select` pro race selector
+- [ ] 16B.4: Přidat DS `LiveBadge` když je závod "RUNNING"
+- [ ] 16B.5: Smazat staré Header CSS soubory
+- [ ] 16B.6: Commit: `refactor: use design system Header component`
+
+### Fáze 16C: Settings modal redesign
+
+**Cíl:** Konzistentní modal s DS komponenty
+
+- [ ] 16C.1: Nahradit vlastní modal za DS `Modal`
+  - `ModalHeader` s title a close button
+  - `ModalBody` pro obsah
+  - `ModalFooter` pro akce (pokud potřeba)
+- [ ] 16C.2: Použít DS `Tabs` pro Server/Display/Keyboard
+- [ ] 16C.3: Použít DS `Input` pro server URL
+- [ ] 16C.4: Použít DS `Checkbox` pro display options
+- [ ] 16C.5: Použít DS `Button` pro akce (Test/Save)
+- [ ] 16C.6: Použít DS `Kbd` pro keyboard shortcuts
+- [ ] 16C.7: Smazat Settings.module.css (387 řádků!)
+- [ ] 16C.8: Commit: `refactor: use design system Modal and form components`
+
+### Fáze 16D: Grid redesign
+
+**Cíl:** Čitelnější a vizuálně atraktivnější tabulka
+
+- [ ] 16D.1: Použít DS `Table` jako základ
+  - `TableHead`, `TableBody`, `TableRow`
+  - `TableHeaderCell` pro záhlaví
+  - `TableCell` pro data (numeric prop pro čísla)
+- [ ] 16D.2: Vytvořit `PenaltyCell` jako custom komponentu
+  - Využít DS tokeny pro barvy (success/warning/error)
+  - Zachovat keyboard focus logiku
+  - Přidat gate pole indikátory z DS (`.gate-pole-success`, `.gate-pole-error`)
+- [ ] 16D.3: Použít DS `Checkbox` pro "checked" sloupec
+- [ ] 16D.4: Použít DS `Badge` pro status (DNS/DNF/DSQ)
+- [ ] 16D.5: Přepracovat barevné kódování penalizací
+  - 0 = subtle success (zelený podklad)
+  - 2 = warning (oranžový)
+  - 50 = error (červený)
+  - null/prázdné = neutrální
+- [ ] 16D.6: Přidat vizuální oddělovače skupin branek
+- [ ] 16D.7: Optimalizovat pro čitelnost (větší font, kontrasty)
+- [ ] 16D.8: Smazat OnCourseGrid.css (316 řádků)
+- [ ] 16D.9: Commit: `refactor: use design system Table for penalty grid`
+
+### Fáze 16E: Formuláře a akce
+
+**Cíl:** Konzistentní tlačítka a formulářové prvky
+
+- [ ] 16E.1: Nahradit všechny vlastní buttony za DS `Button`
+  - Primary: Save, Submit
+  - Secondary: Test, Cancel
+  - Ghost: Close
+  - Danger: Remove, DNS, DNF
+- [ ] 16E.2: Použít DS `ContextMenu` pro CompetitorActions
+- [ ] 16E.3: Ověřit všechny interakce (hover, focus, active, disabled)
+- [ ] 16E.4: Commit: `refactor: use design system buttons and menus`
+
+### Fáze 16F: Footer a progress
+
+**Cíl:** Informativní footer s DS komponenty
+
+- [ ] 16F.1: Použít DS `ProgressBar` pro CheckProgress
+- [ ] 16F.2: Přepracovat footer layout
+  - Vlevo: verze, organizace
+  - Střed: progress kontroly
+  - Vpravo: gate group switcher
+- [ ] 16F.3: Commit: `refactor: use design system progress bar`
+
+### Fáze 16G: Toast a notifikace
+
+**Cíl:** Konzistentní notifikace
+
+- [ ] 16G.1: Nahradit vlastní Toast za DS `Toast` + `ToastContainer`
+- [ ] 16G.2: Nakonfigurovat pozici (bottom-right)
+- [ ] 16G.3: Smazat Toast.css
+- [ ] 16G.4: Commit: `refactor: use design system Toast`
+
+### Fáze 16H: Empty states a loading
+
+**Cíl:** Profesionální prázdné stavy
+
+- [ ] 16H.1: Použít DS `EmptyState` (pokud přidáno) nebo DS `Card`
+- [ ] 16H.2: Přepracovat loading indikátory
+- [ ] 16H.3: Smazat EmptyState.css
+- [ ] 16H.4: Commit: `refactor: use design system empty states`
+
+### Fáze 16I: Cleanup a CSS konsolidace
+
+**Cíl:** Odstranit všechny vlastní CSS, používat pouze DS tokeny
+
+- [ ] 16I.1: Vytvořit `src/styles/app.css` pro globální přepisování
+- [ ] 16I.2: Smazat nepoužívané CSS soubory
+- [ ] 16I.3: Ověřit, že všechny barvy používají DS tokeny
+- [ ] 16I.4: Ověřit spacing (DS `--space-*` tokeny)
+- [ ] 16I.5: Ověřit typography (DS fonty a velikosti)
+- [ ] 16I.6: Dark mode testování
+- [ ] 16I.7: Commit: `refactor: consolidate CSS to design system tokens`
+
+### Fáze 16J: Vizuální testy - aktualizace
+
+**Cíl:** Nové baseline screenshoty
+
+- [ ] 16J.1: Aktualizovat všechny screenshoty
+- [ ] 16J.2: Přidat screenshot: dark mode
+- [ ] 16J.3: Vizuální porovnání před/po
+- [ ] 16J.4: Commit: `test: update screenshots after design system integration`
+
+### Výstup Fáze 16
+
+- Aplikace vizuálně konzistentní s ostatními timing projekty
+- Vodácká identita (vlnky, gate poles, branding)
+- Žádné vlastní CSS pro základní komponenty
+- Dark mode out-of-the-box
+- Smazáno ~1000+ řádků vlastního CSS
+
+---
+
+## Priorita implementace Fáze 16
+
+1. **16A** - Prerekvizita (DS komponenty)
+2. **16B** - Header (nejvíce viditelný problém)
+3. **16C** - Settings (největší CSS soubor)
+4. **16D** - Grid (hlavní funkce aplikace)
+5. **16E-16I** - Postupně dle času
+
+---
