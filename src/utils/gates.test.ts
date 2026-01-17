@@ -73,6 +73,14 @@ describe('gates utilities', () => {
       const result = parseResultsGatesString('')
       expect(result).toHaveLength(0)
     })
+
+    it('parses gates with double spaces (real C123 format)', () => {
+      const result = parseResultsGatesString(sampleGatesStrings.results.doubleSpaces)
+      expect(result).toHaveLength(24)
+      expect(result[3]).toBe(2)
+      expect(result[6]).toBe(2)
+      expect(result[8]).toBe(50)
+    })
   })
 
   describe('parseGateConfig', () => {

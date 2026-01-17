@@ -19,11 +19,13 @@ export const sampleGatesStrings = {
     empty: '',
     allEmpty: ',,,,,,,,,,,,,,,,,,,,,,,,',
   },
-  // Results format (space-separated)
+  // Results format (space-separated, may have multiple spaces)
   results: {
     allClear: '0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0',
     withPenalties: '0 0 0 2 0 0 2 0 50 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0',
     multipleMisses: '50 0 0 2 0 50 2 0 0 0 0 2 0 0 0 50 0 0 0 0 0 0 0 0',
+    // Real C123 data has double spaces between values
+    doubleSpaces: '0  0  0  2  0  0  2  0  50  0  0  0  0  0  0  0  0  0  0  0  0  0  0  0',
   },
 }
 

@@ -27,13 +27,14 @@ export function parseGatesString(gates: string): (number | null)[] {
 
 /**
  * Parse the gates string from C123 Results into an array of penalty values
- * Format: "0 0 0 2 0 0 2 0 50" (space-separated)
+ * Format: "0  0  0  2  0  0  2  0  50" (space-separated, may have multiple spaces)
  * All gates should have values in Results
  */
 export function parseResultsGatesString(gates: string): (number | null)[] {
   if (!gates) return []
 
-  return gates.split(' ').map((val) => {
+  // Split by one or more whitespace characters and filter out empty strings
+  return gates.trim().split(/\s+/).map((val) => {
     if (val === '' || val === undefined) return null
     const num = parseInt(val, 10)
     return isNaN(num) ? null : num
