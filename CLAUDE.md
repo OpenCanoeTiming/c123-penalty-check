@@ -121,7 +121,8 @@ POST /api/c123/timing
 
 ## Jazyk
 
-- Komunikace a dokumentace: **čeština**
+- Komunikace s uživatelem: **čeština**
+- Dokumentace (README, docs): **angličtina**
 - Kód, komentáře, commit messages: **angličtina**
 
 ---
