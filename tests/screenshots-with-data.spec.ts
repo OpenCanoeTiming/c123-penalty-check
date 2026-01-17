@@ -139,9 +139,12 @@ test.describe('Screenshot Tests - With Data', () => {
   });
 
   test('17 - dark mode', async ({ page }) => {
-    // Enable dark mode via media query emulation
+    // Enable dark mode via media query emulation BEFORE navigation
     await page.emulateMedia({ colorScheme: 'dark' });
     await waitForDataAndSelectRace(page);
+    // Extra wait to ensure K1m data loads
+    await page.waitForSelector('.competitor-row', { timeout: 10000 }).catch(() => {});
+    await page.waitForTimeout(500);
     await takeDocScreenshot(page, '17-dark-mode');
   });
 });
