@@ -1,4 +1,4 @@
-import { useRef, useEffect, useCallback, useMemo, useState, type CSSProperties } from 'react'
+import { useRef, useEffect, useCallback, useMemo, type CSSProperties } from 'react'
 import {
   Table,
   TableHead,
@@ -53,9 +53,6 @@ export function ResultsGrid({
 }: ResultsGridProps) {
   const gridRef = useRef<HTMLDivElement>(null)
   const focusedCellRef = useRef<HTMLTableCellElement>(null)
-
-  // Hover state for column highlighting
-  const [hoverColumn, setHoverColumn] = useState<number | null>(null)
 
   // Sort rows based on sortBy option
   // DNS/DNF/DSQ always go to bottom
@@ -213,7 +210,6 @@ export function ResultsGrid({
 
   // CSS custom properties for column highlighting
   const gridStyle: CSSProperties = {
-    '--hover-column': hoverColumn !== null ? hoverColumn : -1,
     '--focus-column': focusedColumn,
     '--focus-row': position.row,
   } as CSSProperties
@@ -236,7 +232,6 @@ export function ResultsGrid({
       tabIndex={0}
       onKeyDown={handleKeyDown}
       style={gridStyle}
-      onMouseLeave={() => setHoverColumn(null)}
     >
       <Table striped hover>
         <TableHead>
@@ -273,14 +268,12 @@ export function ResultsGrid({
             {visibleGateIndices.map((gateIndex, visibleColIndex) => {
               const gateNum = gateIndex + 1
               const gateType = gateConfig[gateIndex] ?? 'N'
-              const isHovered = hoverColumn === visibleColIndex
               const isFocusedCol = focusedColumn === visibleColIndex
               const hasActiveGroup = !!(activeGateGroup && activeGateGroup.gates.length > 0)
               const isInActiveGroup = hasActiveGroup && activeGateGroup!.gates.includes(gateNum)
               const isDimmed = hasActiveGroup && !isInActiveGroup
               const headerClasses = [
                 gateType === 'R' && 'gate-header--reverse',
-                isHovered && 'gate-header--hover',
                 isFocusedCol && 'gate-header--focus',
                 isInActiveGroup && 'gate-header--in-group',
                 isDimmed && 'gate-header--dimmed',
@@ -292,7 +285,6 @@ export function ResultsGrid({
                   key={gateNum}
                   numeric
                   className={headerClasses || undefined}
-                  onMouseEnter={() => setHoverColumn(visibleColIndex)}
                 >
                   {gateNum}
                 </TableHeaderCell>
@@ -345,7 +337,6 @@ export function ResultsGrid({
                   const penalty = penalties.find((p) => p.gate === gateNum)
                   const cellIsFocused = isFocused(rowIndex, visibleColIndex)
                   const isBoundary = groupBoundaries.has(gateNum)
-                  const isColHovered = hoverColumn === visibleColIndex
                   const isColFocused = focusedColumn === visibleColIndex
                   const hasActiveGroup = !!(activeGateGroup && activeGateGroup.gates.length > 0)
                   const isInActiveGroup = hasActiveGroup && activeGateGroup!.gates.includes(gateNum)
@@ -360,14 +351,12 @@ export function ResultsGrid({
                       pendingValue={cellIsFocused ? pendingValue : null}
                       gateType={(penalty?.type ?? gateConfig[gateIndex] ?? 'N') as 'N' | 'R'}
                       isFocused={cellIsFocused}
-                      isColumnHovered={isColHovered}
                       isColumnFocused={isColFocused}
                       isGroupBoundary={isBoundary}
                       isInActiveGroup={!!isInActiveGroup}
                       isDimmed={isDimmed}
                       id={getCellId(rowIndex, visibleColIndex)}
                       onClick={() => handleCellClick(rowIndex, visibleColIndex)}
-                      onMouseEnter={() => setHoverColumn(visibleColIndex)}
                     />
                   )
                 })}

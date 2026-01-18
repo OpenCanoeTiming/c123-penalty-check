@@ -161,17 +161,9 @@ th.gate-header--reverse {
   color: var(--color-warning);
 }
 
-/* Column hover - only highlight header, no cell borders */
-/* (hover highlighting on cells removed for cleaner look) */
-
 /* Column focus highlight - stronger left/right borders */
 .penalty-cell--col-focus:not(.penalty-cell--focused) {
   box-shadow: inset 2px 0 0 var(--color-accent), inset -2px 0 0 var(--color-accent);
-}
-
-/* Gate header hover - just make it bold */
-th.gate-header--hover {
-  font-weight: var(--font-semibold);
 }
 
 /* Gate header focus - accent border and color */
