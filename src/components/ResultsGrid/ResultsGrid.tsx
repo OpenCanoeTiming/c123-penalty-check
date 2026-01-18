@@ -140,14 +140,14 @@ export function ResultsGrid({
   const { handleKeyDown: handleInputKeyDown } = useKeyboardInput({
     onPenaltyInput: (value: PenaltyValue) => {
       const row = sortedRows[position.row]
-      if (!row || isRowDisabled(row)) return
+      if (!row) return
       const gateIndex = visibleGateIndices[position.column]
       const gate = gateIndex + 1
       onPenaltySubmit(row.bib, gate, value, raceId ?? undefined)
     },
     onClear: () => {
       const row = sortedRows[position.row]
-      if (!row || isRowDisabled(row)) return
+      if (!row) return
       const gateIndex = visibleGateIndices[position.column]
       const gate = gateIndex + 1
       onPenaltySubmit(row.bib, gate, null, raceId ?? undefined)
@@ -358,12 +358,12 @@ export function ResultsGrid({
               return (
                 <tr key={row.bib} className={rowClasses || undefined}>
                   <td className={styles.colPos}>
-                    {row.status || row.rank || rowIndex + 1}
+                    {isDisabled ? '-' : (row.rank || rowIndex + 1)}
                   </td>
                   <td className={styles.colBib}>{row.bib}</td>
                   <td className={styles.colName}>{row.name}</td>
-                  <td className={styles.colTime}>
-                    {isDisabled ? '-' : formatTime(row.time ? parseFloat(row.time) : null)}
+                  <td className={`${styles.colTime} ${isDisabled ? styles.colStatus : ''}`}>
+                    {isDisabled ? row.status : formatTime(row.time ? parseFloat(row.time) : null)}
                   </td>
                   <td className={styles.colPen}>
                     {isDisabled ? '' : calculatePenaltyFromGates(row.gates)}

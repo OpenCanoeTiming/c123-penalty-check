@@ -192,7 +192,7 @@
   color: var(--color-text-secondary);
 }
 
-.rowHeaders tr.disabled td.colPos {
+.rowHeaders tr.disabled td.colStatus {
   color: var(--color-error);
   font-weight: var(--font-semibold);
   opacity: 1;
@@ -294,12 +294,11 @@
   background: var(--color-text-secondary);
 }
 
-/* Disabled rows (DNS/DNF/DSQ) */
+/* Disabled rows (DNS/DNF/DSQ) - visually muted but still editable */
 .content tr.disabled td {
   background: var(--color-bg-elevated) !important;
   color: var(--color-text-secondary) !important;
-  cursor: not-allowed;
-  opacity: 0.4;
+  opacity: 0.6;
 }
 
 /* ==========================================================================
