@@ -358,7 +358,7 @@ export function ResultsGrid({
               return (
                 <tr key={row.bib} className={rowClasses || undefined}>
                   <td className={styles.colPos}>
-                    {isDisabled ? '-' : (row.rank || rowIndex + 1)}
+                    {row.startOrder ?? rowIndex + 1}
                   </td>
                   <td className={styles.colBib}>{row.bib}</td>
                   <td className={styles.colName}>{row.name}</td>

@@ -7,10 +7,8 @@ import { useCheckedState } from './hooks/useCheckedState'
 import { useSettings } from './hooks/useSettings'
 import { useSettingsShortcut } from './hooks/useSettingsShortcut'
 import { useScoring } from './hooks/useScoring'
-import type { ResultsSortOption } from './types/ui'
 
 const STORAGE_KEY_SELECTED_RACE = 'c123-scoring-selected-race'
-const STORAGE_KEY_SORT_BY = 'c123-scoring-sort-by'
 
 function App() {
   // Settings
@@ -57,23 +55,6 @@ function App() {
       return null
     }
   })
-
-  // Sort option with localStorage persistence
-  const [sortBy, setSortBy] = useState<ResultsSortOption>(() => {
-    try {
-      const stored = localStorage.getItem(STORAGE_KEY_SORT_BY)
-      if (stored === 'startOrder' || stored === 'rank' || stored === 'bib') {
-        return stored
-      }
-      return 'rank'
-    } catch {
-      return 'rank'
-    }
-  })
-
-  // Persist sort option to localStorage
-  // Note: setSortBy kept for future SortSelector integration
-  void setSortBy // Silence unused warning temporarily
 
   // Auto-select running race if nothing selected (computed, not effect)
   const effectiveSelectedRaceId = selectedRaceId ?? runningRace?.raceId ?? null
@@ -280,7 +261,7 @@ function App() {
           raceId={effectiveSelectedRaceId}
           activeGateGroup={activeGroup}
           allGateGroups={allGroups}
-          sortBy={sortBy}
+          sortBy={settings.sortBy}
           showStartTime={settings.showStartTime}
           onGroupSelect={setActiveGroup}
           onPenaltySubmit={handlePenaltySubmit}

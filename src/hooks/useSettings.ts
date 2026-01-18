@@ -5,6 +5,7 @@
  */
 
 import { useState, useCallback, useEffect } from 'react'
+import type { ResultsSortOption } from '../types/ui'
 
 const STORAGE_KEY = 'c123-scoring-settings'
 const DEFAULT_SERVER_URL = 'ws://localhost:27123/ws'
@@ -25,6 +26,8 @@ export interface Settings {
   showStartTime: boolean
   /** Theme mode: auto (system), light, or dark */
   theme: ThemeMode
+  /** Sort option for results grid */
+  sortBy: ResultsSortOption
 }
 
 const DEFAULT_SETTINGS: Settings = {
@@ -34,6 +37,7 @@ const DEFAULT_SETTINGS: Settings = {
   showOnCourse: true,
   showStartTime: false,
   theme: 'auto',
+  sortBy: 'startOrder',
 }
 
 export interface UseSettingsReturn {

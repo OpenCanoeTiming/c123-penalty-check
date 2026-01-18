@@ -23,7 +23,8 @@ import {
   Badge,
   Select,
 } from '@opencanoetiming/timing-design-system'
-import type { GateGroup } from '../../types/ui'
+import type { GateGroup, ResultsSortOption } from '../../types/ui'
+import { RESULTS_SORT_LABELS } from '../../types/ui'
 import type { Settings as SettingsType, ThemeMode } from '../../hooks/useSettings'
 import './Settings.css'
 
@@ -226,6 +227,27 @@ export function Settings({
             <TabPanel tabId="display">
               <div className="settings-section">
                 <h3 className="settings-section-title">Display Options</h3>
+
+                <div className="form-group">
+                  <label htmlFor="sort-select" className="form-label">
+                    Sort Competitors By
+                  </label>
+                  <Select
+                    id="sort-select"
+                    value={settings.sortBy ?? 'startOrder'}
+                    onChange={(e) =>
+                      onSettingsChange({ sortBy: e.target.value as ResultsSortOption })
+                    }
+                    data-testid="settings-sort-select"
+                  >
+                    <option value="startOrder">{RESULTS_SORT_LABELS.startOrder}</option>
+                    <option value="bib">{RESULTS_SORT_LABELS.bib}</option>
+                    <option value="rank">{RESULTS_SORT_LABELS.rank}</option>
+                  </Select>
+                  <p className="form-hint">
+                    Choose the order in which competitors appear in the grid.
+                  </p>
+                </div>
 
                 <div className="form-group">
                   <label htmlFor="theme-select" className="form-label">
