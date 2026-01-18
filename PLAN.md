@@ -15,7 +15,7 @@
 | 17H | UX Polish (Settings) | ✅ Hotovo |
 | 18 | Auto-load Gate Groups | 🟢 Hotovo (18B) |
 | 19 | E2E Test Refaktoring | ✅ Hotovo |
-| 20 | Bug fixes a UX připomínky | 🟡 In Progress (20D done) |
+| 20 | Bug fixes a UX připomínky | 🟡 In Progress (20E done) |
 
 ---
 
@@ -345,13 +345,13 @@ npx playwright test screenshots-with-data.spec.ts
 
 ---
 
-### 20E: Odstranit zbytečné UI prvky
+### 20E: Odstranit zbytečné UI prvky ✅
 
 **Problém:** Některé UI prvky nepřinášejí hodnotu.
 
-- [ ] 20E.1: Odstranit první zaškrtávací sloupeček z gridu
-- [ ] 20E.2: Odstranit context menu (DNS/DNF/CAP) nad gridem
-- [ ] 20E.3: Commit
+- [x] 20E.1: Odstranit první zaškrtávací sloupeček z gridu
+- [x] 20E.2: Odstranit context menu (DNS/DNF/CAP) nad gridem
+- [x] 20E.3: Commit
 
 ---
 
@@ -389,4 +389,4 @@ npx playwright test screenshots-with-data.spec.ts
 
 ---
 
-*Poslední aktualizace: 2026-01-18 (Phase 20D: removed toasts, added pending writes footer indicator)*
+*Poslední aktualizace: 2026-01-18 (Phase 20E: removed checkbox column and context menu from grid)*

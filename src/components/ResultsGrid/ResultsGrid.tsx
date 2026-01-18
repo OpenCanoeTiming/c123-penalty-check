@@ -10,7 +10,6 @@ import {
 } from '@opencanoetiming/timing-design-system/react'
 import type { C123ResultRow, C123RaceConfigData } from '../../types/c123server'
 import type { GateGroup, ResultsSortOption } from '../../types/ui'
-import type { RemoveReason, ChannelPosition } from '../../types/scoring'
 import {
   useFocusNavigation,
   useKeyboardInput,
@@ -19,7 +18,6 @@ import {
 import { parseResultsGatesWithConfig } from '../../utils/gates'
 import { isGateInGroup } from '../../types/gateGroups'
 import { PenaltyCell } from './PenaltyCell'
-import { CompetitorActions } from '../CompetitorActions'
 import { GateGroupIndicatorRow } from './GateGroupIndicatorRow'
 import './ResultsGrid.css'
 
@@ -38,16 +36,6 @@ export interface ResultsGridProps {
   onGroupSelect?: (groupId: string | null) => void
   /** Callback when a penalty is submitted */
   onPenaltySubmit?: (bib: string, gate: number, value: PenaltyValue) => void
-  /** Check if a competitor is checked */
-  isChecked?: (bib: string) => boolean
-  /** Callback when a competitor's checked state changes */
-  onToggleChecked?: (bib: string) => void
-  /** Callback when remove from course action is triggered */
-  onRemoveFromCourse?: (bib: string, reason: RemoveReason) => void
-  /** Callback when manual timing action is triggered */
-  onTiming?: (bib: string, position: ChannelPosition) => void
-  /** Whether C123 is connected (enables/disables actions) */
-  isC123Connected?: boolean
 }
 
 export function ResultsGrid({
@@ -59,22 +47,9 @@ export function ResultsGrid({
   showStartTime = false,
   onGroupSelect,
   onPenaltySubmit,
-  isChecked,
-  onToggleChecked,
-  onRemoveFromCourse,
-  onTiming,
-  isC123Connected = true,
 }: ResultsGridProps) {
   const gridRef = useRef<HTMLDivElement>(null)
   const focusedCellRef = useRef<HTMLTableCellElement>(null)
-
-  // Context menu state
-  const [contextMenu, setContextMenu] = useState<{
-    bib: string
-    name: string
-    status?: string
-    position: { x: number; y: number }
-  } | null>(null)
 
   // Hover state for column highlighting
   const [hoverColumn, setHoverColumn] = useState<number | null>(null)
@@ -180,45 +155,19 @@ export function ResultsGrid({
     clearPendingValue()
   }, [position.row, position.column, clearPendingValue])
 
-  // Handle context menu open
-  const handleContextMenu = useCallback(
-    (event: React.MouseEvent, row: C123ResultRow) => {
-      event.preventDefault()
-      setContextMenu({
-        bib: row.bib,
-        name: row.name,
-        status: row.status,
-        position: { x: event.clientX, y: event.clientY },
-      })
-    },
-    []
-  )
-
-  // Close context menu
-  const handleCloseContextMenu = useCallback(() => {
-    setContextMenu(null)
-  }, [])
-
   // Combined keyboard handler
   const handleKeyDown = useCallback(
     (event: React.KeyboardEvent) => {
-      if (contextMenu) {
-        setContextMenu(null)
-      }
-
-      // Space toggles checked state for current row
+      // Prevent Space from scrolling
       if (event.key === ' ') {
         event.preventDefault()
-        if (currentRow && !currentRow.status && onToggleChecked) {
-          onToggleChecked(currentRow.bib)
-        }
         return
       }
 
       if (handleInputKeyDown(event)) return
       handleNavKeyDown(event)
     },
-    [handleInputKeyDown, handleNavKeyDown, contextMenu, currentRow, onToggleChecked]
+    [handleInputKeyDown, handleNavKeyDown]
   )
 
   // Focus the grid when position changes
@@ -283,15 +232,11 @@ export function ResultsGrid({
               totalGates={nrGates}
               activeGroupId={activeGateGroup?.id ?? null}
               onGroupClick={onGroupSelect}
-              fixedColumnsCount={showStartTime ? 7 : 6}
+              fixedColumnsCount={showStartTime ? 6 : 5}
               visibleGateIndices={visibleGateIndices}
             />
           )}
           <TableRow>
-            <TableHeaderCell className="col-check">
-              <span className="visually-hidden">Checked</span>
-              ✓
-            </TableHeaderCell>
             <TableHeaderCell numeric className="col-pos">
               #
             </TableHeaderCell>
@@ -344,11 +289,9 @@ export function ResultsGrid({
           {sortedRows.map((row, rowIndex) => {
             const penalties = parseResultsGatesWithConfig(row.gates, gateConfig)
             const hasStatus = !!row.status
-            const checked = isChecked?.(row.bib) ?? false
 
             const isRowFocused = position.row === rowIndex
             const rowClassNames = [
-              checked && 'results-row--checked',
               hasStatus && 'results-row--status',
               isRowFocused && 'results-row--focus',
             ]
@@ -359,24 +302,7 @@ export function ResultsGrid({
               <TableRow
                 key={row.bib}
                 className={rowClassNames || undefined}
-                onContextMenu={(e) => handleContextMenu(e, row)}
               >
-                <TableCell className="col-check">
-                  <button
-                    type="button"
-                    className={`check-btn ${checked ? 'check-btn--checked' : ''}`}
-                    onClick={(e) => {
-                      e.stopPropagation()
-                      onToggleChecked?.(row.bib)
-                    }}
-                    aria-label={checked ? 'Uncheck' : 'Check'}
-                    aria-pressed={checked}
-                    disabled={hasStatus}
-                    title={hasStatus ? `Cannot check ${row.status}` : 'Toggle checked'}
-                  >
-                    {checked ? '✓' : ''}
-                  </button>
-                </TableCell>
                 <TableCell numeric className="col-pos">
                   {hasStatus ? (
                     <Badge variant={getStatusVariant(row.status!)}>{row.status}</Badge>
@@ -435,22 +361,6 @@ export function ResultsGrid({
           })}
         </TableBody>
       </Table>
-
-      {/* Context menu for competitor actions */}
-      {contextMenu && (
-        <CompetitorActions
-          bib={contextMenu.bib}
-          name={contextMenu.name}
-          isOnCourse={false}
-          isFinished={!contextMenu.status}
-          onRemove={onRemoveFromCourse}
-          onTiming={onTiming}
-          disabled={!isC123Connected}
-          variant="menu"
-          menuPosition={contextMenu.position}
-          onClose={handleCloseContextMenu}
-        />
-      )}
     </div>
   )
 }

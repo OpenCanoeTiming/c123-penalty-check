@@ -23,11 +23,6 @@
 }
 
 /* Column widths */
-.col-check {
-  width: 40px;
-  padding: var(--space-1);
-}
-
 .col-pos {
   width: 48px;
 }
@@ -204,53 +199,8 @@ th.gate-header--dimmed {
 }
 
 /* Row states */
-.results-row--checked {
-  background: var(--color-success-subtle);
-}
-
-.results-row--checked:hover {
-  background: var(--color-success-subtle);
-  filter: brightness(0.98);
-}
-
 .results-row--status {
   opacity: 0.7;
-}
-
-/* Check button styling */
-.check-btn {
-  width: 28px;
-  height: 28px;
-  border-radius: var(--radius-sm);
-  border: 2px solid var(--color-border);
-  background: var(--color-bg-surface);
-  cursor: pointer;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-size: var(--text-base);
-  color: var(--color-success);
-  transition: all var(--transition-fast);
-}
-
-.check-btn:hover:not(:disabled) {
-  border-color: var(--color-success);
-  background: var(--color-success-subtle);
-}
-
-.check-btn:disabled {
-  opacity: 0.4;
-  cursor: not-allowed;
-}
-
-.check-btn--checked {
-  background: var(--color-success);
-  border-color: var(--color-success);
-  color: white;
-}
-
-.check-btn--checked:hover:not(:disabled) {
-  filter: brightness(0.9);
 }
 
 /* Section separator */
@@ -280,15 +230,6 @@ th.gate-header--dimmed {
     height: 48px;
     padding: var(--space-2);
   }
-
-  .check-btn {
-    width: 48px;
-    height: 48px;
-  }
-
-  .col-check {
-    width: 56px;
-  }
 }
 
 /* Tablet breakpoints */
@@ -309,8 +250,7 @@ th.gate-header--dimmed {
 
 /* Reduced motion */
 @media (prefers-reduced-motion: reduce) {
-  .penalty-cell,
-  .check-btn {
+  .penalty-cell {
     transition: none;
   }
 

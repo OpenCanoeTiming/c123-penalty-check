@@ -19,8 +19,6 @@ function App() {
   // Scoring API integration
   const {
     setGatePenalty,
-    removeFromCourse: removeFromCourseApi,
-    sendTimingImpulse,
     pendingOperations,
     lastError: scoringError,
     clearError: clearScoringError,
@@ -43,7 +41,6 @@ function App() {
 
   const {
     connectionState,
-    serverInfo,
     schedule,
     results,
     raceConfig,
@@ -133,11 +130,7 @@ function App() {
   )
 
   // Protocol check state
-  const {
-    isChecked,
-    toggleChecked,
-    getProgress,
-  } = useCheckedState({
+  const { getProgress } = useCheckedState({
     raceId: effectiveSelectedRaceId,
     groupId: activeGroupId,
   })
@@ -171,25 +164,6 @@ function App() {
     },
     [setGatePenalty]
   )
-
-  // Handler for remove from course
-  const handleRemoveFromCourse = useCallback(
-    async (bib: string, reason: import('./types/scoring').RemoveReason) => {
-      await removeFromCourseApi(bib, reason)
-    },
-    [removeFromCourseApi]
-  )
-
-  // Handler for manual timing
-  const handleTiming = useCallback(
-    async (bib: string, position: import('./types/scoring').ChannelPosition) => {
-      await sendTimingImpulse(bib, position)
-    },
-    [sendTimingImpulse]
-  )
-
-  // C123 connection status (for enabling/disabling actions)
-  const isC123Connected = serverInfo?.c123Connected ?? false
 
   return (
     <Layout
@@ -287,12 +261,7 @@ function App() {
           sortBy={sortBy}
           showStartTime={settings.showStartTime}
           onGroupSelect={setActiveGroup}
-          isChecked={isChecked}
-          onToggleChecked={toggleChecked}
           onPenaltySubmit={handlePenaltySubmit}
-          onRemoveFromCourse={handleRemoveFromCourse}
-          onTiming={handleTiming}
-          isC123Connected={isC123Connected}
         />
       )}
     </Layout>
