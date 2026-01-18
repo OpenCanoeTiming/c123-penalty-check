@@ -56,7 +56,7 @@ export function Settings({
   onOpenGateGroupEditor,
   onClose,
 }: SettingsProps) {
-  const [activeTab, setActiveTab] = useState<SettingsTab>('server')
+  const [activeTab, setActiveTab] = useState<SettingsTab>('display')
   const [urlError, setUrlError] = useState<string | null>(null)
   const [isTesting, setIsTesting] = useState(false)
 
@@ -148,99 +148,12 @@ export function Settings({
           variant="underline"
         >
           <TabList>
-            <Tab id="server" data-testid="settings-tab-server">Server</Tab>
             <Tab id="display" data-testid="settings-tab-display">Display</Tab>
             <Tab id="keyboard" data-testid="settings-tab-keyboard">Keyboard</Tab>
+            <Tab id="server" data-testid="settings-tab-server">Server</Tab>
           </TabList>
 
           <TabPanels>
-            {/* Server Tab */}
-            <TabPanel tabId="server">
-              <div className="settings-section">
-                <h3 className="settings-section-title">Server Connection</h3>
-
-                <div className="form-group">
-                  <label htmlFor="server-url" className="form-label">
-                    WebSocket URL
-                  </label>
-                  <div className="settings-input-group">
-                    <Input
-                      id="server-url"
-                      type="text"
-                      value={serverUrl}
-                      onChange={handleUrlChange}
-                      placeholder="ws://localhost:27123/ws"
-                      autoComplete="url"
-                      error={!!urlError}
-                      data-testid="settings-server-url"
-                    />
-                    {getConnectionBadge()}
-                  </div>
-                  {urlError && <p className="form-error">{urlError}</p>}
-                  <p className="form-hint">
-                    Enter the WebSocket URL of the c123-server instance.
-                  </p>
-                </div>
-
-                <div className="settings-actions">
-                  <Button
-                    variant="secondary"
-                    onClick={handleTestConnection}
-                    disabled={!!urlError || isTesting}
-                  >
-                    Test Connection
-                  </Button>
-                  <Button
-                    variant="primary"
-                    onClick={handleSaveUrl}
-                    disabled={!!urlError || serverUrl === settings.serverUrl}
-                  >
-                    Save & Reconnect
-                  </Button>
-                </div>
-
-                {/* Connection History */}
-                {settings.serverHistory && settings.serverHistory.length > 0 && (
-                  <div className="form-group">
-                    <label className="form-label">Recent Servers</label>
-                    <div className="settings-history">
-                      {settings.serverHistory.slice(0, 5).map((url) => (
-                        <button
-                          key={url}
-                          type="button"
-                          className="settings-history-item"
-                          onClick={() => {
-                            setLocalServerUrl(url)
-                            setUrlError(null)
-                          }}
-                        >
-                          {url}
-                        </button>
-                      ))}
-                    </div>
-                  </div>
-                )}
-
-                <div className="form-group">
-                  <label htmlFor="client-id" className="form-label">
-                    Client ID
-                  </label>
-                  <Input
-                    id="client-id"
-                    type="text"
-                    value={settings.clientId ?? 'c123-scoring'}
-                    onChange={(e) => onSettingsChange({ clientId: e.target.value })}
-                    placeholder="c123-scoring"
-                    data-testid="settings-client-id"
-                  />
-                  <p className="form-hint">
-                    Identifier sent to server to distinguish this client from others.
-                    Use unique names like "scoring-1", "scoring-finish", etc.
-                  </p>
-                </div>
-              </div>
-            </TabPanel>
-
             {/* Display Tab */}
             <TabPanel tabId="display">
               <div className="settings-section">
@@ -390,6 +303,93 @@ export function Settings({
                     <Shortcut keys={['Escape']} description="Close dialog" />
                     <Shortcut keys={['?']} description="Show keyboard help" />
                   </div>
+                </div>
+              </div>
+            </TabPanel>
+
+            {/* Server Tab */}
+            <TabPanel tabId="server">
+              <div className="settings-section">
+                <h3 className="settings-section-title">Server Connection</h3>
+
+                <div className="form-group">
+                  <label htmlFor="server-url" className="form-label">
+                    WebSocket URL
+                  </label>
+                  <div className="settings-input-group">
+                    <Input
+                      id="server-url"
+                      type="text"
+                      value={serverUrl}
+                      onChange={handleUrlChange}
+                      placeholder="ws://localhost:27123/ws"
+                      autoComplete="url"
+                      error={!!urlError}
+                      data-testid="settings-server-url"
+                    />
+                    {getConnectionBadge()}
+                  </div>
+                  {urlError && <p className="form-error">{urlError}</p>}
+                  <p className="form-hint">
+                    Enter the WebSocket URL of the c123-server instance.
+                  </p>
+                </div>
+
+                <div className="settings-actions">
+                  <Button
+                    variant="secondary"
+                    onClick={handleTestConnection}
+                    disabled={!!urlError || isTesting}
+                  >
+                    Test Connection
+                  </Button>
+                  <Button
+                    variant="primary"
+                    onClick={handleSaveUrl}
+                    disabled={!!urlError || serverUrl === settings.serverUrl}
+                  >
+                    Save & Reconnect
+                  </Button>
+                </div>
+
+                {/* Connection History */}
+                {settings.serverHistory && settings.serverHistory.length > 0 && (
+                  <div className="form-group">
+                    <label className="form-label">Recent Servers</label>
+                    <div className="settings-history">
+                      {settings.serverHistory.slice(0, 5).map((url) => (
+                        <button
+                          key={url}
+                          type="button"
+                          className="settings-history-item"
+                          onClick={() => {
+                            setLocalServerUrl(url)
+                            setUrlError(null)
+                          }}
+                        >
+                          {url}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                <div className="form-group">
+                  <label htmlFor="client-id" className="form-label">
+                    Client ID
+                  </label>
+                  <Input
+                    id="client-id"
+                    type="text"
+                    value={settings.clientId ?? 'c123-scoring'}
+                    onChange={(e) => onSettingsChange({ clientId: e.target.value })}
+                    placeholder="c123-scoring"
+                    data-testid="settings-client-id"
+                  />
+                  <p className="form-hint">
+                    Identifier sent to server to distinguish this client from others.
+                    Use unique names like "scoring-1", "scoring-finish", etc.
+                  </p>
                 </div>
               </div>
             </TabPanel>
