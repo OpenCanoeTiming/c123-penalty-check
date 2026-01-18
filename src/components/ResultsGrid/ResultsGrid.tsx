@@ -131,18 +131,23 @@ export function ResultsGrid({
     columnCount: visibleGateIndices.length,
   })
 
+  // Check if current row is disabled (DNS/DNF/DSQ)
+  const isRowDisabled = useCallback((row: C123ResultRow) => {
+    return !!row.status
+  }, [])
+
   // Keyboard input for penalty values
   const { handleKeyDown: handleInputKeyDown } = useKeyboardInput({
     onPenaltyInput: (value: PenaltyValue) => {
       const row = sortedRows[position.row]
-      if (!row) return
+      if (!row || isRowDisabled(row)) return
       const gateIndex = visibleGateIndices[position.column]
       const gate = gateIndex + 1
       onPenaltySubmit(row.bib, gate, value, raceId ?? undefined)
     },
     onClear: () => {
       const row = sortedRows[position.row]
-      if (!row) return
+      if (!row || isRowDisabled(row)) return
       const gateIndex = visibleGateIndices[position.column]
       const gate = gateIndex + 1
       onPenaltySubmit(row.bib, gate, null, raceId ?? undefined)
@@ -344,14 +349,25 @@ export function ResultsGrid({
           <tbody>
             {sortedRows.map((row, rowIndex) => {
               const isFocused = rowIndex === position.row
+              const isDisabled = isRowDisabled(row)
+              const rowClasses = [
+                isFocused && styles.focused,
+                isDisabled && styles.disabled,
+              ].filter(Boolean).join(' ')
 
               return (
-                <tr key={row.bib} className={isFocused ? styles.focused : ''}>
-                  <td className={styles.colPos}>{row.rank ?? rowIndex + 1}</td>
+                <tr key={row.bib} className={rowClasses || undefined}>
+                  <td className={styles.colPos}>
+                    {row.status || row.rank || rowIndex + 1}
+                  </td>
                   <td className={styles.colBib}>{row.bib}</td>
                   <td className={styles.colName}>{row.name}</td>
-                  <td className={styles.colTime}>{formatTime(row.time ? parseFloat(row.time) : null)}</td>
-                  <td className={styles.colPen}>{calculatePenaltyFromGates(row.gates)}</td>
+                  <td className={styles.colTime}>
+                    {isDisabled ? '-' : formatTime(row.time ? parseFloat(row.time) : null)}
+                  </td>
+                  <td className={styles.colPen}>
+                    {isDisabled ? '' : calculatePenaltyFromGates(row.gates)}
+                  </td>
                 </tr>
               )
             })}
@@ -372,8 +388,10 @@ export function ResultsGrid({
       >
         <table>
           <tbody>
-            {sortedRows.map((row, rowIndex) => (
-              <tr key={row.bib}>
+            {sortedRows.map((row, rowIndex) => {
+              const isDisabled = isRowDisabled(row)
+              return (
+              <tr key={row.bib} className={isDisabled ? styles.disabled : undefined}>
                 {visibleGateIndices.map((gateIndex, colIndex) => {
                   const { value, className } = getPenaltyDisplay(row, gateIndex)
                   const gateNum = gateIndex + 1
@@ -407,7 +425,7 @@ export function ResultsGrid({
                   )
                 })}
               </tr>
-            ))}
+            )})}
           </tbody>
         </table>
       </div>
