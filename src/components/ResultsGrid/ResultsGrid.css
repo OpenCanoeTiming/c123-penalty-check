@@ -102,47 +102,46 @@ th.gate-header--reverse {
   color: var(--color-warning);
 }
 
-/* Column hover highlight (subtle) */
-.penalty-cell--col-hover {
-  background-color: color-mix(in srgb, var(--color-accent-subtle) 30%, transparent);
+/* Column hover highlight - subtle left/right borders */
+.penalty-cell--col-hover:not(.penalty-cell--focused) {
+  box-shadow: inset 1px 0 0 var(--color-border-muted), inset -1px 0 0 var(--color-border-muted);
 }
 
-/* Column focus highlight (more prominent) */
-.penalty-cell--col-focus {
-  background-color: color-mix(in srgb, var(--color-accent-subtle) 50%, transparent);
+/* Column focus highlight - stronger left/right borders */
+.penalty-cell--col-focus:not(.penalty-cell--focused) {
+  box-shadow: inset 2px 0 0 var(--color-accent), inset -2px 0 0 var(--color-accent);
 }
 
 /* Gate header hover */
 th.gate-header--hover {
-  background: color-mix(in srgb, var(--color-accent-subtle) 50%, var(--color-bg-surface));
+  box-shadow: inset 1px 0 0 var(--color-border-muted), inset -1px 0 0 var(--color-border-muted);
 }
 
-/* Gate header focus */
+/* Gate header focus - accent border */
 th.gate-header--focus {
-  background: var(--color-accent-subtle);
+  box-shadow: inset 2px 0 0 var(--color-accent), inset -2px 0 0 var(--color-accent);
   color: var(--color-accent);
 }
 
-/* Row focus highlight */
-.results-row--focus {
-  background: color-mix(in srgb, var(--color-accent-subtle) 30%, transparent) !important;
+/* Row focus highlight - top/bottom borders on all cells */
+.results-row--focus > td:not(.penalty-cell--focused) {
+  box-shadow: inset 0 2px 0 var(--color-accent), inset 0 -2px 0 var(--color-accent);
 }
 
-/* Focus state */
+/* Cell in focus row + focus column gets combined borders (crosshair effect) */
+.results-row--focus > .penalty-cell--col-focus:not(.penalty-cell--focused) {
+  box-shadow:
+    inset 2px 0 0 var(--color-accent),
+    inset -2px 0 0 var(--color-accent),
+    inset 0 2px 0 var(--color-accent),
+    inset 0 -2px 0 var(--color-accent);
+}
+
+/* Focus state - full border around the focused cell */
 .penalty-cell--focused {
-  outline: 3px solid var(--color-accent);
-  outline-offset: -3px;
-  box-shadow: inset 0 0 0 2px var(--color-bg-surface);
+  box-shadow: inset 0 0 0 2px var(--color-accent);
   position: relative;
   z-index: 2;
-}
-
-.penalty-cell--focused::after {
-  content: '';
-  position: absolute;
-  inset: 0;
-  background: var(--color-accent-subtle);
-  pointer-events: none;
 }
 
 /* Pending edit state */
@@ -164,9 +163,9 @@ th.gate-header--focus {
   border-right: 3px solid var(--color-accent);
 }
 
-/* Active group indication - subtle top border */
+/* Active group indication - subtle top border (using border, not box-shadow) */
 .penalty-cell--in-group {
-  box-shadow: inset 0 3px 0 var(--color-accent);
+  border-top: 3px solid var(--color-accent);
 }
 
 /* Header cell for gates in active group */
@@ -174,7 +173,7 @@ th.gate-header--in-group {
   background: var(--color-accent-subtle);
   color: var(--color-accent);
   font-weight: var(--font-semibold);
-  box-shadow: inset 0 3px 0 var(--color-accent);
+  border-top: 3px solid var(--color-accent);
 }
 
 /* Dimmed columns (when a gate group is active) */
