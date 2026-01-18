@@ -21,9 +21,10 @@ import {
   Checkbox,
   Kbd,
   Badge,
+  Select,
 } from '@opencanoetiming/timing-design-system'
 import type { GateGroup } from '../../types/ui'
-import type { Settings as SettingsType } from '../../hooks/useSettings'
+import type { Settings as SettingsType, ThemeMode } from '../../hooks/useSettings'
 import './Settings.css'
 
 export interface SettingsProps {
@@ -225,6 +226,27 @@ export function Settings({
             <TabPanel tabId="display">
               <div className="settings-section">
                 <h3 className="settings-section-title">Display Options</h3>
+
+                <div className="form-group">
+                  <label htmlFor="theme-select" className="form-label">
+                    Theme
+                  </label>
+                  <Select
+                    id="theme-select"
+                    value={settings.theme ?? 'auto'}
+                    onChange={(e) =>
+                      onSettingsChange({ theme: e.target.value as ThemeMode })
+                    }
+                    data-testid="settings-theme-select"
+                  >
+                    <option value="auto">Auto (System)</option>
+                    <option value="light">Light</option>
+                    <option value="dark">Dark</option>
+                  </Select>
+                  <p className="form-hint">
+                    Choose the color theme for the application.
+                  </p>
+                </div>
 
                 <div className="form-group">
                   <label className="form-label">Gate Groups</label>

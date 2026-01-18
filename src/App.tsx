@@ -157,6 +157,22 @@ function App() {
     }
   }, [scoringError, clearScoringError])
 
+  // Apply theme to document element
+  // Design system uses .theme-light / .theme-dark classes on :root
+  useEffect(() => {
+    const theme = settings.theme ?? 'auto'
+    const root = document.documentElement
+
+    // Remove any existing theme classes
+    root.classList.remove('theme-light', 'theme-dark')
+
+    if (theme !== 'auto') {
+      // Set explicit theme class
+      root.classList.add(`theme-${theme}`)
+    }
+    // For 'auto', no class needed - DS uses @media (prefers-color-scheme: dark)
+  }, [settings.theme])
+
   // Handler for penalty submission
   const handlePenaltySubmit = useCallback(
     async (bib: string, gate: number, value: import('./types/scoring').PenaltyValue) => {

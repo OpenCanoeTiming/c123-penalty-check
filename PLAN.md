@@ -15,7 +15,7 @@
 | 17H | UX Polish (Settings) | ✅ Hotovo |
 | 18 | Auto-load Gate Groups | 🟢 Hotovo (18B) |
 | 19 | E2E Test Refaktoring | ✅ Hotovo |
-| 20 | Bug fixes a UX připomínky | 🟡 In Progress (20F done) |
+| 20 | Bug fixes a UX připomínky | ✅ Hotovo |
 
 ---
 
@@ -373,14 +373,20 @@ npx playwright test screenshots-with-data.spec.ts
 
 ---
 
-### 20G: Light/Dark mode switch
+### 20G: Light/Dark mode switch ✅
 
 **Problém:** Nelze explicitně přepnout mezi light/dark mode.
 
-- [ ] 20G.1: Přidat theme toggle do Settings (nebo header)
-- [ ] 20G.2: Možnosti: Auto (system) / Light / Dark
-- [ ] 20G.3: Persistence do localStorage
-- [ ] 20G.4: Commit
+- [x] 20G.1: Přidat theme toggle do Settings (nebo header)
+- [x] 20G.2: Možnosti: Auto (system) / Light / Dark
+- [x] 20G.3: Persistence do localStorage
+- [x] 20G.4: Commit
+
+**Řešení:**
+- Přidán `theme: ThemeMode` do Settings interface ('auto' | 'light' | 'dark')
+- Theme selector v Settings > Display tab (DS Select komponenta)
+- App.tsx aplikuje `.theme-light` / `.theme-dark` třídy na document element
+- Auto mode ponechá rozhodnutí na `@media (prefers-color-scheme)`
 
 ---
 
@@ -396,4 +402,4 @@ npx playwright test screenshots-with-data.spec.ts
 
 ---
 
-*Poslední aktualizace: 2026-01-18 (Phase 20F: changed grid highlighting from background to borders)*
+*Poslední aktualizace: 2026-01-18 (Phase 20G: added theme toggle to Settings)*

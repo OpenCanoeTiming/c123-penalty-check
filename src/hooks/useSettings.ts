@@ -10,6 +10,8 @@ const STORAGE_KEY = 'c123-scoring-settings'
 const DEFAULT_SERVER_URL = 'ws://localhost:27123/ws'
 const MAX_HISTORY_LENGTH = 10
 
+export type ThemeMode = 'auto' | 'light' | 'dark'
+
 export interface Settings {
   /** WebSocket server URL */
   serverUrl: string
@@ -23,6 +25,8 @@ export interface Settings {
   compactMode: boolean
   /** Show start time column in grid */
   showStartTime: boolean
+  /** Theme mode: auto (system), light, or dark */
+  theme: ThemeMode
 }
 
 const DEFAULT_SETTINGS: Settings = {
@@ -32,6 +36,7 @@ const DEFAULT_SETTINGS: Settings = {
   showOnCourse: true,
   compactMode: false,
   showStartTime: false,
+  theme: 'auto',
 }
 
 export interface UseSettingsReturn {

@@ -1118,6 +1118,34 @@ Změnit grid highlighting z background podbarvení na border, pro lepší čitel
 
 ---
 
+## 2026-01-18 - Fáze 20G: Theme toggle
+
+### Cíl iterace
+
+Přidat možnost explicitně přepnout mezi light/dark mode v Settings.
+
+### Dokončeno
+
+- [x] Přidán typ `ThemeMode = 'auto' | 'light' | 'dark'` do `useSettings.ts`
+- [x] Přidáno `theme` pole do `Settings` interface s defaultem 'auto'
+- [x] Theme selector v Settings modal (Display tab) pomocí DS Select komponenty
+- [x] `useEffect` v `App.tsx` aplikuje `.theme-light` / `.theme-dark` třídy na `document.documentElement`
+- [x] Auto mode neaplikuje žádnou třídu - DS používá `@media (prefers-color-scheme: dark)`
+
+### Změněné soubory
+
+- `src/hooks/useSettings.ts` - nový typ a pole `theme`
+- `src/components/Settings/Settings.tsx` - theme selector v Display tabu
+- `src/App.tsx` - useEffect pro aplikování theme tříd
+
+### Poznámky
+
+- Design system (`timing-design-system`) používá CSS třídy `.theme-light` a `.theme-dark` na `:root` elementu
+- Pokud není nastavena žádná třída, DS automaticky respektuje systémové preference pomocí `@media (prefers-color-scheme: dark)`
+- Persistence do localStorage je automatická díky existující logice v `useSettings`
+
+---
+
 ## Template pro další záznamy
 
 ```markdown
