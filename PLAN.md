@@ -23,6 +23,7 @@
 | 25 | WebSocket connection management | ✅ Hotovo |
 | 26 | Keyboard a scoring fixes | ✅ Hotovo |
 | 27 | Grid UX a keyboard improvements | ✅ Hotovo |
+| 28 | Grid layout fixes | ✅ Hotovo |
 
 ---
 
@@ -634,4 +635,26 @@ To je jiné než poslat 0 (clear pass = čistý průjezd).
 
 ---
 
-*Poslední aktualizace: 2026-01-18 (Phase 27 completed)*
+## Fáze 28: Grid layout fixes ✅
+
+**Cíl:** Opravit problémy s gridem - sticky sloupce, padding, sticky header.
+
+**Status:** ✅ Hotovo
+
+### 28A: Sticky columns z-index ✅
+- [x] 28A.1: Přidat background pro liché řádky sticky sloupců
+- [x] 28A.2: Zvýšit z-index hierarchii (body=5, header=10, corner=20)
+
+### 28B: Odstranit zbytečné okraje ✅
+- [x] 28B.1: Odstranit padding z `.main`
+- [x] 28B.2: Odstranit padding z `.results-grid`
+- [x] 28B.3: Zjednodušit tablet breakpointy
+
+### 28C: Sticky header pro vertikální scroll ✅
+- [x] 28C.1: Celý thead sticky (grupy i branky)
+- [x] 28C.2: Grupy na `top: 0`, branky na `top: 32px`
+- [x] 28C.3: Grid container handles both scroll directions
+
+---
+
+*Poslední aktualizace: 2026-01-18 (Phase 28 completed)*
