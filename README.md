@@ -128,7 +128,7 @@ Output is in the `dist/` directory.
 Settings are stored in localStorage. Configure via Settings panel (Ctrl+,):
 
 - **Server URL**: WebSocket server address (default: `ws://localhost:27123`)
-- **Display options**: Show/hide on-course competitors, compact mode
+- **Display options**: Theme (auto/light/dark), show start times
 - **Gate groups**: Custom gate groupings for segment-based verification
 
 ## Project Structure
@@ -142,24 +142,29 @@ src/
 │   ├── EmptyState/      # Empty state displays
 │   ├── ErrorBoundary/   # Error handling
 │   ├── GateGroupEditor/ # Gate group configuration
-│   ├── GateGroupSwitcher/  # Quick group switching
-│   ├── Header/          # App header
+│   ├── Header/          # App header with race selector
 │   ├── Layout/          # Main layout
-│   ├── OnCourseGrid/    # Main penalty grid
-│   ├── RaceSelector/    # Race/category selection
+│   ├── OnCourseGrid/    # On-course competitors grid
+│   ├── RaceSelector/    # Race/category selection dropdown
+│   ├── ResultsGrid/     # Main penalty grid with results
 │   ├── Settings/        # Settings panel
+│   ├── SortSelector/    # Results sorting options
 │   ├── TimingPanel/     # Manual timing controls
 │   └── Toast/           # Notification toasts
 ├── hooks/               # React hooks
 │   ├── useC123WebSocket.ts    # WebSocket connection
 │   ├── useCheckedState.ts     # Verification state
+│   ├── useConnectionStatus.ts # Connection status
 │   ├── useFocusNavigation.ts  # Grid navigation
-│   ├── useGateGroups.ts       # Gate grouping
+│   ├── useFocusTrap.ts        # Modal focus management
+│   ├── useGateGroups.ts       # Gate grouping with segments
 │   ├── useKeyboardInput.ts    # Keyboard handling
+│   ├── useSchedule.ts         # Race schedule parsing
 │   ├── useScoring.ts          # Scoring API
 │   └── useSettings.ts         # App settings
 ├── services/            # API services
-│   └── scoringApi.ts    # REST API client
+│   ├── coursesApi.ts    # Course segments API
+│   └── scoringApi.ts    # Scoring REST API
 ├── types/               # TypeScript types
 │   ├── c123server.ts    # WebSocket message types
 │   ├── gateGroups.ts    # Gate group types

@@ -293,12 +293,12 @@ dokud se nevyřeší Schedule issue (viz fáze 21).
 - [x] 19B.1: Spustit `./scripts/take-screenshots.sh` - 16 testů prošlo
 - [x] 19B.2: Zkontrolovat výstupy - 17 screenshotů vygenerováno
 - [x] 19B.3: Tablet screenshoty přidány (18-tablet-landscape, 19-tablet-portrait)
-- [ ] 19B.4: Aktualizovat `README.md` s novými screenshoty (TODO)
+- [x] 19B.4: Aktualizovat `README.md` - project structure (screenshoty nejsou přítomny)
 
 ### 19C: CI/CD update
 
-- [ ] 19C.1: Ověřit že `.github/workflows/ci.yml` funguje s aktualizovanými testy
-- [ ] 19C.2: Commit
+- [x] 19C.1: Ověřit že `.github/workflows/ci.yml` funguje s aktualizovanými testy
+- [x] 19C.2: Commit
 
 ---
 
