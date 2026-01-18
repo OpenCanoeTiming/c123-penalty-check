@@ -32,21 +32,18 @@ interface ResultsGridProps {
   onPenaltySubmit: (bib: string, gate: number, value: PenaltyValue, raceId?: string) => void
 }
 
-// Format time as mm:ss.xx or ss.xx
+// Format time - display in seconds only
 function formatTime(seconds: number | null | undefined): string {
   if (seconds == null) return ''
-  const mins = Math.floor(seconds / 60)
-  const secs = seconds % 60
-  if (mins > 0) {
-    return `${mins}:${secs.toFixed(2).padStart(5, '0')}`
-  }
-  return secs.toFixed(2)
+  return `${seconds.toFixed(2)}s`
 }
 
-// Format penalty total
-function formatPenalty(pen: number | null | undefined): string {
-  if (pen == null || pen === 0) return ''
-  return `+${pen}`
+// Calculate and format penalty total from gates string
+function calculatePenaltyFromGates(gates: string): string {
+  const penalties = parseResultsGatesString(gates)
+  const total = penalties.reduce<number>((sum, p) => sum + (p ?? 0), 0)
+  if (total === 0) return ''
+  return `+${total}`
 }
 
 export function ResultsGridNew({
@@ -354,7 +351,7 @@ export function ResultsGridNew({
                   <td className={styles.colBib}>{row.bib}</td>
                   <td className={styles.colName}>{row.name}</td>
                   <td className={styles.colTime}>{formatTime(row.time ? parseFloat(row.time) : null)}</td>
-                  <td className={styles.colPen}>{formatPenalty(row.pen)}</td>
+                  <td className={styles.colPen}>{calculatePenaltyFromGates(row.gates)}</td>
                 </tr>
               )
             })}
