@@ -98,6 +98,24 @@ describe('gates utilities', () => {
       expect(result[4]).toBe(0)
       expect(result[8]).toBe(50)
     })
+
+    it('parses trimmed fixed-width format with empty value (real server data)', () => {
+      // Real data from WebSocket after server trims leading spaces
+      // "0  0  0  2  2  0     2  0  0  0 50  2  2"
+      const result = parseResultsGatesString(sampleGatesStrings.results.trimmedWithEmpty)
+      expect(result).toHaveLength(14)
+      expect(result[0]).toBe(0)
+      expect(result[1]).toBe(0)
+      expect(result[2]).toBe(0)
+      expect(result[3]).toBe(2)
+      expect(result[4]).toBe(2)
+      expect(result[5]).toBe(0)
+      expect(result[6]).toBeNull() // deleted penalty (3 spaces = empty block)
+      expect(result[7]).toBe(2)
+      expect(result[11]).toBe(50)
+      expect(result[12]).toBe(2)
+      expect(result[13]).toBe(2)
+    })
   })
 
   describe('parseGateConfig', () => {

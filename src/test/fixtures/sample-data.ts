@@ -30,6 +30,8 @@ export const sampleGatesStrings = {
     fixedWidth: '  0  0  0  2  0  0  2  0 50  0  0  0  0  0  0  0  0  0  0  0  0  0  0  0',
     // Fixed-width with empty value (deleted penalty at gate 4)
     fixedWidthWithEmpty: '  0  0  0     0  0  2  0 50  0  0  0  0  0  0  0  0  0  0  0  0  0  0  0',
+    // Trimmed fixed-width (server trimmed leading spaces) with empty value at gate 7
+    trimmedWithEmpty: '0  0  0  2  2  0     2  0  0  0 50  2  2',
   },
 }
 
