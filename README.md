@@ -2,6 +2,10 @@
 
 Web application for penalty verification and correction in canoe slalom timing with Canoe123 system.
 
+| Dark Mode | Tablet Layout |
+|:---------:|:-------------:|
+| ![Dark](docs/screenshots/dark.png) | ![Tablet](docs/screenshots/tablet-light.png) |
+
 ## Overview
 
 C123 Penalty Check is a React-based web application designed for ergonomic penalty verification during canoe slalom competitions. It connects to c123-server which bridges communication with the Canoe123 timing system.
