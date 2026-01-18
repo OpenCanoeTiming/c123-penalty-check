@@ -177,6 +177,17 @@ export function ResultsGrid({
     }
   }, [position])
 
+  // Auto-focus grid when data loads (so arrow keys work immediately)
+  useEffect(() => {
+    if (sortedRows.length > 0 && gridRef.current) {
+      // Small delay to ensure DOM is ready
+      const timeout = setTimeout(() => {
+        gridRef.current?.focus()
+      }, 100)
+      return () => clearTimeout(timeout)
+    }
+  }, [sortedRows.length > 0]) // Only trigger when data first appears
+
   // Handle cell click
   const handleCellClick = useCallback(
     (rowIndex: number, columnIndex: number) => {

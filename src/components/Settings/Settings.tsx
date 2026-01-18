@@ -300,20 +300,6 @@ export function Settings({
 
                 <div className="form-group">
                   <Checkbox
-                    checked={settings.compactMode ?? false}
-                    onChange={(e) =>
-                      onSettingsChange({ compactMode: e.target.checked })
-                    }
-                  >
-                    Compact mode
-                  </Checkbox>
-                  <p className="form-hint">
-                    Use smaller cell sizes for more gates on screen.
-                  </p>
-                </div>
-
-                <div className="form-group">
-                  <Checkbox
                     checked={settings.showStartTime ?? false}
                     onChange={(e) =>
                       onSettingsChange({ showStartTime: e.target.checked })

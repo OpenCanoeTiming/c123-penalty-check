@@ -84,6 +84,7 @@ export function useC123WebSocket(options: UseC123WebSocketOptions): UseC123WebSo
   const reconnectAttempts = useRef(0)
   const reconnectTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   const shouldReconnect = useRef(true)
+  const isConnecting = useRef(false)
 
   // Calculate reconnect delay with exponential backoff
   const getReconnectDelay = useCallback(() => {
@@ -130,6 +131,11 @@ export function useC123WebSocket(options: UseC123WebSocketOptions): UseC123WebSo
 
   // Connect to WebSocket
   const connect = useCallback(() => {
+    // Prevent duplicate connections
+    if (isConnecting.current || wsRef.current?.readyState === WebSocket.OPEN) {
+      return
+    }
+
     // Clean up existing connection
     if (wsRef.current) {
       wsRef.current.close()
@@ -142,6 +148,7 @@ export function useC123WebSocket(options: UseC123WebSocketOptions): UseC123WebSo
       reconnectTimeoutRef.current = null
     }
 
+    isConnecting.current = true
     shouldReconnect.current = true
     setState((prev) => ({ ...prev, connectionState: 'connecting', lastError: null }))
 
@@ -150,6 +157,7 @@ export function useC123WebSocket(options: UseC123WebSocketOptions): UseC123WebSo
       wsRef.current = ws
 
       ws.onopen = () => {
+        isConnecting.current = false
         reconnectAttempts.current = 0
         // State will be set to 'connected' when we receive Connected message
       }
@@ -157,6 +165,7 @@ export function useC123WebSocket(options: UseC123WebSocketOptions): UseC123WebSo
       ws.onmessage = handleMessage
 
       ws.onerror = () => {
+        isConnecting.current = false
         setState((prev) => ({
           ...prev,
           connectionState: 'error',
@@ -165,6 +174,7 @@ export function useC123WebSocket(options: UseC123WebSocketOptions): UseC123WebSo
       }
 
       ws.onclose = () => {
+        isConnecting.current = false
         wsRef.current = null
         setState((prev) => ({
           ...prev,
@@ -180,6 +190,7 @@ export function useC123WebSocket(options: UseC123WebSocketOptions): UseC123WebSo
         }
       }
     } catch (error) {
+      isConnecting.current = false
       setState((prev) => ({
         ...prev,
         connectionState: 'error',
@@ -191,6 +202,7 @@ export function useC123WebSocket(options: UseC123WebSocketOptions): UseC123WebSo
   // Disconnect from WebSocket
   const disconnect = useCallback(() => {
     shouldReconnect.current = false
+    isConnecting.current = false
     reconnectAttempts.current = 0
 
     if (reconnectTimeoutRef.current) {
@@ -218,11 +230,14 @@ export function useC123WebSocket(options: UseC123WebSocketOptions): UseC123WebSo
 
     return () => {
       shouldReconnect.current = false
+      isConnecting.current = false
       if (reconnectTimeoutRef.current) {
         clearTimeout(reconnectTimeoutRef.current)
+        reconnectTimeoutRef.current = null
       }
       if (wsRef.current) {
         wsRef.current.close()
+        wsRef.current = null
       }
     }
   }, [autoConnect, url, connect])

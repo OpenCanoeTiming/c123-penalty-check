@@ -21,8 +21,6 @@ export interface Settings {
   showFinished: boolean
   /** Whether to show on-course competitors (still racing) in the grid */
   showOnCourse: boolean
-  /** Use compact cell sizes */
-  compactMode: boolean
   /** Show start time column in grid */
   showStartTime: boolean
   /** Theme mode: auto (system), light, or dark */
@@ -34,7 +32,6 @@ const DEFAULT_SETTINGS: Settings = {
   serverHistory: [],
   showFinished: true,
   showOnCourse: true,
-  compactMode: false,
   showStartTime: false,
   theme: 'auto',
 }

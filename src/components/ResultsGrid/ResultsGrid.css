@@ -22,36 +22,95 @@
   background: var(--color-bg-surface);
 }
 
-/* Column widths */
+/* Fixed column widths - prevent stretching */
 .col-pos {
-  width: 48px;
+  width: 40px;
+  min-width: 40px;
+  max-width: 40px;
 }
 
 .col-bib {
-  width: 60px;
+  width: 50px;
+  min-width: 50px;
+  max-width: 50px;
   font-weight: var(--font-semibold);
 }
 
 .col-name {
   text-align: left;
-  min-width: 160px;
+  width: 140px;
+  min-width: 140px;
+  max-width: 200px;
   font-weight: var(--font-semibold);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
-.col-time,
-.col-pen,
-.col-start-time {
-  width: 80px;
+.col-time {
+  width: 70px;
+  min-width: 70px;
+  max-width: 70px;
   font-variant-numeric: tabular-nums;
 }
 
+.col-pen {
+  width: 50px;
+  min-width: 50px;
+  max-width: 50px;
+  font-variant-numeric: tabular-nums;
+  color: var(--color-error);
+}
+
 .col-start-time {
+  width: 60px;
+  min-width: 60px;
+  max-width: 60px;
+  font-variant-numeric: tabular-nums;
   color: var(--color-text-secondary);
   font-size: var(--text-sm);
 }
 
-.col-pen {
-  color: var(--color-error);
+/* Sticky columns for horizontal scroll */
+.results-grid .table th.col-pos,
+.results-grid .table th.col-bib,
+.results-grid .table th.col-name,
+.results-grid .table td.col-pos,
+.results-grid .table td.col-bib,
+.results-grid .table td.col-name {
+  position: sticky;
+  background: var(--color-bg-surface);
+  z-index: 2;
+}
+
+.results-grid .table th.col-pos,
+.results-grid .table td.col-pos {
+  left: 0;
+}
+
+.results-grid .table th.col-bib,
+.results-grid .table td.col-bib {
+  left: 40px;
+}
+
+.results-grid .table th.col-name,
+.results-grid .table td.col-name {
+  left: 90px;
+  border-right: 1px solid var(--color-border-muted);
+}
+
+/* Sticky header cells need higher z-index */
+.results-grid .table thead th.col-pos,
+.results-grid .table thead th.col-bib,
+.results-grid .table thead th.col-name {
+  z-index: 3;
+}
+
+/* Striped row background for sticky columns */
+.results-grid .table tbody tr:nth-child(even) td.col-pos,
+.results-grid .table tbody tr:nth-child(even) td.col-bib,
+.results-grid .table tbody tr:nth-child(even) td.col-name {
+  background: var(--color-bg-elevated);
 }
 
 /* Penalty cell base */
@@ -102,25 +161,24 @@ th.gate-header--reverse {
   color: var(--color-warning);
 }
 
-/* Column hover highlight - subtle left/right borders */
-.penalty-cell--col-hover:not(.penalty-cell--focused) {
-  box-shadow: inset 1px 0 0 var(--color-border-muted), inset -1px 0 0 var(--color-border-muted);
-}
+/* Column hover - only highlight header, no cell borders */
+/* (hover highlighting on cells removed for cleaner look) */
 
 /* Column focus highlight - stronger left/right borders */
 .penalty-cell--col-focus:not(.penalty-cell--focused) {
   box-shadow: inset 2px 0 0 var(--color-accent), inset -2px 0 0 var(--color-accent);
 }
 
-/* Gate header hover */
+/* Gate header hover - just make it bold */
 th.gate-header--hover {
-  box-shadow: inset 1px 0 0 var(--color-border-muted), inset -1px 0 0 var(--color-border-muted);
+  font-weight: var(--font-semibold);
 }
 
-/* Gate header focus - accent border */
+/* Gate header focus - accent border and color */
 th.gate-header--focus {
   box-shadow: inset 2px 0 0 var(--color-accent), inset -2px 0 0 var(--color-accent);
   color: var(--color-accent);
+  font-weight: var(--font-semibold);
 }
 
 /* Row focus highlight - top/bottom borders on all cells */
@@ -158,22 +216,21 @@ th.gate-header--focus {
   }
 }
 
-/* Group boundary */
+/* Group boundary - subtle gray separator */
 .penalty-cell--boundary {
-  border-right: 3px solid var(--color-accent);
+  border-right: 2px solid var(--color-border);
 }
 
-/* Active group indication - subtle top border (using border, not box-shadow) */
+/* Active group indication - subtle gray top border */
 .penalty-cell--in-group {
-  border-top: 3px solid var(--color-accent);
+  border-top: 2px solid var(--color-border);
 }
 
-/* Header cell for gates in active group */
+/* Header cell for gates in active group - subtle gray styling */
 th.gate-header--in-group {
-  background: var(--color-accent-subtle);
-  color: var(--color-accent);
+  background: var(--color-bg-elevated);
   font-weight: var(--font-semibold);
-  border-top: 3px solid var(--color-accent);
+  border-top: 2px solid var(--color-border);
 }
 
 /* Dimmed columns (when a gate group is active) */
@@ -238,12 +295,15 @@ th.gate-header--dimmed {
   }
 
   .col-name {
+    width: 120px;
     min-width: 120px;
+    max-width: 160px;
   }
 
-  .col-time,
-  .col-pen {
-    width: 70px;
+  /* Adjust sticky positions for tablet */
+  .results-grid .table th.col-name,
+  .results-grid .table td.col-name {
+    left: 90px;
   }
 }
 
