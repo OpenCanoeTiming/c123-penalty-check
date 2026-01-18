@@ -1,7 +1,7 @@
 .layout {
-  display: grid;
-  grid-template-rows: auto 1fr auto;
-  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+  height: 100vh;
 }
 
 .header {
@@ -14,9 +14,11 @@
 
 .main {
   /* No padding - grid fills the space */
-  overflow: hidden; /* Grid handles its own scroll */
+  overflow: hidden;
   display: flex;
   flex-direction: column;
+  /* Ensure flex children can shrink below content size */
+  min-height: 0;
 }
 
 .footer {

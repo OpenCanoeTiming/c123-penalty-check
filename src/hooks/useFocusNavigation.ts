@@ -1,4 +1,4 @@
-import { useState, useCallback, useMemo, useRef, useEffect } from 'react'
+import { useState, useCallback, useMemo } from 'react'
 
 /**
  * Position in the grid (row = competitor index, column = gate index)
@@ -19,8 +19,6 @@ export interface FocusNavigationOptions {
   wrapAround?: boolean
 }
 
-// Throttle interval for key repeat (16ms ≈ 60fps)
-const THROTTLE_INTERVAL = 16
 
 export interface FocusNavigationResult {
   /** Current focus position */
@@ -72,20 +70,6 @@ export function useFocusNavigation(
     row: 0,
     column: 0,
   })
-
-  // Throttle state for arrow key navigation
-  const lastMoveTimeRef = useRef<number>(0)
-  const pendingMoveRef = useRef<'up' | 'down' | 'left' | 'right' | null>(null)
-  const rafIdRef = useRef<number | null>(null)
-
-  // Cleanup RAF on unmount
-  useEffect(() => {
-    return () => {
-      if (rafIdRef.current !== null) {
-        cancelAnimationFrame(rafIdRef.current)
-      }
-    }
-  }, [])
 
   // Clamp position to valid bounds
   const clampPosition = useCallback(
@@ -160,34 +144,10 @@ export function useFocusNavigation(
     [rowCount, columnCount, wrapAround, onPositionChange]
   )
 
-  // Throttled move function for smooth key repeat handling
+  // Move function - direct execution, browser handles key repeat rate
   const move = useCallback(
     (direction: 'up' | 'down' | 'left' | 'right') => {
-      const now = performance.now()
-      const timeSinceLastMove = now - lastMoveTimeRef.current
-
-      // If enough time has passed, move immediately
-      if (timeSinceLastMove >= THROTTLE_INTERVAL) {
-        lastMoveTimeRef.current = now
-        moveInternal(direction)
-        pendingMoveRef.current = null
-        return
-      }
-
-      // Otherwise, queue the move for next animation frame
-      pendingMoveRef.current = direction
-
-      // Schedule RAF if not already scheduled
-      if (rafIdRef.current === null) {
-        rafIdRef.current = requestAnimationFrame(() => {
-          rafIdRef.current = null
-          if (pendingMoveRef.current) {
-            lastMoveTimeRef.current = performance.now()
-            moveInternal(pendingMoveRef.current)
-            pendingMoveRef.current = null
-          }
-        })
-      }
+      moveInternal(direction)
     },
     [moveInternal]
   )

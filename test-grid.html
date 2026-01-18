@@ -1,0 +1,337 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Grid Scroll Test</title>
+  <style>
+    :root {
+      --color-bg-surface: #ffffff;
+      --color-bg-elevated: #f5f5f5;
+      --color-border: #e0e0e0;
+      --color-border-muted: #f0f0f0;
+      --color-text-primary: #1a1a1a;
+      --color-text-secondary: #666666;
+      --color-accent: #0066cc;
+      --color-success-subtle: #e6f4ea;
+      --color-success: #1e8e3e;
+      --color-warning-subtle: #fef7e0;
+      --color-warning: #f9ab00;
+      --color-error-subtle: #fce8e6;
+      --color-error: #d93025;
+      --space-1: 4px;
+      --space-2: 8px;
+      --space-3: 12px;
+      --font-semibold: 600;
+      --font-medium: 500;
+      --text-xs: 11px;
+      --text-sm: 13px;
+    }
+
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: system-ui, sans-serif; font-size: 14px; }
+
+    #app {
+      display: flex;
+      flex-direction: column;
+      height: 100vh;
+    }
+
+    .header {
+      height: 50px;
+      background: #333;
+      color: white;
+      display: flex;
+      align-items: center;
+      padding: 0 16px;
+    }
+
+    .main {
+      flex: 1;
+      min-height: 0;
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+    }
+
+    /* ========== GRID CONTAINER ========== */
+    .gridContainer {
+      display: grid;
+      grid-template-columns: auto 1fr;
+      grid-template-rows: 28px 36px 1fr;
+      flex: 1;
+      min-height: 0;
+      overflow: hidden;
+      background: var(--color-bg-surface);
+    }
+
+    /* Row 1: Gate Groups */
+    .groupsCorner {
+      grid-row: 1;
+      grid-column: 1;
+      background: var(--color-bg-elevated);
+      border-bottom: 1px solid var(--color-border);
+      border-right: 1px solid var(--color-border);
+    }
+
+    .groupsHeader {
+      grid-row: 1;
+      grid-column: 2;
+      overflow: hidden;
+      background: var(--color-bg-elevated);
+      border-bottom: 1px solid var(--color-border);
+      display: flex;
+    }
+
+    .groupBtn {
+      height: 28px;
+      border: none;
+      border-left: 1px solid var(--color-border);
+      background: transparent;
+      color: var(--color-text-secondary);
+      font-size: var(--text-xs);
+      cursor: pointer;
+      white-space: nowrap;
+    }
+
+    /* Row 2: Column Headers */
+    .corner {
+      grid-row: 2;
+      grid-column: 1;
+      background: var(--color-bg-elevated);
+      border-bottom: 1px solid var(--color-border);
+      border-right: 1px solid var(--color-border);
+    }
+
+    .corner table { border-collapse: collapse; }
+    .corner th {
+      padding: 0 12px;
+      height: 36px;
+      font-weight: 600;
+      color: var(--color-text-secondary);
+      text-align: left;
+      white-space: nowrap;
+      background: var(--color-bg-elevated);
+    }
+
+    .colHeaders {
+      grid-row: 2;
+      grid-column: 2;
+      overflow: hidden;
+      background: var(--color-bg-elevated);
+      border-bottom: 1px solid var(--color-border);
+    }
+
+    .colHeaders table { border-collapse: collapse; }
+    .colHeaders th {
+      padding: 0 4px;
+      height: 36px;
+      min-width: 36px;
+      width: 36px;
+      font-weight: 600;
+      color: var(--color-text-secondary);
+      text-align: center;
+      background: var(--color-bg-elevated);
+    }
+    .colHeaders th.reverse { background: var(--color-warning-subtle); color: var(--color-warning); }
+
+    /* Row 3: Content */
+    .rowHeaders {
+      grid-row: 3;
+      grid-column: 1;
+      overflow: hidden;
+      min-height: 0;
+      background: var(--color-bg-surface);
+      border-right: 1px solid var(--color-border);
+    }
+
+    .rowHeaders table { border-collapse: collapse; }
+    .rowHeaders td {
+      padding: 0 12px;
+      height: 32px;
+      border-bottom: 1px solid var(--color-border-muted);
+      white-space: nowrap;
+    }
+    .rowHeaders tr:nth-child(even) td { background: var(--color-bg-elevated); }
+
+    .content {
+      grid-row: 3;
+      grid-column: 2;
+      overflow: auto;
+      min-height: 0;
+      min-width: 0;
+      background: var(--color-bg-surface);
+    }
+
+    .content table { border-collapse: collapse; }
+    .content td {
+      padding: 0;
+      height: 32px;
+      min-width: 36px;
+      width: 36px;
+      border-bottom: 1px solid var(--color-border-muted);
+      text-align: center;
+      font-family: monospace;
+      font-size: 13px;
+    }
+    .content tr:nth-child(even) td { background: var(--color-bg-elevated); }
+
+    /* Column widths */
+    .colPos { width: 40px; min-width: 40px; text-align: right; color: var(--color-text-secondary); }
+    .colBib { width: 50px; min-width: 50px; text-align: right; font-weight: 600; }
+    .colName { width: 140px; min-width: 140px; text-align: left; font-weight: 600; }
+    .colTime { width: 70px; min-width: 70px; text-align: right; }
+    .colPen { width: 50px; min-width: 50px; text-align: right; color: var(--color-error); }
+
+    /* Penalty cell colors */
+    .pen0 { background: var(--color-success-subtle); color: var(--color-success); }
+    .pen2 { background: var(--color-warning-subtle); color: var(--color-warning); font-weight: 600; }
+    .pen50 { background: var(--color-error-subtle); color: var(--color-error); font-weight: 600; }
+
+    /* Debug info */
+    .debug {
+      position: fixed;
+      bottom: 10px;
+      right: 10px;
+      background: rgba(0,0,0,0.8);
+      color: white;
+      padding: 8px 12px;
+      font-family: monospace;
+      font-size: 12px;
+      border-radius: 4px;
+      z-index: 1000;
+    }
+  </style>
+</head>
+<body>
+  <div id="app">
+    <div class="header">
+      <span>Grid Scroll Test - 40 competitors × 40 gates</span>
+    </div>
+    <div class="main">
+      <div class="gridContainer" id="grid">
+        <!-- Row 1: Gate Groups -->
+        <div class="groupsCorner"></div>
+        <div class="groupsHeader" id="groupsHeader">
+          <button class="groupBtn" style="flex: 0 0 216px">Upper (1-6)</button>
+          <button class="groupBtn" style="flex: 0 0 252px">Middle (7-13)</button>
+          <button class="groupBtn" style="flex: 0 0 216px">Lower (14-19)</button>
+          <button class="groupBtn" style="flex: 0 0 216px">Final (20-25)</button>
+        </div>
+
+        <!-- Row 2: Headers -->
+        <div class="corner">
+          <table><thead><tr>
+            <th class="colPos">#</th>
+            <th class="colBib">Bib</th>
+            <th class="colName">Name</th>
+            <th class="colTime">Time</th>
+            <th class="colPen">Pen</th>
+          </tr></thead></table>
+        </div>
+        <div class="colHeaders" id="colHeaders">
+          <table><thead><tr id="gateHeaderRow"></tr></thead></table>
+        </div>
+
+        <!-- Row 3: Data -->
+        <div class="rowHeaders" id="rowHeaders">
+          <table><tbody id="rowHeadersBody"></tbody></table>
+        </div>
+        <div class="content" id="content">
+          <table><tbody id="contentBody"></tbody></table>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="debug" id="debug">Scroll: 0, 0</div>
+
+  <script>
+    const COMPETITORS = 40;
+    const GATES = 40;
+    const GATE_CONFIG = 'NNRNNRNRNNNNRNNRNRNNRNNRNNNRNNRNRNNNNRNN'; // R = reverse
+
+    // Generate mock data
+    const names = ['Smith', 'Johnson', 'Williams', 'Brown', 'Jones', 'Garcia', 'Miller', 'Davis', 'Rodriguez', 'Martinez', 'Hernandez', 'Lopez', 'Gonzalez', 'Wilson', 'Anderson', 'Thomas', 'Taylor', 'Moore', 'Jackson', 'Martin', 'Lee', 'Perez', 'Thompson', 'White', 'Harris', 'Sanchez', 'Clark', 'Ramirez', 'Lewis', 'Robinson'];
+
+    // Generate gate headers
+    const gateHeaderRow = document.getElementById('gateHeaderRow');
+    for (let g = 1; g <= GATES; g++) {
+      const th = document.createElement('th');
+      th.textContent = g;
+      if (GATE_CONFIG[g-1] === 'R') th.className = 'reverse';
+      gateHeaderRow.appendChild(th);
+    }
+
+    // Generate competitor rows
+    const rowHeadersBody = document.getElementById('rowHeadersBody');
+    const contentBody = document.getElementById('contentBody');
+
+    for (let i = 0; i < COMPETITORS; i++) {
+      const bib = i + 1;
+      const time = (85 + Math.random() * 15).toFixed(2);
+      const penalties = [];
+      let totalPen = 0;
+
+      // Generate random penalties
+      for (let g = 0; g < GATES; g++) {
+        const rand = Math.random();
+        let pen = 0;
+        if (rand > 0.95) { pen = 50; }
+        else if (rand > 0.85) { pen = 2; }
+        penalties.push(pen);
+        totalPen += pen;
+      }
+
+      // Row header
+      const headerRow = document.createElement('tr');
+      headerRow.innerHTML = `
+        <td class="colPos">${i + 1}</td>
+        <td class="colBib">${bib}</td>
+        <td class="colName">${names[i]}</td>
+        <td class="colTime">${time}</td>
+        <td class="colPen">${totalPen > 0 ? '+' + totalPen : ''}</td>
+      `;
+      rowHeadersBody.appendChild(headerRow);
+
+      // Content row
+      const contentRow = document.createElement('tr');
+      for (let g = 0; g < GATES; g++) {
+        const td = document.createElement('td');
+        const pen = penalties[g];
+        if (pen === 0) { td.className = 'pen0'; td.textContent = '0'; }
+        else if (pen === 2) { td.className = 'pen2'; td.textContent = '2'; }
+        else if (pen === 50) { td.className = 'pen50'; td.textContent = '50'; }
+        contentRow.appendChild(td);
+      }
+      contentBody.appendChild(contentRow);
+    }
+
+    // Scroll sync
+    const content = document.getElementById('content');
+    const colHeaders = document.getElementById('colHeaders');
+    const rowHeaders = document.getElementById('rowHeaders');
+    const groupsHeader = document.getElementById('groupsHeader');
+    const debug = document.getElementById('debug');
+
+    content.addEventListener('scroll', () => {
+      colHeaders.scrollLeft = content.scrollLeft;
+      groupsHeader.scrollLeft = content.scrollLeft;
+      rowHeaders.scrollTop = content.scrollTop;
+      debug.textContent = `Scroll: ${content.scrollLeft}, ${content.scrollTop}`;
+    });
+
+    // For Playwright testing
+    window.getScrollPosition = () => ({ x: content.scrollLeft, y: content.scrollTop });
+    window.scrollTo = (x, y) => { content.scrollLeft = x; content.scrollTop = y; };
+    window.getVisibleHeaders = () => {
+      const cornerRect = document.querySelector('.corner').getBoundingClientRect();
+      const colHeadersRect = document.querySelector('.colHeaders').getBoundingClientRect();
+      return {
+        cornerVisible: cornerRect.width > 0 && cornerRect.height > 0,
+        colHeadersVisible: colHeadersRect.width > 0 && colHeadersRect.height > 0,
+        cornerRight: cornerRect.right,
+        colHeadersTop: colHeadersRect.top
+      };
+    };
+  </script>
+</body>
+</html>

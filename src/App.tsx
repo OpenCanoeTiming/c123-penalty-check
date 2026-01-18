@@ -268,8 +268,13 @@ function App() {
         />
       ) : !selectedRaceResults || selectedRaceResults.rows.length === 0 ? (
         <EmptyState variant="no-competitors" />
+      ) : !raceConfig ? (
+        // Wait for race config before rendering grid (gates not yet loaded)
+        <EmptyState variant="loading" />
       ) : (
         <ResultsGrid
+          // Key forces remount when gate count changes, ensuring sticky recalculates
+          key={`grid-${raceConfig?.nrGates ?? 0}`}
           rows={selectedRaceResults.rows}
           raceConfig={raceConfig}
           raceId={effectiveSelectedRaceId}
