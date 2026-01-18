@@ -13,7 +13,7 @@
 | 17F | UX Polish (Tablet) | ✅ Hotovo |
 | 17G | UX Polish (Screenshots) | ✅ Hotovo |
 | 17H | UX Polish (Settings) | ✅ Hotovo |
-| 18 | Auto-load Gate Groups | ⏸️ Blokováno (c123-server) |
+| 18 | Auto-load Gate Groups | 🟡 Připraveno |
 | 19 | E2E Test Refaktoring | ✅ Hotovo |
 | 20 | Bug fixes a UX připomínky | 🔴 TODO |
 
@@ -212,40 +212,29 @@ npx playwright test screenshots-with-data.spec.ts
 
 **Cíl:** Automaticky načítat gate groups podle segmentů trati z XML dat.
 
-**Status:** ⏸️ BLOKOVÁNO - vyžaduje změny v c123-server
+**Status:** 🟡 Připraveno k implementaci
 
-**Problém:**
-- WS zpráva `RaceConfig` posílá `gateConfig` bez `S` (splitů)
-- V XML je `CourseData.CourseConfig: "NNRNSNNRNSRNNNSRNNNSRRNS"` kde `S` = split boundary
-- c123-server **neparsuje** `CourseData` element z XML (viz `XmlDataService.ts`)
-- c123-scoring má připravenou infrastrukturu (`CourseSegment`, `createGroupsFromSegments()`) ale žádná data
-
-**Závislost:** Vyžaduje změny v c123-server:
-1. Přidat parsování `CourseData` do `XmlDataService.ts`
-2. Vystavit nový REST endpoint `/api/xml/courses`
-3. Nebo: rozšířit `RaceConfig` WS zprávu o segment info
-
-**Reference:**
-- c123-protocol-docs/c123-xml-format.md - sekce "CourseData (Course Configuration)"
-- c123-server/src/service/XmlDataService.ts - parsuje pouze Participants, Schedule, Results
+**Stav:**
+- ✅ c123-server má endpoint `GET /api/xml/courses`
+- ✅ Vrací `{ courses: [{ courseNr, courseConfig, splits: [5, 9, 14...] }] }`
+- ✅ c123-scoring má připravenou infrastrukturu (`CourseSegment`, `createGroupsFromSegments()`)
+- 🔴 Chybí propojení - `parseSegmentsFromConfig()` vrací prázdné pole
 
 ---
 
-### 18A: Změny v c123-server (PRVNÍ)
+### 18A: Změny v c123-server ✅ HOTOVO
 
-> ⚠️ Vyžaduje schválení - pravidlo "NEMĚNIT c123-server" v CLAUDE.md
-
-- [ ] 18A.1: Přidat parsování `CourseData` do `XmlDataService.ts`
-- [ ] 18A.2: Přidat REST endpoint `GET /api/xml/courses`
-- [ ] 18A.3: Dokumentovat v `REST-API.md`
-- [ ] 18A.4: Commit v c123-server
+- [x] 18A.1: Přidat parsování `CourseData` do `XmlDataService.ts`
+- [x] 18A.2: Přidat REST endpoint `GET /api/xml/courses`
+- [x] 18A.3: Dokumentovat v `REST-API.md`
 
 ### 18B: Integrace v c123-scoring
 
-- [ ] 18B.1: Přidat helper `createGroupsFromCourseConfig(courseConfig: string)` do `src/types/gateGroups.ts`
-- [ ] 18B.2: Update `useGateGroups` hook - fetch `/api/xml/courses` při změně raceConfig
-- [ ] 18B.3: Vrátit skutečné `segmentGroups` místo prázdného pole
-- [ ] 18B.4: Commit
+- [ ] 18B.1: Přidat API client pro `/api/xml/courses` do `src/services/`
+- [ ] 18B.2: Přidat helper `createSegmentsFromSplits(splits: number[], totalGates: number)` do `src/types/gateGroups.ts`
+- [ ] 18B.3: Update `useGateGroups` hook - fetch courses API a parsovat segmenty
+- [ ] 18B.4: UI pro přepínání mezi "All Gates" / "Segment 1" / "Segment 2" / custom groups
+- [ ] 18B.5: Commit
 
 ### 18C: Verifikace
 
@@ -400,4 +389,4 @@ npx playwright test screenshots-with-data.spec.ts
 
 ---
 
-*Poslední aktualizace: 2026-01-18 (Phase 20 planned)*
+*Poslední aktualizace: 2026-01-18 (Phase 18 unblocked, Phase 20 planned)*
