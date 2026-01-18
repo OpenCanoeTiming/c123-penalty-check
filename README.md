@@ -41,11 +41,7 @@ c123-penalty-check (this app)
 ## Installation
 
 ```bash
-# Install dependencies
 npm install
-
-# Install timing-design-system (local dependency)
-cd ../timing-design-system && npm install && npm run build
 ```
 
 ## Development
@@ -105,27 +101,29 @@ Output is in the `dist/` directory.
 | Key | Action |
 |-----|--------|
 | Arrow keys | Navigate grid cells |
-| Tab / Shift+Tab | Move between rows |
+| Tab / Shift+Tab | Move left/right |
 | Home / End | First / last column |
-| Page Up / Down | Jump 5 rows |
+| Ctrl+Home / End | First / last row |
+| Page Up / Down | Jump 10 rows |
 
 ### Penalty Entry
 | Key | Action |
 |-----|--------|
 | 0 | Clear (0 penalty) |
 | 2 | Touch (2 seconds) |
-| 5 | Missed gate (50 seconds) |
-| Delete / Backspace | Remove penalty |
-| Enter | Confirm |
-| Escape | Cancel |
+| 5 or 50 | Missed gate (50 seconds) |
+| Delete / Backspace | Clear penalty |
+| Enter | Confirm edit |
+| Escape | Cancel edit |
 
 ### Application
 | Key | Action |
 |-----|--------|
+| 0 | Show all gates (when not in cell) |
 | 1-9 | Switch gate groups |
-| 0 | Show all gates |
 | Ctrl+, | Open settings |
 | D | Competitor actions menu |
+| ? or F1 | Show keyboard help |
 
 ## Configuration
 

@@ -2,6 +2,10 @@
 import { defineConfig } from 'vite'
 import react from '@vitejs/plugin-react'
 import { visualizer } from 'rollup-plugin-visualizer'
+import { resolve, dirname } from 'path'
+import { fileURLToPath } from 'url'
+
+const __dirname = dirname(fileURLToPath(import.meta.url))
 
 // https://vite.dev/config/
 export default defineConfig({
@@ -21,6 +25,13 @@ export default defineConfig({
   },
   resolve: {
     dedupe: ['react', 'react-dom'],
+    alias: {
+      // Bypass package exports to access source CSS files directly
+      '@opencanoetiming/timing-design-system/src': resolve(
+        __dirname,
+        'node_modules/@opencanoetiming/timing-design-system/src'
+      ),
+    },
   },
   test: {
     globals: true,

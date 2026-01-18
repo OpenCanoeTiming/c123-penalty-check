@@ -19,7 +19,7 @@
     "mock-server": "tsx tests/mock-ws-server.ts"
   },
   "dependencies": {
-    "@opencanoetiming/timing-design-system": "file:../timing-design-system",
+    "@opencanoetiming/timing-design-system": "github:OpenCanoeTiming/timing-design-system",
     "react": "^19.2.0",
     "react-dom": "^19.2.0"
   },
