@@ -270,16 +270,17 @@ export function Settings({
             {/* Keyboard Tab */}
             <TabPanel tabId="keyboard">
               <div className="settings-section" data-testid="settings-keyboard-content">
-                <h3 className="settings-section-title">Keyboard Shortcuts</h3>
+                <h3 className="settings-section-title">Keyboard &amp; Touch</h3>
 
                 <div className="shortcuts-list">
                   <div className="shortcuts-group">
-                    <h4 className="shortcuts-group-title">Navigation</h4>
-                    <Shortcut keys={['Arrow Keys']} description="Move between cells" />
-                    <Shortcut keys={['Tab']} description="Move to next cell" />
-                    <Shortcut keys={['Shift', 'Tab']} description="Move to previous cell" />
-                    <Shortcut keys={['Home']} description="Go to first gate" />
-                    <Shortcut keys={['End']} description="Go to last gate" />
+                    <h4 className="shortcuts-group-title">Touch / Click</h4>
+                    <Shortcut keys={['1× tap']} description="Select cell" />
+                    <Shortcut keys={['2× tap']} description="Set 0 (clear)" />
+                    <Shortcut keys={['3× tap']} description="Set 2 (touch)" />
+                    <Shortcut keys={['4× tap']} description="Set 50 (missed)" />
+                    <Shortcut keys={['Long press']} description="Open menu" />
+                    <Shortcut keys={['Right-click']} description="Open menu" />
                   </div>
 
                   <div className="shortcuts-group">
@@ -287,21 +288,24 @@ export function Settings({
                     <Shortcut keys={['0']} description="Clear / 0 penalty" />
                     <Shortcut keys={['2']} description="2s touch penalty" />
                     <Shortcut keys={['5']} description="50s missed gate" />
-                    <Shortcut keys={['Delete']} description="Clear penalty" />
-                    <Shortcut keys={['Space']} description="Toggle checked status" />
+                    <Shortcut keys={['Delete']} description="Remove penalty" />
                   </div>
 
                   <div className="shortcuts-group">
-                    <h4 className="shortcuts-group-title">Gate Groups</h4>
-                    <Shortcut keys={['1', '-', '9']} description="Switch to group 1-9" />
-                    <Shortcut keys={['0']} description="Show all gates" />
+                    <h4 className="shortcuts-group-title">Navigation</h4>
+                    <Shortcut keys={['Arrow Keys']} description="Move between cells" />
+                    <Shortcut keys={['Tab']} description="Move to next cell" />
+                    <Shortcut keys={['Shift', 'Tab']} description="Move to previous cell" />
+                    <Shortcut keys={['Home']} description="First gate in row" />
+                    <Shortcut keys={['End']} description="Last gate in row" />
+                    <Shortcut keys={['PageUp']} description="Page up (10 rows)" />
+                    <Shortcut keys={['PageDown']} description="Page down (10 rows)" />
                   </div>
 
                   <div className="shortcuts-group">
                     <h4 className="shortcuts-group-title">General</h4>
                     <Shortcut keys={['Ctrl', ',']} description="Open settings" />
-                    <Shortcut keys={['Escape']} description="Close dialog" />
-                    <Shortcut keys={['?']} description="Show keyboard help" />
+                    <Shortcut keys={['Escape']} description="Close dialog / menu" />
                   </div>
                 </div>
               </div>
