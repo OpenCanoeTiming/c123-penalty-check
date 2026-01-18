@@ -902,6 +902,59 @@ src/components/GateGroupSwitcher/  (celá složka)
 
 ---
 
+## 2026-01-18 - Fáze 18 analýza (BLOKOVÁNO)
+
+### Cíl iterace
+
+Implementovat automatické načítání gate groups ze segmentů trati (fáze 18 z PLAN.md).
+
+### Zjištění
+
+Fáze 18 je **blokována** - vyžaduje změny v c123-server, což je v rozporu s pravidlem v CLAUDE.md.
+
+**Analýza problému:**
+
+1. **XML data obsahují segment info:**
+   - `CourseData.CourseConfig: "NNRNSNNRNSRNNNSRNNNSRRNS"` kde `S` = split boundary
+   - Dokumentováno v `c123-protocol-docs/c123-xml-format.md`
+
+2. **c123-server neparsuje CourseData:**
+   - `XmlDataService.ts` parsuje pouze `Participants`, `Schedule`, `Results`
+   - `CourseData` element je ignorován
+   - REST API nemá endpoint `/api/xml/courses`
+
+3. **TCP stream nemá segment info:**
+   - `RaceConfig` zpráva má `gateConfig: "NNRNNRNRNNNRNNRNRNNRNNRN"` (bez S)
+   - `nrSplits` říká počet splitů, ale ne jejich pozice
+
+4. **c123-scoring je připraven:**
+   - Typy `CourseSegment`, `createGroupsFromSegments()` existují
+   - `useGateGroups` hook má placeholder `parseSegmentsFromConfig()` vracející `[]`
+
+**Závěr:** Bez změny c123-serveru nelze segment data získat.
+
+### Dokončeno
+
+- [x] Analýza struktury dat v c123-server
+- [x] Analýza XML formátu v c123-protocol-docs
+- [x] Aktualizace PLAN.md:
+  - Fáze 18 označena jako BLOKOVÁNO
+  - Přidána explicitní závislost na c123-server změnách
+  - Vytvořena Fáze 19 (E2E test refaktoring) jako alternativa
+
+### Poznámky
+
+**Pro odblokování fáze 18 je potřeba:**
+1. Schválení změn v c123-server (výjimka z pravidla v CLAUDE.md)
+2. Implementace v c123-server:
+   - Parsování `CourseData` v `XmlDataService.ts`
+   - REST endpoint `GET /api/xml/courses`
+3. Až poté implementace v c123-scoring
+
+**Alternativa:** Přeskočit na fázi 19 (E2E testy) která je nezávislá.
+
+---
+
 ## Template pro další záznamy
 
 ```markdown

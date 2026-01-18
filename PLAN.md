@@ -205,4 +205,84 @@ npx playwright test screenshots-with-data.spec.ts
 
 ---
 
-*Poslední aktualizace: 2026-01-17 (Phase 17H)*
+## Fáze 18: Auto-load Gate Groups ze segmentů
+
+**Cíl:** Automaticky načítat gate groups podle segmentů trati z XML dat.
+
+**Status:** ⏸️ BLOKOVÁNO - vyžaduje změny v c123-server
+
+**Problém:**
+- WS zpráva `RaceConfig` posílá `gateConfig` bez `S` (splitů)
+- V XML je `CourseData.CourseConfig: "NNRNSNNRNSRNNNSRNNNSRRNS"` kde `S` = split boundary
+- c123-server **neparsuje** `CourseData` element z XML (viz `XmlDataService.ts`)
+- c123-scoring má připravenou infrastrukturu (`CourseSegment`, `createGroupsFromSegments()`) ale žádná data
+
+**Závislost:** Vyžaduje změny v c123-server:
+1. Přidat parsování `CourseData` do `XmlDataService.ts`
+2. Vystavit nový REST endpoint `/api/xml/courses`
+3. Nebo: rozšířit `RaceConfig` WS zprávu o segment info
+
+**Reference:**
+- c123-protocol-docs/c123-xml-format.md - sekce "CourseData (Course Configuration)"
+- c123-server/src/service/XmlDataService.ts - parsuje pouze Participants, Schedule, Results
+
+---
+
+### 18A: Změny v c123-server (PRVNÍ)
+
+> ⚠️ Vyžaduje schválení - pravidlo "NEMĚNIT c123-server" v CLAUDE.md
+
+- [ ] 18A.1: Přidat parsování `CourseData` do `XmlDataService.ts`
+- [ ] 18A.2: Přidat REST endpoint `GET /api/xml/courses`
+- [ ] 18A.3: Dokumentovat v `REST-API.md`
+- [ ] 18A.4: Commit v c123-server
+
+### 18B: Integrace v c123-scoring
+
+- [ ] 18B.1: Přidat helper `createGroupsFromCourseConfig(courseConfig: string)` do `src/types/gateGroups.ts`
+- [ ] 18B.2: Update `useGateGroups` hook - fetch `/api/xml/courses` při změně raceConfig
+- [ ] 18B.3: Vrátit skutečné `segmentGroups` místo prázdného pole
+- [ ] 18B.4: Commit
+
+### 18C: Verifikace
+
+- [ ] 18C.1: Otestovat s reálným XML (CourseData se segmenty)
+- [ ] 18C.2: Zkontrolovat že custom groups mají přednost před segmenty
+- [ ] 18C.3: Screenshoty (poznámka: replay nemá CourseData, segmenty nebudou vidět)
+
+---
+
+## Fáze 19: Screenshoty a E2E test refaktoring
+
+**Cíl:** Aktualizovat E2E testy a screenshoty po redesignu UI.
+
+**Status:** 📋 PŘIPRAVENO
+
+**Problém:**
+- E2E testy v `tests/` používají zastaralé selektory (`.gate-cell`, `.competitor-row`)
+- Po redesignu headeru a gridu jsou testy nepoužitelné
+- Screenshoty neodpovídají aktuálnímu UI
+
+---
+
+### 19A: E2E test audit
+
+- [ ] 19A.1: Projít `tests/screenshots-static.spec.ts` a aktualizovat selektory
+- [ ] 19A.2: Projít `tests/screenshots-with-data.spec.ts` a aktualizovat selektory
+- [ ] 19A.3: Aktualizovat `tests/fixtures/mock-data.ts` pokud potřeba
+
+### 19B: Screenshot regenerace
+
+- [ ] 19B.1: Spustit `./scripts/take-screenshots.sh`
+- [ ] 19B.2: Zkontrolovat výstupy v `docs/screenshots/`
+- [ ] 19B.3: Přidat tablet screenshoty (`18-tablet-landscape.png`, `19-tablet-portrait.png`)
+- [ ] 19B.4: Aktualizovat `README.md` s novými screenshoty
+
+### 19C: CI/CD update
+
+- [ ] 19C.1: Ověřit že `.github/workflows/ci.yml` funguje s aktualizovanými testy
+- [ ] 19C.2: Commit
+
+---
+
+*Poslední aktualizace: 2026-01-18 (Phase 18 blocked, Phase 19 prepared)*
