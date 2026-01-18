@@ -16,6 +16,7 @@ import {
   useKeyboardInput,
 } from '../../hooks'
 import { parseResultsGatesWithConfig } from '../../utils/gates'
+import { formatTimeAsSeconds } from '../../utils/time'
 import { isGateInGroup } from '../../types/gateGroups'
 import { PenaltyCell } from './PenaltyCell'
 import { GateGroupIndicatorRow } from './GateGroupIndicatorRow'
@@ -270,6 +271,7 @@ export function ResultsGrid({
       aria-label="Results grid"
       aria-activedescendant={activeCellId ?? undefined}
       tabIndex={0}
+      autoFocus
       onKeyDown={handleKeyDown}
       style={gridStyle}
     >
@@ -367,7 +369,7 @@ export function ResultsGrid({
                   </TableCell>
                 )}
                 <TableCell numeric className="col-time">
-                  {hasStatus ? '-' : `${row.time}s`}
+                  {hasStatus ? '-' : `${formatTimeAsSeconds(row.time)}s`}
                 </TableCell>
                 <TableCell numeric className="col-pen">
                   {!hasStatus && row.pen > 0 ? `+${row.pen}` : ''}

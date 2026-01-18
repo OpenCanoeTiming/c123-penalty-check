@@ -51,6 +51,7 @@ export function Header({
           onClick={onOpenSettings}
           aria-label="Settings"
           title="Settings (Ctrl+,)"
+          style={{ fontSize: '1.25rem' }}
         >
           ⚙
         </Button>
