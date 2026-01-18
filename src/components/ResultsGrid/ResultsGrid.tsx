@@ -304,7 +304,6 @@ export function ResultsGrid({
         <table>
           <thead>
             <tr>
-              <th className={styles.colPos}>#</th>
               <th className={styles.colBib}>Bib</th>
               <th className={styles.colName}>Name</th>
               <th className={styles.colTime}>Time</th>
@@ -357,9 +356,6 @@ export function ResultsGrid({
 
               return (
                 <tr key={row.bib} className={rowClasses || undefined}>
-                  <td className={styles.colPos}>
-                    {row.startOrder ?? rowIndex + 1}
-                  </td>
                   <td className={styles.colBib}>{row.bib}</td>
                   <td className={styles.colName}>{row.name}</td>
                   <td className={`${styles.colTime} ${isDisabled ? styles.colStatus : ''}`}>
@@ -373,7 +369,7 @@ export function ResultsGrid({
             })}
             {/* Spacer row for scrollbar */}
             <tr className={styles.scrollbarSpacerRow}>
-              <td colSpan={5} />
+              <td colSpan={4} />
             </tr>
           </tbody>
         </table>
