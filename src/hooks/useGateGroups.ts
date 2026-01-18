@@ -24,8 +24,6 @@ export interface UseGateGroupsOptions {
   raceConfig?: C123RaceConfigData | null
   /** Race ID for localStorage key scoping */
   raceId?: string | null
-  /** Course number for segment loading (default: 1) */
-  courseNr?: number
   /** localStorage key prefix */
   storageKeyPrefix?: string
 }
@@ -135,7 +133,6 @@ export function useGateGroups(options: UseGateGroupsOptions = {}): UseGateGroups
   const {
     raceConfig = null,
     raceId = null,
-    courseNr = 1,
     storageKeyPrefix = 'c123-scoring-gate-groups',
   } = options
 
@@ -183,11 +180,17 @@ export function useGateGroups(options: UseGateGroupsOptions = {}): UseGateGroups
   // Total gates from race config
   const totalGates = raceConfig?.nrGates ?? 0
 
-  // Find the selected course
-  const selectedCourse = useMemo(
-    () => courses.find((c) => c.courseNr === courseNr),
-    [courses, courseNr]
-  )
+  // Find the matching course by comparing gateConfig
+  // courseConfig from XML includes S markers for splits (e.g., "NNRNSNRNS...")
+  // gateConfig from RaceConfig does NOT include S markers
+  // So we compare by removing S markers from courseConfig
+  const selectedCourse = useMemo(() => {
+    if (!raceConfig?.gateConfig || courses.length === 0) {
+      return undefined
+    }
+    // Remove S markers from courseConfig and compare with gateConfig
+    return courses.find((c) => c.courseConfig.replace(/S/g, '') === raceConfig.gateConfig)
+  }, [courses, raceConfig?.gateConfig])
 
   // Create segments from course splits
   const segments = useMemo(

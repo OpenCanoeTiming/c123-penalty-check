@@ -13,9 +13,10 @@
 | 17F | UX Polish (Tablet) | ✅ Hotovo |
 | 17G | UX Polish (Screenshots) | ✅ Hotovo |
 | 17H | UX Polish (Settings) | ✅ Hotovo |
-| 18 | Auto-load Gate Groups | 🟢 Hotovo (18B) |
+| 18 | Auto-load Gate Groups | ✅ Hotovo |
 | 19 | E2E Test Refaktoring | ✅ Hotovo |
 | 20 | Bug fixes a UX připomínky | ✅ Hotovo |
+| 21 | Schedule WebSocket issue | 🔴 Blokuje |
 
 ---
 
@@ -212,13 +213,14 @@ npx playwright test screenshots-with-data.spec.ts
 
 **Cíl:** Automaticky načítat gate groups podle segmentů trati z XML dat.
 
-**Status:** 🟡 Připraveno k implementaci
+**Status:** ✅ Hotovo (logika ověřena)
 
 **Stav:**
 - ✅ c123-server má endpoint `GET /api/xml/courses`
 - ✅ Vrací `{ courses: [{ courseNr, courseConfig, splits: [5, 9, 14...] }] }`
 - ✅ c123-scoring má připravenou infrastrukturu (`CourseSegment`, `createGroupsFromSegments()`)
-- 🔴 Chybí propojení - `parseSegmentsFromConfig()` vrací prázdné pole
+- ✅ Course matching funguje (porovnání gateConfig bez S značek)
+- ✅ Segmenty se generují správně
 
 ---
 
@@ -235,12 +237,23 @@ npx playwright test screenshots-with-data.spec.ts
 - [x] 18B.3: Update `useGateGroups` hook - fetch courses API a parsovat segmenty
 - [x] 18B.4: UI pro přepínání mezi "All Gates" / "Segment 1" / "Segment 2" / custom groups
 - [x] 18B.5: Commit
+- [x] 18B.6: Oprava: Course matching přes `gateConfig` místo `courseNr` (2026-01-18)
+  - RaceConfig.gateConfig neobsahuje S značky
+  - CourseData.courseConfig obsahuje S značky
+  - Matching: `courseConfig.replace(/S/g, '') === gateConfig`
 
-### 18C: Verifikace
+### 18C: Verifikace ✅
 
-- [ ] 18C.1: Otestovat s reálným XML (CourseData se segmenty)
-- [ ] 18C.2: Zkontrolovat že custom groups mají přednost před segmenty
-- [ ] 18C.3: Screenshoty (poznámka: replay nemá CourseData, segmenty nebudou vidět)
+- [x] 18C.1: Otestovat s reálným serverem (192.168.68.108:27123)
+  - ✅ Courses API vrací 4 kurzy se splits
+  - ✅ Course matching funguje (Course 1 pro aktuální závod)
+  - ✅ Generuje 6 segmentů pro 24 branek (správně ořezáno z 8)
+- [x] 18C.2: Custom groups mají přednost (design - custom groups jsou v localStorage)
+- [ ] 18C.3: Screenshoty - BLOKOVÁNO: server neposílá Schedule přes WebSocket
+
+**Známý problém:** c123-server neposílá Schedule zprávu přes WebSocket automaticky,
+proto aplikace zobrazuje "No active races". Segmenty fungují, ale nejde je vidět v UI
+dokud se nevyřeší Schedule issue (viz fáze 21).
 
 ---
 
@@ -402,4 +415,36 @@ npx playwright test screenshots-with-data.spec.ts
 
 ---
 
-*Poslední aktualizace: 2026-01-18 (Phase 20G: added theme toggle to Settings)*
+## Fáze 21: Schedule WebSocket issue
+
+**Cíl:** Zajistit že aplikace zobrazí aktivní závody.
+
+**Status:** 🔴 Blokuje UI testování
+
+**Problém:**
+c123-server neposílá Schedule zprávu přes WebSocket automaticky po připojení.
+Scoring aplikace proto zobrazuje "No active races" i když server má aktivní závod.
+
+**Zjištění (2026-01-18):**
+- Server posílá: Connected, TimeOfDay, RaceConfig, OnCourse
+- Server NEPOSÍLÁ: Schedule
+- Schedule data JSOU dostupná přes REST API (`/api/xml/schedule`)
+
+### Možná řešení
+
+**A) Oprava v c123-server (preferované)**
+- [ ] 21A.1: Přidat posílání Schedule zprávy při připojení klienta
+- [ ] 21A.2: Posílat Schedule při změně (nový závod začne/skončí)
+
+**B) Fallback v c123-scoring**
+- [ ] 21B.1: Fetchovat Schedule z REST API pokud nepřijde přes WebSocket
+- [ ] 21B.2: Pollovat periodicky nebo při chybějící Schedule
+
+### Poznámky
+- Toto je bug v c123-server, ne v segmentech
+- Segmenty fungují správně (ověřeno unit testem)
+- UI nelze plně otestovat dokud se nevyřeší Schedule
+
+---
+
+*Poslední aktualizace: 2026-01-18 (Phase 18C: verified segments, found Schedule issue)*
