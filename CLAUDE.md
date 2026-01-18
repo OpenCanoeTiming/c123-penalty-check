@@ -1,10 +1,10 @@
-# Claude Code Instructions - C123 Scoring
+# Claude Code Instructions - C123 Penalty Check
 
 ## Projekt
 
-C123 Scoring - webová aplikace pro kontrolu, korekci a zadávání penalizací slalomových závodů měřených v Canoe123.
+C123 Penalty Check - webová aplikace pro kontrolu a korekci penalizací slalomových závodů měřených v Canoe123.
 
-**GitHub:** OpenCanoeTiming/c123-scoring | **Licence:** MIT
+**GitHub:** OpenCanoeTiming/c123-penalty-check | **Licence:** MIT
 
 ---
 
@@ -13,7 +13,7 @@ C123 Scoring - webová aplikace pro kontrolu, korekci a zadávání penalizací 
 1. **NEMĚNIT c123-server** - Server je stabilní, změny jen po explicitním schválení.
 
 2. **Povolené projekty pro úpravy:**
-   - `c123-scoring` (tento projekt) - hlavní práce
+   - `c123-penalty-check` (tento projekt) - hlavní práce
    - `c123-protocol-docs/tools/` - pomocné nástroje (replay-server, recorder)
 
 3. **Pouze pro čtení:**
@@ -27,7 +27,7 @@ C123 Scoring - webová aplikace pro kontrolu, korekci a zadávání penalizací 
 
 ```
 ┌─────────────────────────────────────────────────────────────┐
-│                    c123-scoring (FE)                        │
+│                  c123-penalty-check (FE)                    │
 │                      React + TypeScript                     │
 └─────────────────────────┬───────────────────────────────────┘
                           │
@@ -51,7 +51,7 @@ C123 Scoring - webová aplikace pro kontrolu, korekci a zadávání penalizací 
 └─────────────────────────────────────────────────────────────┘
 ```
 
-**Klíčový princip:** c123-scoring komunikuje výhradně s c123-server, nikdy přímo s C123.
+**Klíčový princip:** c123-penalty-check komunikuje výhradně s c123-server, nikdy přímo s C123.
 
 ---
 
@@ -59,7 +59,7 @@ C123 Scoring - webová aplikace pro kontrolu, korekci a zadávání penalizací 
 
 | Účel | Cesta |
 |------|-------|
-| **Tento projekt** | `/workspace/timing/c123-scoring/` |
+| **Tento projekt** | `/workspace/timing/c123-penalty-check/` |
 | **Projektový záměr** | `./PROJECT.md` |
 | **C123 Server** | `../c123-server/` |
 | **Design system** | `../timing-design-system/` |
@@ -130,7 +130,7 @@ POST /api/c123/timing
 ## Struktura projektu (plánovaná)
 
 ```
-c123-scoring/
+c123-penalty-check/
 ├── src/
 │   ├── index.tsx             # Entry point
 │   ├── App.tsx               # Hlavní komponenta

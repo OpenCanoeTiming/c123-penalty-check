@@ -1,10 +1,10 @@
-# C123 Scoring
+# C123 Penalty Check
 
-Web application for penalty entry and protocol verification in canoe slalom timing with Canoe123 system.
+Web application for penalty verification and correction in canoe slalom timing with Canoe123 system.
 
 ## Overview
 
-C123 Scoring is a React-based web application designed for ergonomic penalty entry during canoe slalom competitions. It connects to c123-server which bridges communication with the Canoe123 timing system.
+C123 Penalty Check is a React-based web application designed for ergonomic penalty verification during canoe slalom competitions. It connects to c123-server which bridges communication with the Canoe123 timing system.
 
 ### Key Features
 
@@ -17,7 +17,7 @@ C123 Scoring is a React-based web application designed for ergonomic penalty ent
 ## Architecture
 
 ```
-c123-scoring (this app)
+c123-penalty-check (this app)
     │
     ├─► WebSocket ws://server:27123/ws  (real-time data)
     │     - OnCourse, Results, RaceConfig, Schedule
@@ -60,8 +60,8 @@ The app runs at `http://localhost:5173` by default.
 cd ../c123-server
 npm start
 
-# Terminal 2: Start c123-scoring
-cd ../c123-scoring
+# Terminal 2: Start c123-penalty-check
+cd ../c123-penalty-check
 npm run dev
 ```
 

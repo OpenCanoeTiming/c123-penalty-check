@@ -180,7 +180,7 @@ function App() {
         <div className="footer-content">
           {/* Left: Version and pending writes */}
           <span className="footer-version">
-            C123 Scoring v1.1.0 &bull; Open Canoe Timing
+            C123 Penalty Check v1.1.0 &bull; Open Canoe Timing
             {pendingCount > 0 && (
               <span className="pending-writes" title={`${pendingCount} pending write${pendingCount > 1 ? 's' : ''}`}>
                 <span className="loading-spinner" aria-hidden="true" />

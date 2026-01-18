@@ -1,6 +1,6 @@
-# C123-SCORING - Projektový záměr
+# C123-PENALTY-CHECK - Projektový záměr
 
-Webová aplikace s vysoce optimalizovaným UX pro kontrolu, korekci a zadávání penalizací slalomových závodů měřených v systému Canoe123.
+Webová aplikace s vysoce optimalizovaným UX pro kontrolu a korekci penalizací slalomových závodů měřených v systému Canoe123.
 
 ## Motivace
 
@@ -19,7 +19,7 @@ Reimplementace stávajícího C123 terminálu. Důvody:
 Aplikace běží jako **čistě frontendové řešení** (React + TypeScript) a komunikuje s **c123-server** jako backendem:
 
 ```
-c123-scoring (tento projekt)
+c123-penalty-check (tento projekt)
     │
     ├─► WebSocket ws://server:27123/ws  (čtení real-time dat)
     │     - OnCourse, Results, RaceConfig, Schedule
@@ -134,7 +134,7 @@ POST /api/c123/timing
 
 ## Odlišnosti od scoreboardu
 
-| Aspekt | c123-scoreboard | c123-scoring |
+| Aspekt | c123-scoreboard | c123-penalty-check |
 |--------|-----------------|--------------|
 | Účel | Zobrazení výsledků | Zadávání penalizací |
 | Směr dat | Pouze čtení | Čtení + zápis |
