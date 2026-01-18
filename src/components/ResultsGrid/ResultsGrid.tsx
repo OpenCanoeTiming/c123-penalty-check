@@ -1,107 +1,89 @@
-import { useRef, useEffect, useCallback, useMemo, type CSSProperties } from 'react'
-import {
-  Table,
-  TableHead,
-  TableBody,
-  TableRow,
-  TableCell,
-  TableHeaderCell,
-  Badge,
-} from '@opencanoetiming/timing-design-system/react'
+/**
+ * ResultsGrid - 4-quadrant layout with synced scrolling
+ *
+ * Layout:
+ * +------------------------+------------------------+
+ * | CORNER (fixed)         | COL HEADERS (h-sync)   |
+ * | #, Bib, Name, Time, Pen| Gate numbers           |
+ * +------------------------+------------------------+
+ * | ROW HEADERS (v-sync)   | CONTENT (scrolls)      |
+ * | Competitor info        | Penalty cells          |
+ * +------------------------+------------------------+
+ */
+
+import { useRef, useEffect, useCallback, useMemo, type UIEvent } from 'react'
 import type { C123ResultRow, C123RaceConfigData } from '../../types/c123server'
 import type { GateGroup, ResultsSortOption } from '../../types/ui'
 import type { PenaltyValue } from '../../types/scoring'
-import {
-  useFocusNavigation,
-  useKeyboardInput,
-} from '../../hooks'
-import { parseResultsGatesWithConfig } from '../../utils/gates'
-import { formatTimeAsSeconds } from '../../utils/time'
-import { isGateInGroup } from '../../types/gateGroups'
-import { PenaltyCell } from './PenaltyCell'
-import { GateGroupIndicatorRow } from './GateGroupIndicatorRow'
-import './ResultsGrid.css'
+import { useFocusNavigation } from '../../hooks/useFocusNavigation'
+import { useKeyboardInput } from '../../hooks/useKeyboardInput'
+import { parseResultsGatesString } from '../../utils/gates'
+import styles from './ResultsGrid.module.css'
 
-export interface ResultsGridProps {
+interface ResultsGridProps {
   rows: C123ResultRow[]
   raceConfig: C123RaceConfigData | null
-  /** Race ID for penalty corrections (required for finished competitors) */
-  raceId?: string | null
-  /** Active gate group for filtering (null = all gates) */
-  activeGateGroup?: GateGroup | null
-  /** All available gate groups for detecting group boundaries */
-  allGateGroups?: GateGroup[]
-  /** Sort order for competitors */
-  sortBy?: ResultsSortOption
-  /** Show start time column */
+  raceId: string | null
+  activeGateGroup: GateGroup | null
+  allGateGroups: GateGroup[]
+  sortBy: ResultsSortOption
   showStartTime?: boolean
-  /** Callback when a gate group is selected */
   onGroupSelect?: (groupId: string | null) => void
-  /** Callback when a penalty is submitted */
-  onPenaltySubmit?: (bib: string, gate: number, value: PenaltyValue, raceId?: string) => void
+  onPenaltySubmit: (bib: string, gate: number, value: PenaltyValue, raceId?: string) => void
+}
+
+// Format time - display in seconds only
+function formatTime(seconds: number | null | undefined): string {
+  if (seconds == null) return ''
+  return `${seconds.toFixed(2)}s`
+}
+
+// Calculate and format penalty total from gates string
+function calculatePenaltyFromGates(gates: string): string {
+  const penalties = parseResultsGatesString(gates)
+  const total = penalties.reduce<number>((sum, p) => sum + (p ?? 0), 0)
+  if (total === 0) return ''
+  return `+${total}`
 }
 
 export function ResultsGrid({
   rows,
   raceConfig,
   raceId,
-  activeGateGroup = null,
-  allGateGroups = [],
-  sortBy = 'rank',
-  showStartTime = false,
+  activeGateGroup,
+  allGateGroups,
+  sortBy,
   onGroupSelect,
+  // showStartTime = false, // TODO: implement
   onPenaltySubmit,
 }: ResultsGridProps) {
-  const gridRef = useRef<HTMLDivElement>(null)
-  const focusedCellRef = useRef<HTMLTableCellElement>(null)
+  // Refs for scroll sync
+  const groupsHeaderRef = useRef<HTMLDivElement>(null)
+  const colHeadersRef = useRef<HTMLDivElement>(null)
+  const rowHeadersRef = useRef<HTMLDivElement>(null)
+  const contentRef = useRef<HTMLDivElement>(null)
 
-  // Sort rows based on sortBy option
-  // DNS/DNF/DSQ always go to bottom
-  const sortedRows = useMemo(() => {
-    const validRows = rows.filter((r) => !r.status)
-    const invalidRows = rows.filter((r) => r.status)
+  // Filter gate groups (exclude 'all' group)
+  const customGroups = useMemo(() =>
+    allGateGroups.filter((g) => g.id !== 'all' && g.gates.length > 0),
+    [allGateGroups]
+  )
 
-    // Sort valid rows based on sortBy
-    const sortedValid = [...validRows].sort((a, b) => {
-      switch (sortBy) {
-        case 'startOrder':
-          return a.startOrder - b.startOrder
-        case 'bib':
-          return parseInt(a.bib, 10) - parseInt(b.bib, 10)
-        case 'rank':
-        default:
-          return a.rank - b.rank
-      }
-    })
-
-    // Invalid rows always sorted by startOrder
-    const sortedInvalid = [...invalidRows].sort((a, b) => a.startOrder - b.startOrder)
-
-    return [...sortedValid, ...sortedInvalid]
-  }, [rows, sortBy])
-
+  // Race config
   const nrGates = raceConfig?.nrGates ?? 0
   const gateConfig = raceConfig?.gateConfig ?? ''
 
-  // Filter gate indices based on active group
+  // Visible gates (filtered by active group)
   const visibleGateIndices = useMemo(() => {
-    const allIndices = Array.from({ length: nrGates }, (_, i) => i)
     if (!activeGateGroup || activeGateGroup.gates.length === 0) {
-      return allIndices
+      return Array.from({ length: nrGates }, (_, i) => i)
     }
-    return allIndices.filter((i) => isGateInGroup(i + 1, activeGateGroup))
-  }, [nrGates, activeGateGroup])
-
-  // Create a mapping from visible column index to actual gate index
-  const visibleColumnToGate = useMemo(() => {
-    return visibleGateIndices.map((i) => i + 1)
-  }, [visibleGateIndices])
+    return activeGateGroup.gates.map((g) => g - 1).filter((i) => i >= 0 && i < nrGates)
+  }, [activeGateGroup, nrGates])
 
   // Detect group boundaries for visual separators
   const groupBoundaries = useMemo(() => {
     const boundaries = new Set<number>()
-    const customGroups = allGateGroups.filter((g) => g.gates.length > 0)
-
     if (customGroups.length === 0) return boundaries
 
     for (let i = 0; i < visibleGateIndices.length - 1; i++) {
@@ -119,295 +101,316 @@ export function ResultsGrid({
     }
 
     return boundaries
-  }, [visibleGateIndices, allGateGroups])
+  }, [visibleGateIndices, customGroups])
 
-  // Focus navigation uses visible columns
+  // Sort rows
+  const sortedRows = useMemo(() => {
+    const sorted = [...rows]
+    switch (sortBy) {
+      case 'startOrder':
+        sorted.sort((a, b) => (a.startOrder ?? 999) - (b.startOrder ?? 999))
+        break
+      case 'bib':
+        sorted.sort((a, b) => parseInt(a.bib) - parseInt(b.bib))
+        break
+      case 'rank':
+      default:
+        sorted.sort((a, b) => (a.rank ?? 999) - (b.rank ?? 999))
+        break
+    }
+    return sorted
+  }, [rows, sortBy])
+
+  // Focus navigation
   const {
     position,
     setPosition,
     handleKeyDown: handleNavKeyDown,
-    isFocused,
-    getCellId,
-    activeCellId,
   } = useFocusNavigation({
     rowCount: sortedRows.length,
     columnCount: visibleGateIndices.length,
   })
 
-  // Get current competitor and gate info for keyboard input
-  const currentRow = sortedRows[position.row]
-  const currentGate = visibleColumnToGate[position.column] ?? 1
-
   // Keyboard input for penalty values
-  const { pendingValue, clearPendingValue, handleKeyDown: handleInputKeyDown } = useKeyboardInput({
-    enabled: sortedRows.length > 0 && nrGates > 0,
-    onPenaltyInput: (value) => {
-      if (!currentRow || !onPenaltySubmit) return
-      onPenaltySubmit(currentRow.bib, currentGate, value, raceId ?? undefined)
+  const { handleKeyDown: handleInputKeyDown } = useKeyboardInput({
+    onPenaltyInput: (value: PenaltyValue) => {
+      const row = sortedRows[position.row]
+      if (!row) return
+      const gateIndex = visibleGateIndices[position.column]
+      const gate = gateIndex + 1
+      onPenaltySubmit(row.bib, gate, value, raceId ?? undefined)
     },
     onClear: () => {
-      if (!currentRow || !onPenaltySubmit) return
-      // Delete key sends null to delete the penalty
-      onPenaltySubmit(currentRow.bib, currentGate, null, raceId ?? undefined)
+      const row = sortedRows[position.row]
+      if (!row) return
+      const gateIndex = visibleGateIndices[position.column]
+      const gate = gateIndex + 1
+      onPenaltySubmit(row.bib, gate, null, raceId ?? undefined)
     },
   })
 
-  // Clear pending value when position changes
-  useEffect(() => {
-    clearPendingValue()
-  }, [position.row, position.column, clearPendingValue])
-
   // Combined keyboard handler
   const handleKeyDown = useCallback(
-    (event: React.KeyboardEvent) => {
-      // Prevent Space from scrolling
-      if (event.key === ' ') {
-        event.preventDefault()
-        return
+    (e: React.KeyboardEvent) => {
+      const inputHandled = handleInputKeyDown(e)
+      if (!inputHandled) {
+        handleNavKeyDown(e)
       }
-
-      if (handleInputKeyDown(event)) return
-      handleNavKeyDown(event)
     },
     [handleInputKeyDown, handleNavKeyDown]
   )
 
-  // Scroll focused cell into view (respecting sticky areas)
-  useEffect(() => {
-    const container = gridRef.current
-    if (!container) return
+  // Scroll sync
+  const handleContentScroll = useCallback((e: UIEvent<HTMLDivElement>) => {
+    const target = e.target as HTMLDivElement
+    if (groupsHeaderRef.current) {
+      groupsHeaderRef.current.scrollLeft = target.scrollLeft
+    }
+    if (colHeadersRef.current) {
+      colHeadersRef.current.scrollLeft = target.scrollLeft
+    }
+    if (rowHeadersRef.current) {
+      rowHeadersRef.current.scrollTop = target.scrollTop
+    }
+  }, [])
 
-    // Find focused cell by class (more reliable than ref timing)
-    const cell = container.querySelector('.penalty-cell--focused') as HTMLElement
+  // Scroll focused cell into view
+  useEffect(() => {
+    const content = contentRef.current
+    if (!content) return
+
+    const cell = content.querySelector(`.${styles.penaltyCellFocused}`) as HTMLElement
     if (!cell) return
 
-    // Get dimensions
     const cellRect = cell.getBoundingClientRect()
-    const containerRect = container.getBoundingClientRect()
+    const contentRect = content.getBoundingClientRect()
 
-    // Calculate sticky areas
-    const penCol = container.querySelector('tbody .col-pen') as HTMLElement
-    const thead = container.querySelector('thead') as HTMLElement
-    const stickyLeft = penCol ? penCol.getBoundingClientRect().right - containerRect.left : 350
-    const stickyTop = thead ? thead.getBoundingClientRect().height : 44
-
-    // Visible area (excluding sticky regions and scrollbars)
-    const visibleLeft = containerRect.left + stickyLeft
-    const visibleTop = containerRect.top + stickyTop
-    const visibleRight = containerRect.right - 14
-    const visibleBottom = containerRect.bottom - 14
-
-    // Calculate needed scroll
     let scrollX = 0
     let scrollY = 0
 
-    if (cellRect.left < visibleLeft) {
-      scrollX = cellRect.left - visibleLeft - 4
-    } else if (cellRect.right > visibleRight) {
-      scrollX = cellRect.right - visibleRight + 4
+    if (cellRect.left < contentRect.left) {
+      scrollX = cellRect.left - contentRect.left - 4
+    } else if (cellRect.right > contentRect.right - 14) {
+      scrollX = cellRect.right - contentRect.right + 18
     }
 
-    if (cellRect.top < visibleTop) {
-      scrollY = cellRect.top - visibleTop - 4
-    } else if (cellRect.bottom > visibleBottom) {
-      scrollY = cellRect.bottom - visibleBottom + 4
+    if (cellRect.top < contentRect.top) {
+      scrollY = cellRect.top - contentRect.top - 4
+    } else if (cellRect.bottom > contentRect.bottom - 14) {
+      scrollY = cellRect.bottom - contentRect.bottom + 18
     }
 
-    // Scroll
     if (scrollX !== 0 || scrollY !== 0) {
-      container.scrollBy({ left: scrollX, top: scrollY, behavior: 'auto' })
+      content.scrollBy({ left: scrollX, top: scrollY, behavior: 'auto' })
     }
   }, [position])
 
-  // Auto-focus grid when data loads (so arrow keys work immediately)
+  // Auto-focus
   useEffect(() => {
-    if (sortedRows.length > 0 && gridRef.current) {
-      // Small delay to ensure DOM is ready
-      const timeout = setTimeout(() => {
-        gridRef.current?.focus()
-      }, 100)
-      return () => clearTimeout(timeout)
+    if (sortedRows.length > 0) {
+      contentRef.current?.focus()
     }
-  }, [sortedRows.length > 0]) // Only trigger when data first appears
+  }, [sortedRows.length > 0])
+
+  // Get penalty value for display
+  const getPenaltyDisplay = (row: C123ResultRow, gateIndex: number): { value: string; className: string } => {
+    const penalties = parseResultsGatesString(row.gates)
+    const pen = penalties[gateIndex]
+    const isReverse = gateConfig[gateIndex] === 'R'
+
+    let className = styles.penaltyCell
+    let value = ''
+
+    if (pen === 0) {
+      className += ` ${styles.penaltyClear}`
+      value = '0'
+    } else if (pen === 2) {
+      className += ` ${styles.penaltyTouch}`
+      value = '2'
+    } else if (pen === 50) {
+      className += ` ${styles.penaltyMiss}`
+      value = '50'
+    } else {
+      className += ` ${styles.penaltyEmpty}`
+    }
+
+    if (isReverse) {
+      className += ` ${styles.penaltyReverse}`
+    }
+
+    return { value, className }
+  }
 
   // Handle cell click
-  const handleCellClick = useCallback(
-    (rowIndex: number, columnIndex: number) => {
-      setPosition({ row: rowIndex, column: columnIndex })
-      gridRef.current?.focus()
-    },
-    [setPosition]
-  )
+  const handleCellClick = useCallback((rowIndex: number, colIndex: number) => {
+    setPosition({ row: rowIndex, column: colIndex })
+    contentRef.current?.focus()
+  }, [setPosition])
 
-  // Map status to badge variant
-  const getStatusVariant = (status: string): 'error' | 'warning' | 'neutral' => {
-    if (status === 'DSQ') return 'error'
-    if (status === 'DNF') return 'warning'
-    return 'neutral'
+  if (sortedRows.length === 0 || nrGates === 0) {
+    return <div className={styles.gridContainer}>No data</div>
   }
 
-  // Calculate focused column for CSS highlighting
-  const focusedColumn = position.column
-
-  // CSS custom properties for column highlighting
-  const gridStyle: CSSProperties = {
-    '--focus-column': focusedColumn,
-    '--focus-row': position.row,
-  } as CSSProperties
-
-  if (sortedRows.length === 0) {
-    return (
-      <div className="results-grid results-grid--empty">
-        <p>No results available</p>
-      </div>
-    )
-  }
+  // Handle group click
+  const handleGroupClick = useCallback((groupId: string) => {
+    if (!onGroupSelect) return
+    if (activeGateGroup?.id === groupId) {
+      onGroupSelect(null) // Deselect
+    } else {
+      onGroupSelect(groupId)
+    }
+  }, [onGroupSelect, activeGateGroup])
 
   return (
     <div
-      ref={gridRef}
-      className="results-grid"
-      role="grid"
-      aria-label="Results grid"
-      aria-activedescendant={activeCellId ?? undefined}
-      tabIndex={0}
-      autoFocus
+      className={styles.gridContainer}
       onKeyDown={handleKeyDown}
-      style={gridStyle}
+      tabIndex={0}
     >
-      <Table striped hover>
-        <TableHead>
-          {/* Gate group indicator row */}
-          {onGroupSelect && (
-            <GateGroupIndicatorRow
-              groups={allGateGroups}
-              totalGates={nrGates}
-              activeGroupId={activeGateGroup?.id ?? null}
-              onGroupClick={onGroupSelect}
-              fixedColumnsCount={showStartTime ? 6 : 5}
-              visibleGateIndices={visibleGateIndices}
-            />
-          )}
-          <TableRow>
-            <TableHeaderCell numeric className="col-pos">
-              #
-            </TableHeaderCell>
-            <TableHeaderCell numeric className="col-bib">
-              Bib
-            </TableHeaderCell>
-            <TableHeaderCell className="col-name">Name</TableHeaderCell>
-            {showStartTime && (
-              <TableHeaderCell numeric className="col-start-time">
-                Start
-              </TableHeaderCell>
-            )}
-            <TableHeaderCell numeric className="col-time">
-              Time
-            </TableHeaderCell>
-            <TableHeaderCell numeric className="col-pen">
-              Pen
-            </TableHeaderCell>
-            {visibleGateIndices.map((gateIndex, visibleColIndex) => {
-              const gateNum = gateIndex + 1
-              const gateType = gateConfig[gateIndex] ?? 'N'
-              const isFocusedCol = focusedColumn === visibleColIndex
-              const hasActiveGroup = !!(activeGateGroup && activeGateGroup.gates.length > 0)
-              const isInActiveGroup = hasActiveGroup && activeGateGroup!.gates.includes(gateNum)
-              const isDimmed = hasActiveGroup && !isInActiveGroup
-              const headerClasses = [
-                gateType === 'R' && 'gate-header--reverse',
-                isFocusedCol && 'gate-header--focus',
-                isInActiveGroup && 'gate-header--in-group',
-                isDimmed && 'gate-header--dimmed',
-              ]
-                .filter(Boolean)
-                .join(' ')
+      {/* GATE GROUPS - Row 1 (always render for consistent grid) */}
+      <div className={styles.groupsCorner} />
+      <div className={styles.groupsHeader} ref={groupsHeaderRef}>
+        {customGroups.length > 0 && visibleGateIndices.map((gateIndex) => {
+          const gateNum = gateIndex + 1
+          const group = customGroups.find((g) => g.gates.includes(gateNum))
+          const isFirstInGroup = group && group.gates[0] === gateNum
+          const isActive = group && activeGateGroup?.id === group.id
+
+          if (isFirstInGroup) {
+            return (
+              <button
+                key={gateIndex}
+                className={`${styles.groupBtn} ${isActive ? styles.groupBtnActive : ''}`}
+                onClick={() => handleGroupClick(group.id)}
+                style={{ flex: `0 0 ${group.gates.length * 36}px` }}
+                title={`${group.name}: Gates ${group.gates.join(', ')}`}
+              >
+                {group.name}
+              </button>
+            )
+          }
+          if (group) return null
+          return <div key={gateIndex} className={styles.groupBtn} style={{ visibility: 'hidden' }} />
+        })}
+      </div>
+
+      {/* CORNER - Fixed column headers */}
+      <div className={styles.corner}>
+        <table>
+          <thead>
+            <tr>
+              <th className={styles.colPos}>#</th>
+              <th className={styles.colBib}>Bib</th>
+              <th className={styles.colName}>Name</th>
+              <th className={styles.colTime}>Time</th>
+              <th className={styles.colPen}>Pen</th>
+            </tr>
+          </thead>
+        </table>
+      </div>
+
+      {/* COLUMN HEADERS - Gate numbers */}
+      <div className={styles.colHeaders} ref={colHeadersRef}>
+        <table>
+          <thead>
+            <tr>
+              {visibleGateIndices.map((gateIndex, colIndex) => {
+                const gateNum = gateIndex + 1
+                const isReverse = gateConfig[gateIndex] === 'R'
+                const isFocused = colIndex === position.column
+                const isBoundary = groupBoundaries.has(gateNum)
+
+                let className = ''
+                if (isReverse) className += ` ${styles.reverse}`
+                if (isFocused) className += ` ${styles.focused}`
+                if (isBoundary) className += ` ${styles.boundary}`
+
+                return (
+                  <th key={gateIndex} className={className}>
+                    {gateNum}
+                  </th>
+                )
+              })}
+              {/* Spacer for scrollbar */}
+              <th className={styles.scrollbarSpacer} />
+            </tr>
+          </thead>
+        </table>
+      </div>
+
+      {/* ROW HEADERS - Competitor info */}
+      <div className={styles.rowHeaders} ref={rowHeadersRef}>
+        <table>
+          <tbody>
+            {sortedRows.map((row, rowIndex) => {
+              const isFocused = rowIndex === position.row
+
               return (
-                <TableHeaderCell
-                  key={gateNum}
-                  numeric
-                  className={headerClasses || undefined}
-                >
-                  {gateNum}
-                </TableHeaderCell>
+                <tr key={row.bib} className={isFocused ? styles.focused : ''}>
+                  <td className={styles.colPos}>{row.rank ?? rowIndex + 1}</td>
+                  <td className={styles.colBib}>{row.bib}</td>
+                  <td className={styles.colName}>{row.name}</td>
+                  <td className={styles.colTime}>{formatTime(row.time ? parseFloat(row.time) : null)}</td>
+                  <td className={styles.colPen}>{calculatePenaltyFromGates(row.gates)}</td>
+                </tr>
               )
             })}
-          </TableRow>
-        </TableHead>
-        <TableBody>
-          {sortedRows.map((row, rowIndex) => {
-            const penalties = parseResultsGatesWithConfig(row.gates, gateConfig)
-            const totalPenalty = penalties.reduce((sum, p) => sum + (p.value ?? 0), 0)
-            const hasStatus = !!row.status
+            {/* Spacer row for scrollbar */}
+            <tr className={styles.scrollbarSpacerRow}>
+              <td colSpan={5} />
+            </tr>
+          </tbody>
+        </table>
+      </div>
 
-            const isRowFocused = position.row === rowIndex
-            const rowClassNames = [
-              hasStatus && 'results-row--status',
-              isRowFocused && 'results-row--focus',
-            ]
-              .filter(Boolean)
-              .join(' ')
-
-            return (
-              <TableRow
-                key={row.bib}
-                className={rowClassNames || undefined}
-              >
-                <TableCell numeric className="col-pos">
-                  {hasStatus ? (
-                    <Badge variant={getStatusVariant(row.status!)}>{row.status}</Badge>
-                  ) : (
-                    row.rank
-                  )}
-                </TableCell>
-                <TableCell numeric className="col-bib">
-                  {row.bib}
-                </TableCell>
-                <TableCell className="col-name">{row.name}</TableCell>
-                {showStartTime && (
-                  <TableCell numeric className="col-start-time">
-                    {row.startTime || '-'}
-                  </TableCell>
-                )}
-                <TableCell numeric className="col-time">
-                  {hasStatus ? '-' : `${formatTimeAsSeconds(row.time)}s`}
-                </TableCell>
-                <TableCell numeric className="col-pen">
-                  {!hasStatus && totalPenalty > 0 ? `+${totalPenalty}` : ''}
-                </TableCell>
-                {visibleGateIndices.map((gateIndex, visibleColIndex) => {
+      {/* CONTENT - Penalty cells */}
+      <div
+        className={styles.content}
+        ref={contentRef}
+        onScroll={handleContentScroll}
+        tabIndex={-1}
+      >
+        <table>
+          <tbody>
+            {sortedRows.map((row, rowIndex) => (
+              <tr key={row.bib}>
+                {visibleGateIndices.map((gateIndex, colIndex) => {
+                  const { value, className } = getPenaltyDisplay(row, gateIndex)
                   const gateNum = gateIndex + 1
-                  const penalty = penalties.find((p) => p.gate === gateNum)
-                  const cellIsFocused = isFocused(rowIndex, visibleColIndex)
+                  const isFocused = rowIndex === position.row && colIndex === position.column
+                  const isColFocus = colIndex === position.column && rowIndex !== position.row
+                  const isRowFocus = rowIndex === position.row && colIndex !== position.column
                   const isBoundary = groupBoundaries.has(gateNum)
-                  const isColFocused = focusedColumn === visibleColIndex
-                  const hasActiveGroup = !!(activeGateGroup && activeGateGroup.gates.length > 0)
-                  const isInActiveGroup = hasActiveGroup && activeGateGroup!.gates.includes(gateNum)
-                  const isDimmed = hasActiveGroup && !isInActiveGroup
+
+                  let cellClass = className
+                  if (isFocused) {
+                    cellClass += ` ${styles.penaltyCellFocused}`
+                  } else if (isColFocus && isRowFocus) {
+                    cellClass += ` ${styles.penaltyCellCrosshair}`
+                  } else if (isColFocus) {
+                    cellClass += ` ${styles.penaltyCellColFocus}`
+                  } else if (isRowFocus) {
+                    cellClass += ` ${styles.penaltyCellRowFocus}`
+                  }
+                  if (isBoundary) {
+                    cellClass += ` ${styles.penaltyBoundary}`
+                  }
 
                   return (
-                    <PenaltyCell
-                      key={gateNum}
-                      ref={cellIsFocused ? focusedCellRef : undefined}
-                      gate={gateNum}
-                      value={hasStatus ? null : ((penalty?.value as PenaltyValue | null) ?? null)}
-                      pendingValue={cellIsFocused ? pendingValue : null}
-                      gateType={(penalty?.type ?? gateConfig[gateIndex] ?? 'N') as 'N' | 'R'}
-                      isFocused={cellIsFocused}
-                      isColumnFocused={isColFocused}
-                      isGroupBoundary={isBoundary}
-                      isInActiveGroup={!!isInActiveGroup}
-                      isDimmed={isDimmed}
-                      id={getCellId(rowIndex, visibleColIndex)}
-                      onClick={() => handleCellClick(rowIndex, visibleColIndex)}
-                    />
+                    <td
+                      key={gateIndex}
+                      className={cellClass}
+                      onClick={() => handleCellClick(rowIndex, colIndex)}
+                    >
+                      {value}
+                    </td>
                   )
                 })}
-              </TableRow>
-            )
-          })}
-        </TableBody>
-      </Table>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
     </div>
   )
 }
