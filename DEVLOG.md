@@ -1091,6 +1091,33 @@ createSegmentsFromSplits([5, 9, 14], 24)
 
 ---
 
+## 2026-01-18 - Fáze 20F: Grid highlighting redesign
+
+### Cíl iterace
+
+Změnit grid highlighting z background podbarvení na border, pro lepší čitelnost.
+
+### Dokončeno
+
+- [x] Row focus: horizontální bordery (top/bottom) na všech buňkách v řádku
+- [x] Column focus: vertikální bordery (left/right) na všech buňkách ve sloupci
+- [x] Focused buňka: plný 2px accent border
+- [x] Hover: jemný 1px muted border
+- [x] Crosshair efekt: kombinované row+column bordery na průsečíku buněk
+- [x] Změna `--in-group` z box-shadow na border-top (aby se nekonflikovalo)
+
+### Změněné soubory
+
+- `src/components/ResultsGrid/ResultsGrid.css` - nové border-based highlight styly
+
+### Poznámky
+
+- Původní background highlighting používal `color-mix()` pro průhledné overlay
+- Box-shadow se vzájemně přepisují, takže kombinace stylů vyžadovala explicitní CSS pravidla
+- `--in-group` změněno na `border-top` místo `box-shadow` aby fungovalo spolu s row/column highlights
+
+---
+
 ## Template pro další záznamy
 
 ```markdown

@@ -15,7 +15,7 @@
 | 17H | UX Polish (Settings) | ✅ Hotovo |
 | 18 | Auto-load Gate Groups | 🟢 Hotovo (18B) |
 | 19 | E2E Test Refaktoring | ✅ Hotovo |
-| 20 | Bug fixes a UX připomínky | 🟡 In Progress (20E done) |
+| 20 | Bug fixes a UX připomínky | 🟡 In Progress (20F done) |
 
 ---
 
@@ -355,14 +355,21 @@ npx playwright test screenshots-with-data.spec.ts
 
 ---
 
-### 20F: Grid highlighting redesign
+### 20F: Grid highlighting redesign ✅
 
 **Problém:** Podbarvení řádku/sloupce není čitelné, okraje by byly lepší.
 
-- [ ] 20F.1: Změnit row/column highlight z background na border
-- [ ] 20F.2: Aktivní buňka: silný border (např. 2px accent)
-- [ ] 20F.3: Hover: slabší border (např. 1px muted)
-- [ ] 20F.4: Commit
+- [x] 20F.1: Změnit row/column highlight z background na border
+- [x] 20F.2: Aktivní buňka: silný border (např. 2px accent)
+- [x] 20F.3: Hover: slabší border (např. 1px muted)
+- [x] 20F.4: Commit
+
+**Řešení:**
+- Row focus: horizontální bordery (top/bottom) na všech buňkách v řádku
+- Column focus: vertikální bordery (left/right) na všech buňkách ve sloupci
+- Focused buňka: plný 2px border
+- Hover: jemný 1px muted border
+- Crosshair efekt: kombinované row+column bordery na průsečíku
 
 ---
 
@@ -389,4 +396,4 @@ npx playwright test screenshots-with-data.spec.ts
 
 ---
 
-*Poslední aktualizace: 2026-01-18 (Phase 20E: removed checkbox column and context menu from grid)*
+*Poslední aktualizace: 2026-01-18 (Phase 20F: changed grid highlighting from background to borders)*
