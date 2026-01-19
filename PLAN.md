@@ -165,21 +165,21 @@ Estimated cleanup: **~1,800 lines** of dead code.
 
 ### 29F: Hook Fixes (Critical)
 
-- [ ] **29F.1:** Fix potential infinite loop in `useGateGroups.ts:178`
-  - `loadCourses` callback in effect dependencies causes loop
-  - Solution: stabilize callback or move outside effect
+- [x] **29F.1:** Review potential infinite loop in `useGateGroups.ts:178` ✓ Not an issue
+  - `loadCourses` has `[]` dependencies, so it's stable
+  - `raceId` in effect dependencies correctly reloads courses when race changes
 
-- [ ] **29F.2:** Fix stale position closures in `useFocusNavigation.ts:156-170`
-  - `moveToRowStart`, `moveToRowEnd` capture stale `position`
-  - Solution: use functional updates or refs
+- [x] **29F.2:** Fix stale position closures in `useFocusNavigation.ts:156-170` ✓ Fixed
+  - `moveToRowStart`, `moveToRowEnd`, `pageUp`, `pageDown` captured stale `position`
+  - Solution: changed to functional updates with `setPositionInternal((current) => ...)`
 
-- [ ] **29F.3:** Fix event listener churn in `useFocusTrap.ts:117`
-  - Effect re-runs on every render, adding/removing listeners
-  - Solution: memoize `getFocusableElements`, reduce dependencies
+- [x] **29F.3:** Review event listener churn in `useFocusTrap.ts:117` ✓ Not an issue
+  - `handleKeyDown` and `getFocusableElements` are properly memoized with `useCallback`
+  - Effect dependencies are minimal and stable
 
-- [ ] **29F.4:** Fix callback thrashing in `useScoring.ts:146`
-  - Helper callbacks constantly recreated
-  - Solution: stabilize internal function references
+- [x] **29F.4:** Review callback thrashing in `useScoring.ts:146` ✓ Not an issue
+  - `addPending`, `removePending`, `setError` have `[]` dependencies and are stable
+  - Main callbacks properly reference stable helpers
 
 ### 29G: Import/Export Cleanup
 

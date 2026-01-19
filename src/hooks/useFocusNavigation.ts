@@ -152,36 +152,60 @@ export function useFocusNavigation(
     [moveInternal]
   )
 
-  // Navigation helpers
+  // Navigation helpers - use functional updates to avoid stale closure issues
   const moveToRowStart = useCallback(() => {
-    setPosition({ row: position.row, column: 0 })
-  }, [position.row, setPosition])
+    setPositionInternal((current) => {
+      const newPosition = { row: current.row, column: 0 }
+      onPositionChange?.(newPosition)
+      return newPosition
+    })
+  }, [onPositionChange])
 
   const moveToRowEnd = useCallback(() => {
-    setPosition({ row: position.row, column: columnCount - 1 })
-  }, [position.row, columnCount, setPosition])
+    setPositionInternal((current) => {
+      const newPosition = { row: current.row, column: columnCount - 1 }
+      onPositionChange?.(newPosition)
+      return newPosition
+    })
+  }, [columnCount, onPositionChange])
 
   const moveToFirstRow = useCallback(() => {
-    setPosition({ row: 0, column: position.column })
-  }, [position.column, setPosition])
+    setPositionInternal((current) => {
+      const newPosition = { row: 0, column: current.column }
+      onPositionChange?.(newPosition)
+      return newPosition
+    })
+  }, [onPositionChange])
 
   const moveToLastRow = useCallback(() => {
-    setPosition({ row: rowCount - 1, column: position.column })
-  }, [rowCount, position.column, setPosition])
+    setPositionInternal((current) => {
+      const newPosition = { row: rowCount - 1, column: current.column }
+      onPositionChange?.(newPosition)
+      return newPosition
+    })
+  }, [rowCount, onPositionChange])
 
   const pageUp = useCallback(() => {
-    setPosition({
-      row: Math.max(0, position.row - PAGE_SIZE),
-      column: position.column,
+    setPositionInternal((current) => {
+      const newPosition = {
+        row: Math.max(0, current.row - PAGE_SIZE),
+        column: current.column,
+      }
+      onPositionChange?.(newPosition)
+      return newPosition
     })
-  }, [position, setPosition])
+  }, [onPositionChange])
 
   const pageDown = useCallback(() => {
-    setPosition({
-      row: Math.min(rowCount - 1, position.row + PAGE_SIZE),
-      column: position.column,
+    setPositionInternal((current) => {
+      const newPosition = {
+        row: Math.min(rowCount - 1, current.row + PAGE_SIZE),
+        column: current.column,
+      }
+      onPositionChange?.(newPosition)
+      return newPosition
     })
-  }, [position, rowCount, setPosition])
+  }, [rowCount, onPositionChange])
 
   // Handle keyboard events
   const handleKeyDown = useCallback(
