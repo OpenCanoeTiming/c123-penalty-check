@@ -172,52 +172,6 @@ export function isGateInGroup(gateNumber: number, group: GateGroup): boolean {
 }
 
 /**
- * Filter gates by a group
- */
-export function filterGatesByGroup<T extends { number: number }>(
-  gates: T[],
-  group: GateGroup | null
-): T[] {
-  if (!group || group.gates.length === 0) {
-    return gates
-  }
-  return gates.filter((gate) => group.gates.includes(gate.number))
-}
-
-/**
- * Check if two groups overlap (share any gates)
- */
-export function groupsOverlap(group1: GateGroup, group2: GateGroup): boolean {
-  if (group1.gates.length === 0 || group2.gates.length === 0) {
-    return true // ALL_GATES overlaps with everything
-  }
-  return group1.gates.some((gate) => group2.gates.includes(gate))
-}
-
-/**
- * Get gates that are in multiple groups
- */
-export function findOverlappingGates(groups: GateGroup[]): number[] {
-  const gateCounts = new Map<number, number>()
-
-  for (const group of groups) {
-    if (group.gates.length === 0) continue // Skip ALL_GATES
-    for (const gate of group.gates) {
-      gateCounts.set(gate, (gateCounts.get(gate) ?? 0) + 1)
-    }
-  }
-
-  const overlapping: number[] = []
-  for (const [gate, count] of gateCounts) {
-    if (count > 1) {
-      overlapping.push(gate)
-    }
-  }
-
-  return overlapping.sort((a, b) => a - b)
-}
-
-/**
  * Generate a unique ID for a new gate group
  */
 export function generateGroupId(): string {

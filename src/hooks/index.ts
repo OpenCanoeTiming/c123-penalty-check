@@ -30,10 +30,6 @@ export {
   type UseGateGroupsReturn,
 } from './useGateGroups'
 export {
-  useGateGroupShortcuts,
-  type UseGateGroupShortcutsOptions,
-} from './useGateGroupShortcuts'
-export {
   useCheckedState,
   type UseCheckedStateOptions,
   type UseCheckedStateReturn,

@@ -17,24 +17,6 @@
  */
 export type PenaltyValue = 0 | 2 | 50 | null
 
-/**
- * Gate penalty state including empty (not yet passed)
- */
-export type GatePenalty = PenaltyValue | null
-
-// =============================================================================
-// Competitor State
-// =============================================================================
-
-/**
- * State of a competitor in the scoring workflow
- */
-export type CompetitorState =
-  | 'waiting' // In startlist, not yet started
-  | 'onCourse' // Currently on course
-  | 'finished' // Finished, awaiting verification
-  | 'checked' // Penalties verified by judge
-
 // =============================================================================
 // REST API Request Types
 // =============================================================================
@@ -83,98 +65,6 @@ export interface TimingRequest {
 }
 
 // =============================================================================
-// API Response Types
-// =============================================================================
-
-/**
- * Standard API response
- */
-export interface ApiResponse {
-  success: boolean
-  message?: string
-  error?: string
-}
-
-// =============================================================================
-// Parsed Gate Data
-// =============================================================================
-
-/**
- * Gate information with parsed penalty
- */
-export interface GateInfo {
-  number: number
-  type: 'N' | 'R' // Normal or Reverse
-  penalty: GatePenalty
-}
-
-/**
- * Parsed competitor data for the grid
- */
-export interface ParsedCompetitor {
-  bib: string
-  name: string
-  club: string
-  nat: string
-  raceId: string
-  startOrder: number
-  state: CompetitorState
-  gates: GateInfo[]
-  totalPenalty: number
-  time: string | null
-  total: string | null
-  rank: number | null
-}
-
-// =============================================================================
-// Utility Functions
-// =============================================================================
-
-/**
- * Parse gates string from C123 format to array of penalties
- * Format: "0,0,0,2,0,0,2,0,50,,,,,,,,,,,,,,,"
- */
-export function parseGates(gatesString: string, gateConfig: string): GateInfo[] {
-  const values = gatesString.split(',')
-  const gates: GateInfo[] = []
-
-  for (let i = 0; i < gateConfig.length; i++) {
-    const valueStr = values[i]
-    let penalty: GatePenalty = null
-
-    if (valueStr === '0') {
-      penalty = 0
-    } else if (valueStr === '2') {
-      penalty = 2
-    } else if (valueStr === '50') {
-      penalty = 50
-    }
-
-    gates.push({
-      number: i + 1,
-      type: gateConfig[i] as 'N' | 'R',
-      penalty,
-    })
-  }
-
-  return gates
-}
-
-/**
- * Calculate total penalty seconds from gates
- */
-export function calculateTotalPenalty(gates: GateInfo[]): number {
-  return gates.reduce((sum, gate) => sum + (gate.penalty ?? 0), 0)
-}
-
-/**
- * Check if a value is a valid penalty (including null for delete)
- */
-export function isValidPenalty(value: number | null): value is PenaltyValue {
-  return value === null || value === 0 || value === 2 || value === 50
-}
-
-// =============================================================================
 // Protocol Check Types
 // =============================================================================
 
@@ -193,26 +83,10 @@ export interface CheckedState {
 }
 
 /**
- * Map of checked states keyed by "bib:groupId"
- */
-export type CheckedStateMap = Map<string, CheckedState>
-
-/**
  * Create a unique key for the checked state map
  */
 export function createCheckedKey(bib: string, groupId: string | null): string {
   return `${bib}:${groupId ?? 'all'}`
-}
-
-/**
- * Parse a checked key back to bib and groupId
- */
-export function parseCheckedKey(key: string): { bib: string; groupId: string | null } {
-  const [bib, groupIdStr] = key.split(':')
-  return {
-    bib,
-    groupId: groupIdStr === 'all' ? null : groupIdStr,
-  }
 }
 
 /**
