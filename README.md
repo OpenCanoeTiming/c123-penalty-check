@@ -4,7 +4,7 @@ Web application for penalty verification and correction in canoe slalom timing w
 
 | Dark Mode | Tablet Layout |
 |:---------:|:-------------:|
-| ![Dark](docs/screenshots/dark.png) | ![Tablet](docs/screenshots/tablet-light.png) |
+| ![Dark](docs/screenshots/dark.png) | ![Tablet](docs/screenshots/scoring tablet per segment light.png) |
 
 ## Overview
 
