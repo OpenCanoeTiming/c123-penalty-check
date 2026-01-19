@@ -16,10 +16,16 @@ import type {
 // =============================================================================
 
 class MockWebSocket {
+  // WebSocket ready state constants (must be defined for guards to work)
+  static readonly CONNECTING = 0
+  static readonly OPEN = 1
+  static readonly CLOSING = 2
+  static readonly CLOSED = 3
+
   static instances: MockWebSocket[] = []
 
   url: string
-  readyState: number = WebSocket.CONNECTING
+  readyState: number = MockWebSocket.CONNECTING
   onopen: ((event: Event) => void) | null = null
   onclose: ((event: CloseEvent) => void) | null = null
   onmessage: ((event: MessageEvent) => void) | null = null
@@ -31,7 +37,7 @@ class MockWebSocket {
   }
 
   close() {
-    this.readyState = WebSocket.CLOSED
+    this.readyState = MockWebSocket.CLOSED
     if (this.onclose) {
       this.onclose(new CloseEvent('close'))
     }
@@ -39,7 +45,7 @@ class MockWebSocket {
 
   // Helper methods for testing
   simulateOpen() {
-    this.readyState = WebSocket.OPEN
+    this.readyState = MockWebSocket.OPEN
     if (this.onopen) {
       this.onopen(new Event('open'))
     }
@@ -58,7 +64,7 @@ class MockWebSocket {
   }
 
   simulateClose() {
-    this.readyState = WebSocket.CLOSED
+    this.readyState = MockWebSocket.CLOSED
     if (this.onclose) {
       this.onclose(new CloseEvent('close'))
     }
@@ -217,6 +223,36 @@ const createForceRefreshMessage = (
 })
 
 // =============================================================================
+// Test Helpers
+// =============================================================================
+
+/**
+ * Flush all pending promises (microtasks).
+ */
+function flushPromises(): Promise<void> {
+  return new Promise((resolve) => {
+    setTimeout(resolve, 0)
+  })
+}
+
+/**
+ * Helper to render hook and flush effects.
+ * With fake timers, React effects don't run synchronously.
+ * This ensures the useEffect that calls connect() has executed.
+ */
+async function renderHookAsync<T>(
+  renderCallback: () => T
+): Promise<ReturnType<typeof renderHook<T, unknown>>> {
+  const result = renderHook(renderCallback)
+  // Flush React effects - need multiple rounds for React 18 batching
+  await act(async () => {
+    await vi.runAllTimersAsync()
+    await flushPromises()
+  })
+  return result
+}
+
+// =============================================================================
 // Tests
 // =============================================================================
 
@@ -250,8 +286,8 @@ describe('useC123WebSocket', () => {
       expect(result.current.lastError).toBeNull()
     })
 
-    it('starts connecting when autoConnect is true (default)', () => {
-      const { result } = renderHook(() =>
+    it('starts connecting when autoConnect is true (default)', async () => {
+      const { result } = await renderHookAsync(() =>
         useC123WebSocket({ url: 'ws://localhost:27123/ws' })
       )
 
@@ -262,7 +298,7 @@ describe('useC123WebSocket', () => {
 
   describe('connection lifecycle', () => {
     it('sets state to connected when receiving Connected message', async () => {
-      const { result } = renderHook(() =>
+      const { result } = await renderHookAsync(() =>
         useC123WebSocket({ url: 'ws://localhost:27123/ws' })
       )
 
@@ -282,8 +318,8 @@ describe('useC123WebSocket', () => {
       })
     })
 
-    it('disconnect() closes the WebSocket and stops reconnect', () => {
-      const { result } = renderHook(() =>
+    it('disconnect() closes the WebSocket and stops reconnect', async () => {
+      const { result } = await renderHookAsync(() =>
         useC123WebSocket({ url: 'ws://localhost:27123/ws' })
       )
 
@@ -304,15 +340,15 @@ describe('useC123WebSocket', () => {
       expect(result.current.isConnected).toBe(false)
 
       // Advance timers - should not reconnect
-      act(() => {
-        vi.advanceTimersByTime(10000)
+      await act(async () => {
+        await vi.advanceTimersByTimeAsync(10000)
       })
 
       // Should not have created new WebSocket instances
       expect(MockWebSocket.instances.length).toBe(1)
     })
 
-    it('connect() can be called manually after disconnect', () => {
+    it('connect() can be called manually after disconnect', async () => {
       const { result } = renderHook(() =>
         useC123WebSocket({ url: 'ws://localhost:27123/ws', autoConnect: false })
       )
@@ -320,8 +356,9 @@ describe('useC123WebSocket', () => {
       expect(result.current.connectionState).toBe('disconnected')
       expect(MockWebSocket.instances.length).toBe(0)
 
-      act(() => {
+      await act(async () => {
         result.current.connect()
+        await vi.advanceTimersByTimeAsync(0)
       })
 
       expect(result.current.connectionState).toBe('connecting')
@@ -330,8 +367,8 @@ describe('useC123WebSocket', () => {
   })
 
   describe('message handling', () => {
-    it('handles OnCourse messages', () => {
-      const { result } = renderHook(() =>
+    it('handles OnCourse messages', async () => {
+      const { result } = await renderHookAsync(() =>
         useC123WebSocket({ url: 'ws://localhost:27123/ws' })
       )
 
@@ -348,8 +385,8 @@ describe('useC123WebSocket', () => {
       expect(result.current.onCourse!.competitors[0].bib).toBe('10')
     })
 
-    it('handles Results messages and stores by raceId', () => {
-      const { result } = renderHook(() =>
+    it('handles Results messages and stores by raceId', async () => {
+      const { result } = await renderHookAsync(() =>
         useC123WebSocket({ url: 'ws://localhost:27123/ws' })
       )
 
@@ -367,8 +404,8 @@ describe('useC123WebSocket', () => {
       expect(result.current.results.get('race-002')!.mainTitle).toBe('C1m')
     })
 
-    it('handles RaceConfig messages', () => {
-      const { result } = renderHook(() =>
+    it('handles RaceConfig messages', async () => {
+      const { result } = await renderHookAsync(() =>
         useC123WebSocket({ url: 'ws://localhost:27123/ws' })
       )
 
@@ -385,8 +422,8 @@ describe('useC123WebSocket', () => {
       expect(result.current.raceConfig!.gateConfig).toBe('NNRNNRNRNNNRNNRNRNNRNNRN')
     })
 
-    it('handles Schedule messages', () => {
-      const { result } = renderHook(() =>
+    it('handles Schedule messages', async () => {
+      const { result } = await renderHookAsync(() =>
         useC123WebSocket({ url: 'ws://localhost:27123/ws' })
       )
 
@@ -403,8 +440,8 @@ describe('useC123WebSocket', () => {
       expect(result.current.schedule!.races[0].raceId).toBe('race-001')
     })
 
-    it('handles Error messages', () => {
-      const { result } = renderHook(() =>
+    it('handles Error messages', async () => {
+      const { result } = await renderHookAsync(() =>
         useC123WebSocket({ url: 'ws://localhost:27123/ws' })
       )
 
@@ -419,8 +456,8 @@ describe('useC123WebSocket', () => {
       expect(result.current.lastError).toBe('Something went wrong')
     })
 
-    it('handles ForceRefresh messages by clearing cached data', () => {
-      const { result } = renderHook(() =>
+    it('handles ForceRefresh messages by clearing cached data', async () => {
+      const { result } = await renderHookAsync(() =>
         useC123WebSocket({ url: 'ws://localhost:27123/ws' })
       )
 
@@ -449,8 +486,8 @@ describe('useC123WebSocket', () => {
       expect(result.current.raceConfig).toBeNull()
     })
 
-    it('updates lastMessageTime on each message', () => {
-      const { result } = renderHook(() =>
+    it('updates lastMessageTime on each message', async () => {
+      const { result } = await renderHookAsync(() =>
         useC123WebSocket({ url: 'ws://localhost:27123/ws' })
       )
 
@@ -466,11 +503,11 @@ describe('useC123WebSocket', () => {
       expect(result.current.lastMessageTime).not.toBeNull()
     })
 
-    it('handles malformed JSON gracefully without crashing', () => {
+    it('handles malformed JSON gracefully without crashing', async () => {
       // Suppress console.error for this test
       const consoleSpy = vi.spyOn(console, 'error').mockImplementation(() => {})
 
-      const { result } = renderHook(() =>
+      const { result } = await renderHookAsync(() =>
         useC123WebSocket({ url: 'ws://localhost:27123/ws' })
       )
 
@@ -499,8 +536,8 @@ describe('useC123WebSocket', () => {
   })
 
   describe('error handling', () => {
-    it('sets error state on WebSocket error', () => {
-      const { result } = renderHook(() =>
+    it('sets error state on WebSocket error', async () => {
+      const { result } = await renderHookAsync(() =>
         useC123WebSocket({ url: 'ws://localhost:27123/ws' })
       )
 
@@ -677,16 +714,25 @@ describe('useC123WebSocket', () => {
   })
 
   describe('URL changes', () => {
-    it('reconnects when URL changes', () => {
+    it('reconnects when URL changes', async () => {
       const { rerender } = renderHook(
-        ({ url }) => useC123WebSocket({ url }),
+        ({ url }: { url: string }) => useC123WebSocket({ url }),
         { initialProps: { url: 'ws://localhost:27123/ws' } }
       )
+
+      // Flush initial effects
+      await act(async () => {
+        await vi.advanceTimersByTimeAsync(0)
+      })
 
       expect(MockWebSocket.instances.length).toBe(1)
       expect(MockWebSocket.getLastInstance()!.url).toBe('ws://localhost:27123/ws')
 
-      rerender({ url: 'ws://192.168.1.100:27123/ws' })
+      // Rerender with new URL
+      await act(async () => {
+        rerender({ url: 'ws://192.168.1.100:27123/ws' })
+        await vi.advanceTimersByTimeAsync(0)
+      })
 
       expect(MockWebSocket.instances.length).toBe(2)
       expect(MockWebSocket.getLastInstance()!.url).toBe('ws://192.168.1.100:27123/ws')
@@ -694,8 +740,8 @@ describe('useC123WebSocket', () => {
   })
 
   describe('cleanup', () => {
-    it('closes WebSocket on unmount', () => {
-      const { unmount } = renderHook(() =>
+    it('closes WebSocket on unmount', async () => {
+      const { unmount } = await renderHookAsync(() =>
         useC123WebSocket({ url: 'ws://localhost:27123/ws' })
       )
 
@@ -713,8 +759,8 @@ describe('useC123WebSocket', () => {
       expect(ws.readyState).toBe(WebSocket.CLOSED)
     })
 
-    it('clears reconnect timeout on unmount', () => {
-      const { unmount } = renderHook(() =>
+    it('clears reconnect timeout on unmount', async () => {
+      const { unmount } = await renderHookAsync(() =>
         useC123WebSocket({
           url: 'ws://localhost:27123/ws',
           reconnectInterval: 1000,
@@ -729,8 +775,8 @@ describe('useC123WebSocket', () => {
       unmount()
 
       // Advance timer - should not create new connections
-      act(() => {
-        vi.advanceTimersByTime(5000)
+      await act(async () => {
+        await vi.advanceTimersByTimeAsync(5000)
       })
 
       expect(MockWebSocket.instances.length).toBe(1)
