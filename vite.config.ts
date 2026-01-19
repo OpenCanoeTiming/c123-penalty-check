@@ -66,7 +66,10 @@ export default defineConfig({
     },
   },
   esbuild: {
-    drop: ['console', 'debugger'],
+    // Keep console.error and console.warn in production for debugging
+    // Only drop debugger statements
+    drop: ['debugger'],
+    pure: ['console.log', 'console.debug', 'console.trace'],
     legalComments: 'none',
   },
 })

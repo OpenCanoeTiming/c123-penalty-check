@@ -55,12 +55,28 @@ const RETRY_DELAY = 500
 // Helper Functions
 // =============================================================================
 
+function isValidHttpUrl(url: string): boolean {
+  try {
+    const parsed = new URL(url)
+    return parsed.protocol === 'http:' || parsed.protocol === 'https:'
+  } catch {
+    return false
+  }
+}
+
 function getBaseUrl(): string {
   // Use server URL from localStorage or default to current host
   const storedUrl = localStorage.getItem('c123-server-url')
   if (storedUrl) {
-    // Convert ws:// to http://
-    return storedUrl.replace(/^ws:\/\//, 'http://').replace(/\/ws$/, '')
+    // Convert ws:// to http:// and remove /ws path
+    const httpUrl = storedUrl.replace(/^wss?:\/\//, 'http://').replace(/\/ws$/, '')
+
+    // Validate the resulting URL
+    if (isValidHttpUrl(httpUrl)) {
+      return httpUrl
+    }
+    // Invalid URL in storage, fall through to default
+    console.warn('Invalid server URL in localStorage, using default')
   }
   // Default to same host on port 27123
   return `http://${window.location.hostname}:27123`

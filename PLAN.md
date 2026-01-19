@@ -144,11 +144,14 @@ Estimated cleanup: **~1,800 lines** of dead code.
 
 ### 29D: Critical Fixes
 
-- [ ] **29D.1:** URL validation in `src/services/scoringApi.ts`
-  - Validate protocol before using URL from localStorage
+- [x] **29D.1:** URL validation in `src/services/scoringApi.ts` ✓
+  - Added `isValidHttpUrl()` helper with URL constructor validation
+  - Falls back to default URL if localStorage contains invalid value
 
-- [ ] **29D.2:** Keep console.error/warn in production (`vite.config.ts`)
-  - Only drop `debugger`, not all console
+- [x] **29D.2:** Keep console.error/warn in production (`vite.config.ts`) ✓
+  - Changed from `drop: ['console', 'debugger']` to `drop: ['debugger']`
+  - Added `pure: ['console.log', 'console.debug', 'console.trace']`
+  - Preserves console.error and console.warn for production debugging
 
 ### 29E: Accessibility
 
