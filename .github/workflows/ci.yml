@@ -6,12 +6,16 @@ on:
   pull_request:
     branches: [main]
 
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
 jobs:
   build:
     runs-on: ubuntu-latest
 
     steps:
-      - name: Checkout c123-scoring
+      - name: Checkout
         uses: actions/checkout@v4
 
       - name: Checkout timing-design-system
@@ -66,7 +70,7 @@ jobs:
     needs: build
 
     steps:
-      - name: Checkout c123-scoring
+      - name: Checkout
         uses: actions/checkout@v4
 
       - name: Checkout timing-design-system
