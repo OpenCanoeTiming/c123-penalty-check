@@ -45,8 +45,6 @@ function App() {
   const {
     setGatePenalty,
     pendingOperations,
-    lastError: scoringError,
-    clearError: clearScoringError,
   } = useScoring()
 
   // Pending writes count for footer indicator
@@ -159,14 +157,6 @@ function App() {
   const checkProgress = useMemo(() => {
     return getProgress(finishedCompetitorBibs)
   }, [getProgress, finishedCompetitorBibs])
-
-  // Log scoring errors to console (errors are rare and worth investigating)
-  useEffect(() => {
-    if (scoringError) {
-      console.error('Scoring error:', scoringError.message)
-      clearScoringError()
-    }
-  }, [scoringError, clearScoringError])
 
   // Apply theme to document element
   // Design system uses .theme-light / .theme-dark classes on :root
