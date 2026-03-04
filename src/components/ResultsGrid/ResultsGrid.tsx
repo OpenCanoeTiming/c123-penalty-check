@@ -346,11 +346,12 @@ export function ResultsGrid({
   }, [position])
 
   // Auto-focus
+  const hasRows = sortedRows.length > 0
   useEffect(() => {
-    if (sortedRows.length > 0) {
+    if (hasRows) {
       contentRef.current?.focus()
     }
-  }, [sortedRows.length > 0])
+  }, [hasRows])
 
   // Submit penalty for a specific cell
   const submitPenalty = useCallback(

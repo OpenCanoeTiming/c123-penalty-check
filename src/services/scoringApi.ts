@@ -117,7 +117,7 @@ async function fetchWithRetry<T>(
       const response = await fetchWithTimeout(url, options)
 
       if (!response.ok) {
-        const errorData = (await response.json().catch(() => ({}))) as ApiError
+        const errorData: Partial<ApiError> = await response.json().catch(() => ({}))
         throw new ScoringApiError(
           errorData.error || `HTTP ${response.status}`,
           response.status,

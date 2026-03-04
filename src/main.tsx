@@ -5,14 +5,12 @@ import '@opencanoetiming/timing-design-system/src/tokens/index.css'
 import '@opencanoetiming/timing-design-system/src/css/index.css'
 import './index.css'
 import App from './App.tsx'
-import { ToastProvider, ErrorBoundary } from './components'
+import { ErrorBoundary } from './components'
 
 createRoot(document.getElementById('root')!).render(
   <StrictMode>
     <ErrorBoundary>
-      <ToastProvider>
-        <App />
-      </ToastProvider>
+      <App />
     </ErrorBoundary>
   </StrictMode>,
 )
