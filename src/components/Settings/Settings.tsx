@@ -4,7 +4,7 @@
  * Modal panel for configuring application settings using design system components.
  */
 
-import { useState, useCallback, useRef } from 'react'
+import { useState, useCallback, useRef, useEffect } from 'react'
 import {
   Modal,
   ModalHeader,
@@ -61,6 +61,13 @@ export function Settings({
   const [isTesting, setIsTesting] = useState(false)
   const [isScanning, setIsScanning] = useState(false)
   const scanAbortRef = useRef(false)
+
+  // Abort scan on unmount
+  useEffect(() => {
+    return () => {
+      scanAbortRef.current = true
+    }
+  }, [])
 
   // Local edit state for URL - tracks if user is editing
   const [localServerUrl, setLocalServerUrl] = useState<string | null>(null)

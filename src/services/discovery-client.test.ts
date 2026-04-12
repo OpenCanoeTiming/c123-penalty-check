@@ -1,12 +1,13 @@
-import { describe, it, expect } from 'vitest'
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
 import {
   normalizeServerUrl,
   getWebSocketUrl,
   getSubnetsToScan,
   getHostingServerIP,
   C123_PORT,
+  STORAGE_KEY,
 } from './discovery-client'
-import { wsToHttpUrl } from './serverConfig'
+import { wsToHttpUrl, getApiBaseUrl, setApiBaseUrl } from './serverConfig'
 
 describe('discovery-client', () => {
   describe('normalizeServerUrl', () => {
@@ -114,6 +115,27 @@ describe('discovery-client', () => {
   describe('C123_PORT', () => {
     it('is 27123', () => {
       expect(C123_PORT).toBe(27123)
+    })
+  })
+
+  describe('getApiBaseUrl — legacy cache migration', () => {
+    beforeEach(() => {
+      setApiBaseUrl(null)
+      localStorage.clear()
+    })
+
+    afterEach(() => {
+      localStorage.clear()
+    })
+
+    it('converts legacy ws:// cache entry to http://', () => {
+      localStorage.setItem(STORAGE_KEY, 'ws://192.168.1.50:27123/ws')
+      expect(getApiBaseUrl()).toBe('http://192.168.1.50:27123')
+    })
+
+    it('returns http:// cache entry as-is', () => {
+      localStorage.setItem(STORAGE_KEY, 'http://192.168.1.50:27123')
+      expect(getApiBaseUrl()).toBe('http://192.168.1.50:27123')
     })
   })
 })

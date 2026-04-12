@@ -22,7 +22,7 @@ let _baseUrl: string | null = null
  * Set the REST API base URL.
  * Called after discovery or when user changes server URL in settings.
  */
-export function setApiBaseUrl(url: string): void {
+export function setApiBaseUrl(url: string | null): void {
   _baseUrl = url
 }
 
@@ -39,7 +39,8 @@ export function getApiBaseUrl(): string {
 
   try {
     const cached = localStorage.getItem(STORAGE_KEY)
-    if (cached) return cached
+    // Handle legacy cache entries that stored ws:// URLs
+    if (cached) return cached.startsWith('ws') ? wsToHttpUrl(cached) : cached
   } catch {
     // localStorage unavailable
   }
