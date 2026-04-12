@@ -4,7 +4,7 @@
  * Modal panel for configuring application settings using design system components.
  */
 
-import { useState, useCallback } from 'react'
+import { useState, useCallback, useRef } from 'react'
 import {
   Modal,
   ModalHeader,
@@ -25,6 +25,7 @@ import {
 import type { GateGroup, ResultsSortOption } from '../../types/ui'
 import { RESULTS_SORT_LABELS } from '../../types/ui'
 import type { Settings as SettingsType, ThemeMode } from '../../hooks/useSettings'
+import { discoverC123Server, normalizeServerUrl, getWebSocketUrl } from '../../services/discovery-client'
 import './Settings.css'
 
 export interface SettingsProps {
@@ -58,6 +59,8 @@ export function Settings({
   const [activeTab, setActiveTab] = useState<SettingsTab>('display')
   const [urlError, setUrlError] = useState<string | null>(null)
   const [isTesting, setIsTesting] = useState(false)
+  const [isScanning, setIsScanning] = useState(false)
+  const scanAbortRef = useRef(false)
 
   // Local edit state for URL - tracks if user is editing
   const [localServerUrl, setLocalServerUrl] = useState<string | null>(null)
@@ -65,13 +68,37 @@ export function Settings({
   // Use local edit state if user has edited, otherwise use settings value
   const serverUrl = localServerUrl ?? settings.serverUrl
 
-  // Validate WebSocket URL
+  /**
+   * Normalize user input to a WebSocket URL.
+   * Accepts: "ws://host:port/ws", "192.168.1.50", "192.168.1.50:8080"
+   */
+  const normalizeToWsUrl = useCallback((input: string): string => {
+    const trimmed = input.trim()
+    // Already a ws:// URL
+    if (trimmed.startsWith('ws://') || trimmed.startsWith('wss://')) {
+      return trimmed
+    }
+    // Plain host or host:port — normalize via discovery-client
+    const httpUrl = normalizeServerUrl(trimmed)
+    return getWebSocketUrl(httpUrl)
+  }, [])
+
+  // Validate URL (accepts ws:// URLs and plain host:port)
   const validateUrl = useCallback((url: string): string | null => {
     if (!url.trim()) {
       return 'Server URL is required'
     }
+    const trimmed = url.trim()
+    // Accept plain host:port (will be normalized on save)
+    if (!trimmed.startsWith('ws://') && !trimmed.startsWith('wss://')) {
+      // Basic validation: should look like a hostname or IP
+      if (/^[\w.\-]+(:\d+)?$/.test(trimmed)) {
+        return null
+      }
+      return 'Enter a valid host:port or ws:// URL'
+    }
     try {
-      const parsed = new URL(url)
+      const parsed = new URL(trimmed)
       if (parsed.protocol !== 'ws:' && parsed.protocol !== 'wss:') {
         return 'URL must use ws:// or wss:// protocol'
       }
@@ -96,8 +123,32 @@ export function Settings({
       setUrlError(error)
       return
     }
-    onSettingsChange({ serverUrl })
-  }, [serverUrl, validateUrl, onSettingsChange])
+    const wsUrl = normalizeToWsUrl(serverUrl)
+    onSettingsChange({ serverUrl: wsUrl })
+    setLocalServerUrl(null)
+  }, [serverUrl, validateUrl, normalizeToWsUrl, onSettingsChange])
+
+  const handleScanNetwork = useCallback(async () => {
+    setIsScanning(true)
+    scanAbortRef.current = false
+    try {
+      const result = await discoverC123Server({ noCache: true })
+      if (scanAbortRef.current) return
+      if (result) {
+        const wsUrl = getWebSocketUrl(result)
+        setLocalServerUrl(wsUrl)
+        setUrlError(null)
+      } else {
+        setUrlError('No server found on the network')
+      }
+    } catch {
+      if (!scanAbortRef.current) {
+        setUrlError('Network scan failed')
+      }
+    } finally {
+      setIsScanning(false)
+    }
+  }, [])
 
   const handleTestConnection = useCallback(() => {
     const error = validateUrl(serverUrl)
@@ -293,11 +344,19 @@ export function Settings({
                   </div>
                   {urlError && <p className="form-error">{urlError}</p>}
                   <p className="form-hint">
-                    Enter the WebSocket URL of the c123-server instance.
+                    Enter host:port (e.g. 192.168.1.50) or full ws:// URL.
+                    Use <code>?server=host:port</code> URL param for quick override.
                   </p>
                 </div>
 
                 <div className="settings-actions">
+                  <Button
+                    variant="secondary"
+                    onClick={handleScanNetwork}
+                    disabled={isScanning}
+                  >
+                    {isScanning ? 'Scanning...' : 'Scan Network'}
+                  </Button>
                   <Button
                     variant="secondary"
                     onClick={handleTestConnection}

@@ -6,6 +6,8 @@
 
 import { useState, useCallback, useEffect, useRef } from 'react'
 import type { ResultsSortOption } from '../types/ui'
+import { setApiBaseUrl } from '../services/serverConfig'
+import { saveToCache } from '../services/discovery-client'
 
 const STORAGE_KEY = 'c123-scoring-settings'
 const DEFAULT_SERVER_URL = 'ws://localhost:27123/ws'
@@ -94,13 +96,20 @@ export function useSettings(): UseSettingsReturn {
     setSettings((prev) => {
       const newSettings = { ...prev, ...updates }
 
-      // If serverUrl changed, add old URL to history
+      // If serverUrl changed, add old URL to history and sync REST API base URL
       if (updates.serverUrl && updates.serverUrl !== prev.serverUrl) {
         const newHistory = [
           prev.serverUrl,
           ...prev.serverHistory.filter((url) => url !== prev.serverUrl),
         ].slice(0, MAX_HISTORY_LENGTH)
         newSettings.serverHistory = newHistory
+
+        // Keep REST APIs in sync with the new server
+        const httpUrl = updates.serverUrl
+          .replace(/^wss?:\/\//, 'http://')
+          .replace(/\/ws(\?.*)?$/, '')
+        setApiBaseUrl(httpUrl)
+        saveToCache(httpUrl)
       }
 
       return newSettings
