@@ -99,7 +99,7 @@ export function Settings({
     // Accept plain host:port (will be normalized on save)
     if (!trimmed.startsWith('ws://') && !trimmed.startsWith('wss://')) {
       // Basic validation: should look like a hostname or IP
-      if (/^[\w.\-]+(:\d+)?$/.test(trimmed)) {
+      if (/^[\w.-]+(:\d+)?$/.test(trimmed)) {
         return null
       }
       return 'Enter a valid host:port or ws:// URL'

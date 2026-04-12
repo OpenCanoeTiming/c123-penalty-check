@@ -43,7 +43,7 @@ function getViewState(
 function App() {
   const { settings, updateSettings } = useSettings()
   const discovery = useServerDiscovery({ serverUrl: settings.serverUrl })
-  const [discoveryDone, setDiscoveryDone] = useState(discovery.status !== 'discovering')
+  const discoveryDone = discovery.status !== 'discovering'
   const [showSettingsFromDiscovery, setShowSettingsFromDiscovery] = useState(false)
 
   // Handle discovery result
@@ -61,8 +61,6 @@ function App() {
       const httpUrl = wsToHttpUrl(settings.serverUrl)
       setApiBaseUrl(httpUrl)
     }
-
-    setDiscoveryDone(true)
   }, [discovery.status, discovery.httpBaseUrl, discovery.wsUrl, settings.serverUrl, updateSettings])
 
   if (!discoveryDone) {
