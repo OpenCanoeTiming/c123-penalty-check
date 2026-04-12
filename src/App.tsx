@@ -8,7 +8,7 @@ import { useSettings } from './hooks/useSettings'
 import { useSettingsShortcut } from './hooks/useSettingsShortcut'
 import { useScoring } from './hooks/useScoring'
 import { useServerDiscovery } from './hooks/useServerDiscovery'
-import { setApiBaseUrl } from './services/serverConfig'
+import { setApiBaseUrl, wsToHttpUrl } from './services/serverConfig'
 import { saveToCache } from './services/discovery-client'
 
 const STORAGE_KEY_SELECTED_RACE = 'c123-scoring-selected-race'
@@ -38,14 +38,6 @@ function getViewState(
   if (!selectedRaceResults || selectedRaceResults.rows.length === 0) return { type: 'no-competitors' }
   if (!raceConfig) return { type: 'loading-config' }
   return { type: 'grid' }
-}
-
-/**
- * Derive HTTP base URL from a WebSocket URL.
- * "ws://host:port/ws" → "http://host:port"
- */
-function wsToHttpUrl(wsUrl: string): string {
-  return wsUrl.replace(/^wss?:\/\//, 'http://').replace(/\/ws(\?.*)?$/, '')
 }
 
 function App() {

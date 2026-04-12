@@ -8,6 +8,14 @@
 
 import { STORAGE_KEY } from './discovery-client'
 
+/**
+ * Derive HTTP base URL from a WebSocket URL.
+ * "ws://host:port/ws" → "http://host:port"
+ */
+export function wsToHttpUrl(wsUrl: string): string {
+  return wsUrl.replace(/^wss?:\/\//, 'http://').replace(/\/ws(\?.*)?$/, '')
+}
+
 let _baseUrl: string | null = null
 
 /**
