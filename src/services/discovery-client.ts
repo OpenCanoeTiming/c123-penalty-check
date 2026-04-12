@@ -141,6 +141,51 @@ export function getHostingServerIP(): string {
 }
 
 /**
+ * Get local IP address using WebRTC.
+ *
+ * More reliable way to get the client's actual local IP,
+ * but requires WebRTC support and may not work in all browsers.
+ */
+export async function getLocalIPViaWebRTC(): Promise<string | null> {
+  return new Promise((resolve) => {
+    // Timeout after 2 seconds
+    const timeoutId = setTimeout(() => resolve(null), 2000)
+
+    try {
+      const pc = new RTCPeerConnection({ iceServers: [] })
+      pc.createDataChannel('')
+
+      pc.onicecandidate = (event) => {
+        if (!event.candidate) return
+
+        const candidate = event.candidate.candidate
+        const ipMatch = candidate.match(/(\d+\.\d+\.\d+\.\d+)/)
+
+        if (ipMatch) {
+          const ip = ipMatch[1]
+          // Filter out non-local IPs
+          if (isPrivateIP(ip)) {
+            clearTimeout(timeoutId)
+            pc.close()
+            resolve(ip)
+          }
+        }
+      }
+
+      pc.createOffer()
+        .then((offer) => pc.setLocalDescription(offer))
+        .catch(() => {
+          clearTimeout(timeoutId)
+          resolve(null)
+        })
+    } catch {
+      clearTimeout(timeoutId)
+      resolve(null)
+    }
+  })
+}
+
+/**
  * Get list of subnets to scan, ordered by likelihood.
  *
  * Starts with the hosting server's subnet, then adds common LAN subnets.
@@ -277,6 +322,41 @@ export async function isServerAlive(
   }
 }
 
+/**
+ * Check if a URL is a C123 Server.
+ * Alias for isServerAlive for clarity in fallback logic.
+ */
+export const isC123Server = isServerAlive
+
+/**
+ * Get server information.
+ */
+export async function getServerInfo(
+  url: string,
+  timeout: number = DISCOVERY_TIMEOUT * 5
+): Promise<DiscoverResponse | null> {
+  try {
+    const controller = new AbortController()
+    const timeoutId = setTimeout(() => controller.abort(), timeout)
+
+    const response = await fetch(`${url}/api/discover`, {
+      signal: controller.signal,
+      mode: 'cors',
+      credentials: 'omit',
+    })
+
+    clearTimeout(timeoutId)
+
+    if (response.ok) {
+      return await response.json()
+    }
+
+    return null
+  } catch {
+    return null
+  }
+}
+
 // =============================================================================
 // URL Utilities
 // =============================================================================
@@ -377,5 +457,27 @@ export function clearCache(): void {
  */
 function isIPAddress(str: string): boolean {
   return /^\d+\.\d+\.\d+\.\d+$/.test(str)
+}
+
+/**
+ * Check if an IP is a private/local network address.
+ */
+function isPrivateIP(ip: string): boolean {
+  const parts = ip.split('.').map(Number)
+  if (parts.length !== 4) return false
+
+  // 10.0.0.0/8
+  if (parts[0] === 10) return true
+
+  // 172.16.0.0/12
+  if (parts[0] === 172 && parts[1] >= 16 && parts[1] <= 31) return true
+
+  // 192.168.0.0/16
+  if (parts[0] === 192 && parts[1] === 168) return true
+
+  // 127.0.0.0/8 (localhost)
+  if (parts[0] === 127) return true
+
+  return false
 }
 
