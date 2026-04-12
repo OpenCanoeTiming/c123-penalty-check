@@ -25,20 +25,7 @@ export interface CoursesResponse {
   courses: CourseData[]
 }
 
-// =============================================================================
-// Helper Functions
-// =============================================================================
-
-function getBaseUrl(): string {
-  // Use server URL from localStorage or default to current host
-  const storedUrl = localStorage.getItem('c123-server-url')
-  if (storedUrl) {
-    // Convert ws:// to http://
-    return storedUrl.replace(/^ws:\/\//, 'http://').replace(/\/ws$/, '')
-  }
-  // Default to same host on port 27123
-  return `http://${window.location.hostname}:27123`
-}
+import { getApiBaseUrl } from './serverConfig'
 
 // =============================================================================
 // API Functions
@@ -50,7 +37,7 @@ function getBaseUrl(): string {
  * @returns Promise with courses data or null if not available
  */
 export async function fetchCourses(): Promise<CoursesResponse | null> {
-  const baseUrl = getBaseUrl()
+  const baseUrl = getApiBaseUrl()
 
   try {
     const response = await fetch(`${baseUrl}/api/xml/courses`, {

@@ -13,6 +13,7 @@ import type {
   RemoveReason,
   ChannelPosition,
 } from '../types/scoring'
+import { getApiBaseUrl } from './serverConfig'
 
 // =============================================================================
 // Types
@@ -54,33 +55,6 @@ const RETRY_DELAY = 500
 // =============================================================================
 // Helper Functions
 // =============================================================================
-
-function isValidHttpUrl(url: string): boolean {
-  try {
-    const parsed = new URL(url)
-    return parsed.protocol === 'http:' || parsed.protocol === 'https:'
-  } catch {
-    return false
-  }
-}
-
-function getBaseUrl(): string {
-  // Use server URL from localStorage or default to current host
-  const storedUrl = localStorage.getItem('c123-server-url')
-  if (storedUrl) {
-    // Convert ws:// to http:// and remove /ws path
-    const httpUrl = storedUrl.replace(/^wss?:\/\//, 'http://').replace(/\/ws$/, '')
-
-    // Validate the resulting URL
-    if (isValidHttpUrl(httpUrl)) {
-      return httpUrl
-    }
-    // Invalid URL in storage, fall through to default
-    console.warn('Invalid server URL in localStorage, using default')
-  }
-  // Default to same host on port 27123
-  return `http://${window.location.hostname}:27123`
-}
 
 async function delay(ms: number): Promise<void> {
   return new Promise((resolve) => setTimeout(resolve, ms))
@@ -197,7 +171,7 @@ export async function sendScoring(
   value: PenaltyValue,
   raceId?: string
 ): Promise<ScoringResponse> {
-  const baseUrl = getBaseUrl()
+  const baseUrl = getApiBaseUrl()
   const request: ScoringRequest = { bib, gate, value }
   if (raceId) {
     request.raceId = raceId
@@ -224,7 +198,7 @@ export async function sendRemoveFromCourse(
   reason: RemoveReason,
   position: number = 1
 ): Promise<RemoveFromCourseResponse> {
-  const baseUrl = getBaseUrl()
+  const baseUrl = getApiBaseUrl()
   const request: RemoveFromCourseRequest & { position: number } = { bib, reason, position }
 
   return fetchWithRetry<RemoveFromCourseResponse>(`${baseUrl}/api/c123/remove-from-course`, {
@@ -246,7 +220,7 @@ export async function sendTiming(
   bib: string,
   channelPosition: ChannelPosition
 ): Promise<TimingResponse> {
-  const baseUrl = getBaseUrl()
+  const baseUrl = getApiBaseUrl()
   const request: TimingRequest = { bib, channelPosition }
 
   return fetchWithRetry<TimingResponse>(`${baseUrl}/api/c123/timing`, {

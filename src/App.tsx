@@ -7,6 +7,9 @@ import { useCheckedState } from './hooks/useCheckedState'
 import { useSettings } from './hooks/useSettings'
 import { useSettingsShortcut } from './hooks/useSettingsShortcut'
 import { useScoring } from './hooks/useScoring'
+import { useServerDiscovery } from './hooks/useServerDiscovery'
+import { setApiBaseUrl, wsToHttpUrl } from './services/serverConfig'
+import { saveToCache } from './services/discovery-client'
 
 const STORAGE_KEY_SELECTED_RACE = 'c123-scoring-selected-race'
 
@@ -38,9 +41,62 @@ function getViewState(
 }
 
 function App() {
-  // Settings
   const { settings, updateSettings } = useSettings()
+  const discovery = useServerDiscovery({ serverUrl: settings.serverUrl })
+  const [discoveryDone, setDiscoveryDone] = useState(discovery.status !== 'discovering')
+  const [showSettingsFromDiscovery, setShowSettingsFromDiscovery] = useState(false)
 
+  // Handle discovery result
+  useEffect(() => {
+    if (discovery.status === 'discovering') return
+
+    if (discovery.status === 'found' && discovery.httpBaseUrl && discovery.wsUrl) {
+      setApiBaseUrl(discovery.httpBaseUrl)
+      saveToCache(discovery.httpBaseUrl)
+      if (settings.serverUrl !== discovery.wsUrl) {
+        updateSettings({ serverUrl: discovery.wsUrl })
+      }
+    } else {
+      // not-found: use existing settings
+      const httpUrl = wsToHttpUrl(settings.serverUrl)
+      setApiBaseUrl(httpUrl)
+    }
+
+    setDiscoveryDone(true)
+  }, [discovery.status, discovery.httpBaseUrl, discovery.wsUrl, settings.serverUrl, updateSettings])
+
+  if (!discoveryDone) {
+    return (
+      <EmptyState
+        variant="discovering"
+        action={
+          showSettingsFromDiscovery
+            ? undefined
+            : {
+                label: 'Open Settings',
+                onClick: () => setShowSettingsFromDiscovery(true),
+              }
+        }
+      />
+    )
+  }
+
+  return (
+    <AppContent
+      settings={settings}
+      updateSettings={updateSettings}
+      openSettingsOnMount={showSettingsFromDiscovery}
+    />
+  )
+}
+
+interface AppContentProps {
+  settings: ReturnType<typeof useSettings>['settings']
+  updateSettings: ReturnType<typeof useSettings>['updateSettings']
+  openSettingsOnMount?: boolean
+}
+
+function AppContent({ settings, updateSettings, openSettingsOnMount }: AppContentProps) {
   // Scoring API integration
   const {
     setGatePenalty,
@@ -51,7 +107,7 @@ function App() {
   const pendingCount = pendingOperations.size
 
   // Settings modal state
-  const [showSettings, setShowSettings] = useState(false)
+  const [showSettings, setShowSettings] = useState(openSettingsOnMount ?? false)
 
   // Gate group editor state
   const [showGateGroupEditor, setShowGateGroupEditor] = useState(false)

@@ -47,3 +47,8 @@ export {
   type UseFocusTrapOptions,
 } from './useFocusTrap'
 export { useMultiTap } from './useCellInteraction'
+export {
+  useServerDiscovery,
+  type DiscoveryStatus,
+  type DiscoveryState,
+} from './useServerDiscovery'

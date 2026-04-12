@@ -418,7 +418,8 @@ describe('useScoring', () => {
 
   describe('server URL handling', () => {
     it('uses localStorage server URL when available', async () => {
-      localStorageMock.setItem('c123-server-url', 'ws://192.168.1.100:27123/ws')
+      // Discovery/settings now store HTTP base URLs (not ws:// URLs)
+      localStorageMock.setItem('c123-server-url', 'http://192.168.1.100:27123')
       mockFetch.mockResolvedValueOnce(
         createSuccessResponse({ success: true, bib: '10', gate: 5, value: 2 })
       )
@@ -435,8 +436,8 @@ describe('useScoring', () => {
       )
     })
 
-    it('falls back to localhost when localStorage URL is invalid', async () => {
-      localStorageMock.setItem('c123-server-url', 'not-a-valid-url')
+    it('falls back to localhost when no server URL stored', async () => {
+      // No URL in localStorage — falls back to http://localhost:27123
       mockFetch.mockResolvedValueOnce(
         createSuccessResponse({ success: true, bib: '10', gate: 5, value: 2 })
       )

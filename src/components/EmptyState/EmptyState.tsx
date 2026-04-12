@@ -8,7 +8,7 @@ import {
 } from '@opencanoetiming/timing-design-system'
 import './EmptyState.css'
 
-export type EmptyStateVariant = 'disconnected' | 'no-races' | 'no-competitors' | 'loading'
+export type EmptyStateVariant = 'disconnected' | 'no-races' | 'no-competitors' | 'loading' | 'discovering'
 
 export interface EmptyStateProps {
   variant: EmptyStateVariant
@@ -44,6 +44,11 @@ const defaultContent: Record<EmptyStateVariant, { icon: string; title: string; m
     title: 'Loading',
     message: 'Connecting to the timing server...',
   },
+  discovering: {
+    icon: '🔍',
+    title: 'Finding server',
+    message: 'Scanning the network for C123 Server...',
+  },
 }
 
 export function EmptyState({
@@ -63,7 +68,7 @@ export function EmptyState({
         className={`empty-state-card empty-state-card--${variant}`}
       >
         <CardBody className="empty-state-card__body">
-          <span className={`empty-state-card__icon ${variant === 'loading' ? 'empty-state-card__icon--pulse' : ''}`} aria-hidden="true">
+          <span className={`empty-state-card__icon ${variant === 'loading' || variant === 'discovering' ? 'empty-state-card__icon--pulse' : ''}`} aria-hidden="true">
             {content.icon}
           </span>
           <CardTitle as="h2" className="empty-state-card__title">
