@@ -6,16 +6,24 @@ import type { C123ScheduleData, C123ScheduleRace } from '../types/c123server'
 // =============================================================================
 
 /**
- * Race status values from C123
- * Status progression: 0 -> 1 -> 2 -> 3 -> 4 -> 5
+ * Race status values from C123 (source: RaceStati.cs)
+ * Normal progression: 0 -> 1 -> 3 -> 4 -> 5
  */
 export type RaceStatus =
-  | 0 // Not started
-  | 1 // Prepared
-  | 2 // Start list published
-  | 3 // Running (in progress)
-  | 4 // Run finished (results being processed)
-  | 5 // Finished (results published)
+  | 0 // Scheduled
+  | 1 // StartList
+  | 2 // Delayed
+  | 3 // InProgress
+  | 4 // Unofficial (results being processed)
+  | 5 // Official (results published)
+  | 6 // Revised
+  | 7 // Cancelled
+  | 8 // GettingReady
+  | 9 // Unconfirmed
+  | 10 // Protested
+  | 11 // Interrupted
+  | 12 // Rescheduled
+  | 13 // Postponed
 
 export interface ProcessedRace {
   raceId: string
