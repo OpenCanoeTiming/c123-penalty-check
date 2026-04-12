@@ -33,6 +33,24 @@ export const sampleGatesStrings = {
     // Trimmed fixed-width (server trimmed leading spaces) with empty value at gate 7
     trimmedWithEmpty: '0  0  0  2  2  0     2  0  0  0 50  2  2',
   },
+  // Sparse gates: C123 uses spaces (not zeros) for unscored gates in Result Type="T"
+  // With server fix (trimValues: false), these arrive UNTRIMMED to the client
+  sparse: {
+    // All gates unscored (72 chars = 24 gates × 3 chars, all spaces)
+    allEmpty24: ' '.repeat(72),
+    // All gates unscored (90 chars = 30 gates × 3 chars, all spaces)
+    allEmpty30: ' '.repeat(90),
+    // Only gate 5 scored as touch (2), rest unscored, 24-gate course
+    gate5touch24: '   '.repeat(4) + '  2' + '   '.repeat(19),
+    // Only gate 5 scored as touch, 30-gate course (90 chars)
+    gate5touch30: '   '.repeat(4) + '  2' + '   '.repeat(25),
+    // Gate 1 and gate 5 both scored
+    gate1and5: '  2' + '   '.repeat(3) + '  2' + '   '.repeat(19),
+    // Gate 1 scored, rest unscored (24 gates)
+    gate1only: '  2' + '   '.repeat(23),
+    // Multiple scattered: gate 3=2, gate 10=50, gate 20=2
+    scattered24: '   '.repeat(2) + '  2' + '   '.repeat(6) + ' 50' + '   '.repeat(9) + '  2' + '   '.repeat(4),
+  },
 }
 
 export const sampleOnCourseCompetitor = {
