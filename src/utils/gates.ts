@@ -53,10 +53,5 @@ function parseFixedWidthGates(gates: string): (number | null)[] {
     }
   }
 
-  // Remove trailing nulls (padding from C123 XML)
-  while (result.length > 0 && result[result.length - 1] === null) {
-    result.pop()
-  }
-
   return result
 }
