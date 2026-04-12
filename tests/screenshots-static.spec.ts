@@ -17,6 +17,17 @@ async function takeDocScreenshot(page: Page, name: string) {
 }
 
 test.describe('Screenshot Tests - Static States', () => {
+  // Skip network discovery by using non-default server URL (127.0.0.1 vs localhost)
+  // so tests go straight to the main UI instead of the discovering screen
+  test.beforeEach(async ({ page }) => {
+    await page.addInitScript(() => {
+      const raw = localStorage.getItem('c123-scoring-settings')
+      const settings = raw ? JSON.parse(raw) : {}
+      settings.serverUrl = 'ws://127.0.0.1:27123/ws'
+      localStorage.setItem('c123-scoring-settings', JSON.stringify(settings))
+    })
+  })
+
   test('01 - disconnected state', async ({ page }) => {
     await page.goto('/');
     // Wait for connection attempts to fail and show disconnected state
