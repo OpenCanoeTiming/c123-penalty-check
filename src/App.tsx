@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback, useMemo } from 'react'
+import { useState, useEffect, useCallback, useMemo, useRef } from 'react'
 import { Layout, Header, ResultsGrid, GateGroupEditor, CheckProgress, Settings, EmptyState } from './components'
 import { useC123WebSocket } from './hooks/useC123WebSocket'
 import { useSchedule } from './hooks/useSchedule'
@@ -10,6 +10,7 @@ import { useScoring } from './hooks/useScoring'
 import { useServerDiscovery } from './hooks/useServerDiscovery'
 import { setApiBaseUrl, wsToHttpUrl } from './services/serverConfig'
 import { saveToCache } from './services/discovery-client'
+import { fetchScheduleDates } from './services/scheduleApi'
 
 const STORAGE_KEY_SELECTED_RACE = 'c123-scoring-selected-race'
 
@@ -127,7 +128,18 @@ function AppContent({ settings, updateSettings, openSettingsOnMount }: AppConten
     clientId: settings.clientId,
   })
 
-  const { activeRaces, runningRace, getRaceById } = useSchedule(schedule)
+  // Fetch schedule dates from REST API when connected
+  const [dateMap, setDateMap] = useState<Map<string, string>>(new Map())
+  useEffect(() => {
+    if (connectionState !== 'connected') return
+    let cancelled = false
+    fetchScheduleDates().then((map) => {
+      if (!cancelled && map.size > 0) setDateMap(map)
+    })
+    return () => { cancelled = true }
+  }, [connectionState])
+
+  const { races, activeRaces, runningRace, getRaceById, isMultiDay } = useSchedule(schedule, dateMap)
 
   // Selected race with localStorage persistence
   const [selectedRaceId, setSelectedRaceId] = useState<string | null>(() => {
@@ -138,11 +150,17 @@ function AppContent({ settings, updateSettings, openSettingsOnMount }: AppConten
     }
   })
 
-  // Auto-select running race if nothing selected (computed, not effect)
-  const effectiveSelectedRaceId = selectedRaceId ?? runningRace?.raceId ?? null
+  // Auto-select running race, but respect explicit user selection
+  const hasUserSelected = useRef(false)
+  const effectiveSelectedRaceId = useMemo(() => {
+    if (hasUserSelected.current && selectedRaceId) return selectedRaceId
+    if (selectedRaceId && getRaceById(selectedRaceId)) return selectedRaceId
+    return runningRace?.raceId ?? null
+  }, [selectedRaceId, getRaceById, runningRace])
 
   // Persist selected race to localStorage
   const handleSelectRace = useCallback((raceId: string) => {
+    hasUserSelected.current = true
     setSelectedRaceId(raceId)
     try {
       localStorage.setItem(STORAGE_KEY_SELECTED_RACE, raceId)
@@ -150,6 +168,14 @@ function AppContent({ settings, updateSettings, openSettingsOnMount }: AppConten
       // Ignore localStorage errors
     }
   }, [])
+
+  // "Only running" filter for race selector
+  const [onlyRunning, setOnlyRunning] = useState(false)
+
+  const visibleRaces = useMemo(
+    () => onlyRunning ? races.filter((r) => r.isRunning) : races,
+    [races, onlyRunning]
+  )
 
   const selectedRace = effectiveSelectedRaceId ? getRaceById(effectiveSelectedRaceId) : null
 
@@ -240,11 +266,13 @@ function AppContent({ settings, updateSettings, openSettingsOnMount }: AppConten
     <Layout
       header={
         <Header
-          races={activeRaces}
+          races={visibleRaces}
           selectedRaceId={effectiveSelectedRaceId}
           onSelectRace={handleSelectRace}
           isConnected={connectionState === 'connected'}
           onOpenSettings={() => setShowSettings(true)}
+          onlyRunning={onlyRunning}
+          onToggleOnlyRunning={() => setOnlyRunning((v) => !v)}
         />
       }
       footer={
@@ -306,7 +334,7 @@ function AppContent({ settings, updateSettings, openSettingsOnMount }: AppConten
       {(() => {
         const viewState = getViewState(
           connectionState,
-          activeRaces.length,
+          races.length,
           selectedRace,
           selectedRaceResults,
           raceConfig
