@@ -15,6 +15,9 @@ interface HeaderProps {
   races: ProcessedRace[]
   selectedRaceId: string | null
   onSelectRace: (raceId: string) => void
+  // Filter
+  onlyRunning: boolean
+  onToggleOnlyRunning: () => void
   // Connection status
   isConnected: boolean
   // Actions
@@ -25,6 +28,8 @@ export function Header({
   races,
   selectedRaceId,
   onSelectRace,
+  onlyRunning,
+  onToggleOnlyRunning,
   isConnected,
   onOpenSettings,
 }: HeaderProps) {
@@ -39,6 +44,8 @@ export function Header({
           races={races}
           selectedRaceId={selectedRaceId}
           onSelectRace={onSelectRace}
+          onlyRunning={onlyRunning}
+          onToggleOnlyRunning={onToggleOnlyRunning}
         />
       </div>
 

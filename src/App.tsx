@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback, useMemo, useRef } from 'react'
+import { useState, useEffect, useCallback, useMemo } from 'react'
 import { Layout, Header, ResultsGrid, GateGroupEditor, CheckProgress, Settings, EmptyState } from './components'
 import { useC123WebSocket } from './hooks/useC123WebSocket'
 import { useSchedule } from './hooks/useSchedule'
@@ -139,7 +139,7 @@ function AppContent({ settings, updateSettings, openSettingsOnMount }: AppConten
     return () => { cancelled = true }
   }, [connectionState])
 
-  const { races, activeRaces, runningRace, getRaceById, isMultiDay } = useSchedule(schedule, dateMap)
+  const { races, runningRace, getRaceById } = useSchedule(schedule, dateMap)
 
   // Selected race with localStorage persistence
   const [selectedRaceId, setSelectedRaceId] = useState<string | null>(() => {
@@ -151,16 +151,16 @@ function AppContent({ settings, updateSettings, openSettingsOnMount }: AppConten
   })
 
   // Auto-select running race, but respect explicit user selection
-  const hasUserSelected = useRef(false)
+  const [hasUserSelected, setHasUserSelected] = useState(false)
   const effectiveSelectedRaceId = useMemo(() => {
-    if (hasUserSelected.current && selectedRaceId) return selectedRaceId
+    if (hasUserSelected && selectedRaceId) return selectedRaceId
     if (selectedRaceId && getRaceById(selectedRaceId)) return selectedRaceId
     return runningRace?.raceId ?? null
-  }, [selectedRaceId, getRaceById, runningRace])
+  }, [hasUserSelected, selectedRaceId, getRaceById, runningRace])
 
   // Persist selected race to localStorage
   const handleSelectRace = useCallback((raceId: string) => {
-    hasUserSelected.current = true
+    setHasUserSelected(true)
     setSelectedRaceId(raceId)
     try {
       localStorage.setItem(STORAGE_KEY_SELECTED_RACE, raceId)
