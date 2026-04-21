@@ -5,6 +5,13 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.3.0](https://github.com/OpenCanoeTiming/c123-penalty-check/compare/v1.2.0...v1.3.0) (2026-04-21)
+
+
+### Features
+
+* support multi-day events in race selector ([#58](https://github.com/OpenCanoeTiming/c123-penalty-check/issues/58)) ([#59](https://github.com/OpenCanoeTiming/c123-penalty-check/issues/59)) ([fe6c888](https://github.com/OpenCanoeTiming/c123-penalty-check/commit/fe6c888fa8b78d87a170c5286111ccddb57c07cc))
+
 ## [1.0.0] - 2026-01-16
 
 ### Added
