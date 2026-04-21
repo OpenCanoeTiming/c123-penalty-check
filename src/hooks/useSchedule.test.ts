@@ -174,6 +174,63 @@ describe('useSchedule', () => {
     })
   })
 
+  describe('date enrichment', () => {
+    const multiDaySchedule: C123ScheduleData = {
+      races: [
+        createScheduleRace({ raceId: 'K1M_BR1_18', order: 1, raceStatus: 5, shortTitle: 'K1M 1st Run' }),
+        createScheduleRace({ raceId: 'K1M_BR1_19', order: 2, raceStatus: 1, shortTitle: 'K1M 1st Run' }),
+      ],
+    }
+
+    const dateMap = new Map([
+      ['K1M_BR1_18', '2026-04-18'],
+      ['K1M_BR1_19', '2026-04-19'],
+    ])
+
+    it('adds date to ProcessedRace when dateMap provided', () => {
+      const { result } = renderHook(() => useSchedule(multiDaySchedule, dateMap))
+      expect(result.current.races[0].date).toBe('2026-04-18')
+      expect(result.current.races[1].date).toBe('2026-04-19')
+    })
+
+    it('date is null when no dateMap provided', () => {
+      const { result } = renderHook(() => useSchedule(multiDaySchedule))
+      expect(result.current.races[0].date).toBeNull()
+      expect(result.current.races[1].date).toBeNull()
+    })
+
+    it('isMultiDay is true when races span multiple dates', () => {
+      const { result } = renderHook(() => useSchedule(multiDaySchedule, dateMap))
+      expect(result.current.isMultiDay).toBe(true)
+    })
+
+    it('isMultiDay is false when all races on same date', () => {
+      const sameDayMap = new Map([
+        ['K1M_BR1_18', '2026-04-18'],
+        ['K1M_BR1_19', '2026-04-18'],
+      ])
+      const { result } = renderHook(() => useSchedule(multiDaySchedule, sameDayMap))
+      expect(result.current.isMultiDay).toBe(false)
+    })
+
+    it('isMultiDay is false when no dateMap', () => {
+      const { result } = renderHook(() => useSchedule(multiDaySchedule))
+      expect(result.current.isMultiDay).toBe(false)
+    })
+
+    it('displayTitle includes date suffix for multi-day events', () => {
+      const { result } = renderHook(() => useSchedule(multiDaySchedule, dateMap))
+      expect(result.current.races[0].displayTitle).toBe('K1M 1st Run (18.4.)')
+      expect(result.current.races[1].displayTitle).toBe('K1M 1st Run (19.4.)')
+    })
+
+    it('displayTitle equals shortTitle for single-day events', () => {
+      const { result } = renderHook(() => useSchedule(multiDaySchedule))
+      expect(result.current.races[0].displayTitle).toBe('K1M 1st Run')
+      expect(result.current.races[1].displayTitle).toBe('K1M 1st Run')
+    })
+  })
+
   describe('race status flags', () => {
     it('correctly sets isActive for status 3-5', () => {
       const testSchedule: C123ScheduleData = {

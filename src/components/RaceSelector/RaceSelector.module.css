@@ -59,3 +59,29 @@
     min-height: 44px;
   }
 }
+
+.filterLabel {
+  display: flex;
+  align-items: center;
+  gap: var(--space-1);
+  cursor: pointer;
+  white-space: nowrap;
+  user-select: none;
+}
+
+.filterCheckbox {
+  margin: 0;
+  cursor: pointer;
+}
+
+.filterText {
+  font-size: var(--text-sm);
+  color: var(--color-text-secondary);
+}
+
+/* Hide filter label text on smaller screens, keep checkbox */
+@media (max-width: 1024px) {
+  .filterText {
+    display: none;
+  }
+}

@@ -7,12 +7,16 @@ interface RaceSelectorProps {
   races: ProcessedRace[]
   selectedRaceId: string | null
   onSelectRace: (raceId: string) => void
+  onlyRunning: boolean
+  onToggleOnlyRunning: () => void
 }
 
 export function RaceSelector({
   races,
   selectedRaceId,
   onSelectRace,
+  onlyRunning,
+  onToggleOnlyRunning,
 }: RaceSelectorProps) {
   // Find current index in races array
   const currentIndex = useMemo(() => {
@@ -36,10 +40,15 @@ export function RaceSelector({
     }
   }
 
+  // Check if any race is running (to show/enable checkbox)
+  const hasRunningRaces = races.some((r) => r.isRunning)
+
   if (races.length === 0) {
     return (
       <div className={styles.selector}>
-        <span className={styles.noRaces}>No active races</span>
+        <span className={styles.noRaces}>
+          {onlyRunning ? 'No running races' : 'No races'}
+        </span>
       </div>
     )
   }
@@ -53,8 +62,8 @@ export function RaceSelector({
         icon
         onClick={handlePrev}
         disabled={!prevRace}
-        aria-label={prevRace ? `Previous: ${prevRace.shortTitle}` : 'No previous race'}
-        title={prevRace ? `Previous: ${prevRace.shortTitle}` : undefined}
+        aria-label={prevRace ? `Previous: ${prevRace.displayTitle}` : 'No previous race'}
+        title={prevRace ? `Previous: ${prevRace.displayTitle}` : undefined}
         className={styles.navButton}
       >
         ◀
@@ -74,7 +83,7 @@ export function RaceSelector({
         {races.map((race) => (
           <option key={race.raceId} value={race.raceId}>
             {race.isRunning ? '● ' : ''}
-            {race.shortTitle}
+            {race.displayTitle}
           </option>
         ))}
       </Select>
@@ -86,17 +95,30 @@ export function RaceSelector({
         icon
         onClick={handleNext}
         disabled={!nextRace}
-        aria-label={nextRace ? `Next: ${nextRace.shortTitle}` : 'No next race'}
-        title={nextRace ? `Next: ${nextRace.shortTitle}` : undefined}
+        aria-label={nextRace ? `Next: ${nextRace.displayTitle}` : 'No next race'}
+        title={nextRace ? `Next: ${nextRace.displayTitle}` : undefined}
         className={styles.navButton}
       >
         ▶
       </Button>
 
+      {/* Only running filter */}
+      {hasRunningRaces && (
+        <label className={styles.filterLabel} title="Show only currently running races">
+          <input
+            type="checkbox"
+            checked={onlyRunning}
+            onChange={onToggleOnlyRunning}
+            className={styles.filterCheckbox}
+          />
+          <span className={styles.filterText}>Only running</span>
+        </label>
+      )}
+
       {/* Next race label (visible on wider screens) */}
       {nextRace && (
-        <span className={styles.nextLabel} title={`Next: ${nextRace.shortTitle}`}>
-          {nextRace.shortTitle}
+        <span className={styles.nextLabel} title={`Next: ${nextRace.displayTitle}`}>
+          {nextRace.displayTitle}
         </span>
       )}
     </div>
