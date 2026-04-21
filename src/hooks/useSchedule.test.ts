@@ -231,6 +231,43 @@ describe('useSchedule', () => {
     })
   })
 
+  describe('courseNr enrichment', () => {
+    const courseNrSchedule: C123ScheduleData = {
+      races: [
+        createScheduleRace({ raceId: 'K1M_BR1_18', order: 1, raceStatus: 5 }),
+        createScheduleRace({ raceId: 'K1M_BR1_19', order: 2, raceStatus: 1 }),
+      ],
+    }
+
+    const courseNrMap = new Map([
+      ['K1M_BR1_18', 1],
+      ['K1M_BR1_19', 2],
+    ])
+
+    it('adds courseNr to ProcessedRace when courseNrMap provided', () => {
+      const { result } = renderHook(() =>
+        useSchedule(courseNrSchedule, undefined, courseNrMap)
+      )
+      expect(result.current.races[0].courseNr).toBe(1)
+      expect(result.current.races[1].courseNr).toBe(2)
+    })
+
+    it('courseNr is null when no courseNrMap provided', () => {
+      const { result } = renderHook(() => useSchedule(courseNrSchedule))
+      expect(result.current.races[0].courseNr).toBeNull()
+      expect(result.current.races[1].courseNr).toBeNull()
+    })
+
+    it('courseNr is null for races not in courseNrMap', () => {
+      const partialMap = new Map([['K1M_BR1_18', 1]])
+      const { result } = renderHook(() =>
+        useSchedule(courseNrSchedule, undefined, partialMap)
+      )
+      expect(result.current.races[0].courseNr).toBe(1)
+      expect(result.current.races[1].courseNr).toBeNull()
+    })
+  })
+
   describe('race status flags', () => {
     it('correctly sets isActive for status 3-5', () => {
       const testSchedule: C123ScheduleData = {

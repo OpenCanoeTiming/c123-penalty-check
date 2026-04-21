@@ -33,6 +33,7 @@ export interface ProcessedRace {
   shortTitle: string
   displayTitle: string // shortTitle with date suffix for multi-day events
   date: string | null // YYYY-MM-DD from REST enrichment
+  courseNr: number | null // course number from REST enrichment
   raceStatus: RaceStatus
   startTime: string
   isActive: boolean // Status 3-5: running or finished
@@ -65,11 +66,13 @@ function formatShortDate(isoDate: string): string {
 function processRace(
   race: C123ScheduleRace,
   dateMap: Map<string, string> | undefined,
-  isMultiDay: boolean
+  isMultiDay: boolean,
+  courseNrMap?: Map<string, number>
 ): ProcessedRace {
   const status = race.raceStatus as RaceStatus
   const shortTitle = race.shortTitle || race.mainTitle
   const date = dateMap?.get(race.raceId) ?? null
+  const courseNr = courseNrMap?.get(race.raceId) ?? null
   const displayTitle =
     isMultiDay && date ? shortTitle + ' (' + formatShortDate(date) + ')' : shortTitle
   return {
@@ -80,6 +83,7 @@ function processRace(
     shortTitle,
     displayTitle,
     date,
+    courseNr,
     raceStatus: status,
     startTime: race.startTime,
     isActive: status >= 3 && status <= 5,
@@ -94,7 +98,8 @@ function processRace(
 
 export function useSchedule(
   schedule: C123ScheduleData | null,
-  dateMap?: Map<string, string>
+  dateMap?: Map<string, string>,
+  courseNrMap?: Map<string, number>
 ): UseScheduleReturn {
   const isMultiDay = useMemo(() => {
     if (!dateMap || dateMap.size === 0) return false
@@ -105,9 +110,9 @@ export function useSchedule(
   const races = useMemo(() => {
     if (!schedule?.races) return []
     return schedule.races
-      .map((race) => processRace(race, dateMap, isMultiDay))
+      .map((race) => processRace(race, dateMap, isMultiDay, courseNrMap))
       .sort((a, b) => a.order - b.order)
-  }, [schedule, dateMap, isMultiDay])
+  }, [schedule, dateMap, isMultiDay, courseNrMap])
 
   const activeRaces = useMemo(
     () => races.filter((r) => r.isActive),

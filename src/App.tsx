@@ -10,7 +10,9 @@ import { useScoring } from './hooks/useScoring'
 import { useServerDiscovery } from './hooks/useServerDiscovery'
 import { setApiBaseUrl, wsToHttpUrl } from './services/serverConfig'
 import { saveToCache } from './services/discovery-client'
-import { fetchScheduleDates } from './services/scheduleApi'
+import { fetchScheduleEnrichment } from './services/scheduleApi'
+import { fetchCourses, type CourseConfig } from './services/coursesApi'
+import { fetchRaceResults } from './services/resultsApi'
 
 const STORAGE_KEY_SELECTED_RACE = 'c123-scoring-selected-race'
 
@@ -128,18 +130,28 @@ function AppContent({ settings, updateSettings, openSettingsOnMount }: AppConten
     clientId: settings.clientId,
   })
 
-  // Fetch schedule dates from REST API when connected
+  // REST API state
   const [dateMap, setDateMap] = useState<Map<string, string>>(new Map())
+  const [courseNrMap, setCourseNrMap] = useState<Map<string, number>>(new Map())
+  const [coursesMap, setCoursesMap] = useState<Map<number, CourseConfig>>(new Map())
+  const [restResults, setRestResults] = useState<Map<string, import('./types/c123server').C123ResultsData>>(new Map())
+
+  // Fetch schedule enrichment + courses from REST API when connected
   useEffect(() => {
     if (connectionState !== 'connected') return
     let cancelled = false
-    fetchScheduleDates().then((map) => {
-      if (!cancelled && map.size > 0) setDateMap(map)
+    Promise.all([fetchScheduleEnrichment(), fetchCourses()]).then(([enrichment, courses]) => {
+      if (cancelled) return
+      // Clear stale REST results from previous connection
+      setRestResults(new Map())
+      if (enrichment.dateMap.size > 0) setDateMap(enrichment.dateMap)
+      if (enrichment.courseNrMap.size > 0) setCourseNrMap(enrichment.courseNrMap)
+      if (courses.size > 0) setCoursesMap(courses)
     })
     return () => { cancelled = true }
   }, [connectionState])
 
-  const { races, runningRace, getRaceById } = useSchedule(schedule, dateMap)
+  const { races, runningRace, getRaceById } = useSchedule(schedule, dateMap, courseNrMap)
 
   // Selected race with localStorage persistence
   const [selectedRaceId, setSelectedRaceId] = useState<string | null>(() => {
@@ -179,8 +191,50 @@ function AppContent({ settings, updateSettings, openSettingsOnMount }: AppConten
 
   const selectedRace = effectiveSelectedRaceId ? getRaceById(effectiveSelectedRaceId) : null
 
-  // Get results data for selected race
-  const selectedRaceResults = effectiveSelectedRaceId ? results.get(effectiveSelectedRaceId) : undefined
+  // Resolve per-race gate config: REST courses as base, WebSocket raceConfig for running race
+  const effectiveRaceConfig = useMemo(() => {
+    // For running race, prefer WebSocket raceConfig (real-time)
+    if (selectedRace?.isRunning && raceConfig) return raceConfig
+    // For other races, look up from courses map
+    if (selectedRace?.courseNr !== null && selectedRace?.courseNr !== undefined) {
+      const course = coursesMap.get(selectedRace.courseNr)
+      if (course) {
+        return {
+          nrSplits: 0,
+          nrGates: course.nrGates,
+          gateConfig: course.gateConfig,
+          gateCaptions: Array.from({ length: course.nrGates }, (_, i) => String(i + 1)).join(','),
+        }
+      }
+    }
+    // Fallback to WebSocket raceConfig
+    return raceConfig
+  }, [selectedRace, raceConfig, coursesMap])
+
+  // Lazy-fetch results from REST when selecting a race without WebSocket data
+  useEffect(() => {
+    if (!effectiveSelectedRaceId) return
+    // Skip if WebSocket already has data
+    if (results.has(effectiveSelectedRaceId)) return
+    // Skip if REST already fetched
+    if (restResults.has(effectiveSelectedRaceId)) return
+
+    let cancelled = false
+    fetchRaceResults(effectiveSelectedRaceId).then((data) => {
+      if (cancelled || !data) return
+      setRestResults((prev) => {
+        const next = new Map(prev)
+        next.set(effectiveSelectedRaceId, data)
+        return next
+      })
+    })
+    return () => { cancelled = true }
+  }, [effectiveSelectedRaceId, results, restResults])
+
+  // Get results: WebSocket takes priority, REST as fallback
+  const selectedRaceResults = effectiveSelectedRaceId
+    ? (results.get(effectiveSelectedRaceId) ?? restResults.get(effectiveSelectedRaceId))
+    : undefined
 
   // Gate groups hook
   const {
@@ -193,7 +247,7 @@ function AppContent({ settings, updateSettings, openSettingsOnMount }: AppConten
     updateGroup,
     removeGroup,
   } = useGateGroups({
-    raceConfig,
+    raceConfig: effectiveRaceConfig,
     raceId: effectiveSelectedRaceId,
   })
 
@@ -300,11 +354,11 @@ function AppContent({ settings, updateSettings, openSettingsOnMount }: AppConten
       }
     >
       {/* Gate Group Editor Modal */}
-      {showGateGroupEditor && raceConfig && (
+      {showGateGroupEditor && effectiveRaceConfig && (
         <div className="modal-overlay" onClick={() => setShowGateGroupEditor(false)}>
           <div className="modal-content" onClick={(e) => e.stopPropagation()}>
             <GateGroupEditor
-              totalGates={raceConfig.nrGates}
+              totalGates={effectiveRaceConfig.nrGates}
               groups={customGroups}
               activeGroupId={activeGroupId}
               onAddGroup={addGroup}
@@ -337,7 +391,7 @@ function AppContent({ settings, updateSettings, openSettingsOnMount }: AppConten
           races.length,
           selectedRace,
           selectedRaceResults,
-          raceConfig
+          effectiveRaceConfig
         )
         switch (viewState.type) {
           case 'loading':
@@ -369,9 +423,9 @@ function AppContent({ settings, updateSettings, openSettingsOnMount }: AppConten
             return (
               <ResultsGrid
                 // Key forces remount when gate count changes, ensuring sticky recalculates
-                key={`grid-${raceConfig?.nrGates ?? 0}`}
+                key={`grid-${effectiveRaceConfig?.nrGates ?? 0}`}
                 rows={selectedRaceResults!.rows}
-                raceConfig={raceConfig!}
+                raceConfig={effectiveRaceConfig!}
                 raceId={effectiveSelectedRaceId}
                 activeGateGroup={activeGroup}
                 allGateGroups={allGroups}

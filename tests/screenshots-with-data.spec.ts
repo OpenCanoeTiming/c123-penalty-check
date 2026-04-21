@@ -197,4 +197,30 @@ test.describe('Screenshot Tests - With Data', () => {
     await page.waitForTimeout(1000);
     await takeDocScreenshot(page, '21-multi-day-sunday-grid');
   });
+
+  test('22 - preloaded saturday race (REST data)', async ({ page }) => {
+    await setupDirectConnection(page);
+    await page.goto('/');
+    await page.waitForTimeout(3000);
+
+    // Select a Saturday completed race (18.4.) — data comes from REST pre-load
+    const raceSelector = page.locator('select[aria-label="Select race"]');
+    const options = page.locator('select[aria-label="Select race"] option');
+    const count = await options.count();
+    for (let i = 0; i < count; i++) {
+      const text = await options.nth(i).textContent();
+      if (text?.includes('18.4.') && text?.includes('K1M') && text?.includes('1st')) {
+        const value = await options.nth(i).getAttribute('value');
+        if (value) {
+          await raceSelector.selectOption(value);
+          break;
+        }
+      }
+    }
+
+    // Wait for REST-fetched grid data
+    await page.waitForSelector('.results-grid tbody tr', { timeout: 15000 }).catch(() => {});
+    await page.waitForTimeout(1000);
+    await takeDocScreenshot(page, '22-preloaded-saturday-race');
+  });
 });
