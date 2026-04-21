@@ -24,6 +24,8 @@ Thumbs.db
 # Claude Code artifacts
 *.log.txt
 core
+.claude/
+.superpowers/
 
 # Playwright
 tests/results/
