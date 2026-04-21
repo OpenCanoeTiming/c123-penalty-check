@@ -116,9 +116,13 @@ function saveToStorage(key: string, config: GateGroupsConfig): void {
  * CourseConfig does not expose splits, so this always returns empty.
  */
 function createSegmentsFromCourse(
-  _course: CourseConfig | undefined,
-  _totalGates: number
+  _course?: CourseConfig,
+  _totalGates?: number
 ): CourseSegment[] {
+  // CourseConfig does not expose splits, so this always returns empty.
+  // Placeholder for future enhancement when splits are available.
+  void _course
+  void _totalGates
   return []
 }
 
