@@ -150,4 +150,51 @@ test.describe('Screenshot Tests - With Data', () => {
     await waitForDataAndSelectRace(page);
     await takeDocScreenshot(page, 'tablet-light');
   });
+
+  // Multi-day event tests (require Sunday morning recording replay)
+  // Helper to skip discovery and connect directly
+  async function setupDirectConnection(page: Page) {
+    await page.addInitScript(() => {
+      const raw = localStorage.getItem('c123-scoring-settings')
+      const settings = raw ? JSON.parse(raw) : {}
+      settings.serverUrl = 'ws://127.0.0.1:27123/ws'
+      localStorage.setItem('c123-scoring-settings', JSON.stringify(settings))
+      // Clear selected race to test auto-selection
+      localStorage.removeItem('c123-scoring-selected-race')
+    })
+  }
+
+  test('20 - multi-day race selector with dates', async ({ page }) => {
+    await setupDirectConnection(page);
+    await page.goto('/');
+    await page.waitForTimeout(3000);
+
+    await takeDocScreenshot(page, '20-multi-day-race-selector');
+  });
+
+  test('21 - multi-day grid with sunday race data', async ({ page }) => {
+    await setupDirectConnection(page);
+    await page.goto('/');
+    await page.waitForTimeout(3000);
+
+    // Select a Sunday race (look for 19.4. in option text)
+    const raceSelector = page.locator('select[aria-label="Select race"]');
+    const options = page.locator('select[aria-label="Select race"] option');
+    const count = await options.count();
+    for (let i = 0; i < count; i++) {
+      const text = await options.nth(i).textContent();
+      if (text?.includes('19.4.') && text?.includes('K1M') && text?.includes('1st')) {
+        const value = await options.nth(i).getAttribute('value');
+        if (value) {
+          await raceSelector.selectOption(value);
+          break;
+        }
+      }
+    }
+
+    // Wait for grid data
+    await page.waitForSelector('.results-grid tbody tr', { timeout: 15000 }).catch(() => {});
+    await page.waitForTimeout(1000);
+    await takeDocScreenshot(page, '21-multi-day-sunday-grid');
+  });
 });
