@@ -160,7 +160,7 @@ export function useGateGroups(options: UseGateGroupsOptions = {}): UseGateGroups
     saveToStorage(storageKey, config)
   }, [storageKey, config])
 
-  // Fetch courses from server
+  // Fetch courses from server (manual reload only — App.tsx fetches courses on connect)
   const loadCourses = useCallback(async () => {
     setCoursesLoading(true)
     try {
@@ -172,11 +172,6 @@ export function useGateGroups(options: UseGateGroupsOptions = {}): UseGateGroups
       setCoursesLoading(false)
     }
   }, [])
-
-  // Load courses on mount and when race changes
-  useEffect(() => {
-    loadCourses()
-  }, [loadCourses, raceId])
 
   // Total gates from race config
   const totalGates = raceConfig?.nrGates ?? 0

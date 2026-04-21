@@ -130,15 +130,20 @@ function AppContent({ settings, updateSettings, openSettingsOnMount }: AppConten
     clientId: settings.clientId,
   })
 
-  // Fetch schedule enrichment + courses from REST API when connected
+  // REST API state
   const [dateMap, setDateMap] = useState<Map<string, string>>(new Map())
   const [courseNrMap, setCourseNrMap] = useState<Map<string, number>>(new Map())
   const [coursesMap, setCoursesMap] = useState<Map<number, CourseConfig>>(new Map())
+  const [restResults, setRestResults] = useState<Map<string, import('./types/c123server').C123ResultsData>>(new Map())
+
+  // Fetch schedule enrichment + courses from REST API when connected
   useEffect(() => {
     if (connectionState !== 'connected') return
     let cancelled = false
     Promise.all([fetchScheduleEnrichment(), fetchCourses()]).then(([enrichment, courses]) => {
       if (cancelled) return
+      // Clear stale REST results from previous connection
+      setRestResults(new Map())
       if (enrichment.dateMap.size > 0) setDateMap(enrichment.dateMap)
       if (enrichment.courseNrMap.size > 0) setCourseNrMap(enrichment.courseNrMap)
       if (courses.size > 0) setCoursesMap(courses)
@@ -207,7 +212,6 @@ function AppContent({ settings, updateSettings, openSettingsOnMount }: AppConten
   }, [selectedRace, raceConfig, coursesMap])
 
   // Lazy-fetch results from REST when selecting a race without WebSocket data
-  const [restResults, setRestResults] = useState<Map<string, import('./types/c123server').C123ResultsData>>(new Map())
   useEffect(() => {
     if (!effectiveSelectedRaceId) return
     // Skip if WebSocket already has data
