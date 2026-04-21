@@ -7,13 +7,12 @@ import {
   DEFAULT_GATE_GROUPS_CONFIG,
   type CourseSegment,
   createGroupsFromSegments,
-  createSegmentsFromSplits,
   createGateGroup,
   updateGateGroup as updateGateGroupUtil,
   removeGateGroup as removeGateGroupUtil,
   getNextGroupColor,
 } from '../types/gateGroups'
-import { fetchCourses, type CourseData } from '../services/coursesApi'
+import { fetchCourses, type CourseConfig } from '../services/coursesApi'
 
 // =============================================================================
 // Types
@@ -42,7 +41,7 @@ export interface UseGateGroupsReturn {
   /** Total number of gates in the race */
   totalGates: number
   /** Available courses from XML data */
-  availableCourses: CourseData[]
+  availableCourses: CourseConfig[]
   /** Whether courses are loading */
   coursesLoading: boolean
 
@@ -114,15 +113,13 @@ function saveToStorage(key: string, config: GateGroupsConfig): void {
 
 /**
  * Create segments from course data splits
+ * CourseConfig does not expose splits, so this always returns empty.
  */
 function createSegmentsFromCourse(
-  course: CourseData | undefined,
-  totalGates: number
+  _course: CourseConfig | undefined,
+  _totalGates: number
 ): CourseSegment[] {
-  if (!course || course.splits.length === 0 || totalGates === 0) {
-    return []
-  }
-  return createSegmentsFromSplits(course.splits, totalGates)
+  return []
 }
 
 // =============================================================================
@@ -146,7 +143,7 @@ export function useGateGroups(options: UseGateGroupsOptions = {}): UseGateGroups
   const [config, setConfig] = useState<GateGroupsConfig>(() =>
     loadFromStorage(storageKey)
   )
-  const [courses, setCourses] = useState<CourseData[]>([])
+  const [courses, setCourses] = useState<CourseConfig[]>([])
   const [coursesLoading, setCoursesLoading] = useState(false)
 
   // Load from storage when race changes
@@ -163,8 +160,8 @@ export function useGateGroups(options: UseGateGroupsOptions = {}): UseGateGroups
   const loadCourses = useCallback(async () => {
     setCoursesLoading(true)
     try {
-      const data = await fetchCourses()
-      setCourses(data?.courses ?? [])
+      const courseMap = await fetchCourses()
+      setCourses(Array.from(courseMap.values()))
     } catch {
       setCourses([])
     } finally {
@@ -180,16 +177,13 @@ export function useGateGroups(options: UseGateGroupsOptions = {}): UseGateGroups
   // Total gates from race config
   const totalGates = raceConfig?.nrGates ?? 0
 
-  // Find the matching course by comparing gateConfig
-  // courseConfig from XML includes S markers for splits (e.g., "NNRNSNRNS...")
-  // gateConfig from RaceConfig does NOT include S markers
-  // So we compare by removing S markers from courseConfig
+  // Find the matching course by comparing gateConfig.
+  // CourseConfig.gateConfig already has S markers removed, so compare directly.
   const selectedCourse = useMemo(() => {
     if (!raceConfig?.gateConfig || courses.length === 0) {
       return undefined
     }
-    // Remove S markers from courseConfig and compare with gateConfig
-    return courses.find((c) => c.courseConfig.replace(/S/g, '') === raceConfig.gateConfig)
+    return courses.find((c) => c.gateConfig === raceConfig.gateConfig)
   }, [courses, raceConfig?.gateConfig])
 
   // Create segments from course splits

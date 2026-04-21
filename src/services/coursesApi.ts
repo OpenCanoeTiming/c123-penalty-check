@@ -1,86 +1,59 @@
 /**
  * Courses API Client
  *
- * REST API client for fetching course configuration data from c123-server.
- * Used for auto-loading gate groups based on course segments.
+ * Fetches course configuration from c123-server REST API.
+ * Used to get per-race gate configuration (number of gates, N/R pattern).
  */
-
-// =============================================================================
-// Types
-// =============================================================================
-
-/**
- * Course configuration from XML data
- */
-export interface CourseData {
-  /** Course number (1-based) */
-  courseNr: number
-  /** Gate configuration string (N=normal, R=reverse, S=split) */
-  courseConfig: string
-  /** Gate numbers where splits occur (1-indexed) */
-  splits: number[]
-}
-
-export interface CoursesResponse {
-  courses: CourseData[]
-}
 
 import { getApiBaseUrl } from './serverConfig'
 
-// =============================================================================
-// API Functions
-// =============================================================================
+export interface CourseConfig {
+  courseNr: number
+  nrGates: number
+  gateConfig: string // "NNRNNR..." (N and R only, S removed)
+}
+
+interface RestCourse {
+  courseNr: number
+  courseConfig: string // "NNRNSNNRSN..." (includes S for splits)
+  splits: number[]
+}
+
+interface RestCoursesResponse {
+  courses: RestCourse[]
+}
 
 /**
- * Fetch course configuration data from c123-server
- *
- * @returns Promise with courses data or null if not available
+ * Strip split markers (S) from courseConfig to get gate-only config.
+ * "NNRNSNNR" → "NNRNNNR", nrGates = 7
  */
-export async function fetchCourses(): Promise<CoursesResponse | null> {
-  const baseUrl = getApiBaseUrl()
+function parseCourseConfig(config: string): { nrGates: number; gateConfig: string } {
+  const gateConfig = config.replace(/S/g, '')
+  return { nrGates: gateConfig.length, gateConfig }
+}
 
+/**
+ * Fetch courses from REST API and return a map of courseNr → CourseConfig.
+ * Returns empty map on any error (graceful degradation).
+ */
+export async function fetchCourses(baseUrl?: string): Promise<Map<number, CourseConfig>> {
+  const url = baseUrl ?? getApiBaseUrl()
   try {
-    const response = await fetch(`${baseUrl}/api/xml/courses`, {
-      method: 'GET',
-      headers: {
-        Accept: 'application/json',
-      },
+    const response = await fetch(`${url}/api/xml/courses`, {
+      signal: AbortSignal.timeout(5000),
     })
+    if (!response.ok) return new Map()
 
-    if (!response.ok) {
-      // XML data might not be available
-      if (response.status === 503) {
-        return null
-      }
-      throw new Error(`HTTP ${response.status}`)
+    const data: RestCoursesResponse = await response.json()
+    const courseMap = new Map<number, CourseConfig>()
+
+    for (const course of data.courses ?? []) {
+      const { nrGates, gateConfig } = parseCourseConfig(course.courseConfig)
+      courseMap.set(course.courseNr, { courseNr: course.courseNr, nrGates, gateConfig })
     }
 
-    return (await response.json()) as CoursesResponse
+    return courseMap
   } catch {
-    // Network error or server not available
-    return null
+    return new Map()
   }
-}
-
-/**
- * Get splits for a specific course number
- *
- * @param courseNr - Course number (1-based, usually 1 for short track, 2 for middle)
- * @returns Array of gate numbers where splits occur, or empty array
- */
-export async function getCourseSplits(courseNr: number): Promise<number[]> {
-  const data = await fetchCourses()
-  if (!data) return []
-
-  const course = data.courses.find((c) => c.courseNr === courseNr)
-  return course?.splits ?? []
-}
-
-// =============================================================================
-// Exports
-// =============================================================================
-
-export const coursesApi = {
-  fetchCourses,
-  getCourseSplits,
 }
