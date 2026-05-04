@@ -103,6 +103,7 @@ export function useCheckedState(options: UseCheckedStateOptions = {}): UseChecke
 
   // Load from storage when race changes
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     setCheckedStates(loadFromStorage(storageKey))
   }, [storageKey])
 

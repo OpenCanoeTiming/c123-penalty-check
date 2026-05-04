@@ -152,6 +152,7 @@ export function useGateGroups(options: UseGateGroupsOptions = {}): UseGateGroups
 
   // Load from storage when race changes
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     setConfig(loadFromStorage(storageKey))
   }, [storageKey])
 
