@@ -183,7 +183,7 @@ export function useGateGroups(options: UseGateGroupsOptions = {}): UseGateGroups
       return undefined
     }
     return courses.find((c) => c.gateConfig === raceConfig.gateConfig)
-  }, [courses, raceConfig?.gateConfig])
+  }, [courses, raceConfig])
 
   // Create segments from course splits
   const segments = useMemo(
