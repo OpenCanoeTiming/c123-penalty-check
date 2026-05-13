@@ -5,6 +5,14 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.4.1](https://github.com/OpenCanoeTiming/c123-penalty-check/compare/v1.4.0...v1.4.1) (2026-05-04)
+
+
+### Bug Fixes
+
+* correct useMemo dependency for React Compiler compatibility ([837159e](https://github.com/OpenCanoeTiming/c123-penalty-check/commit/837159e8dea891f0b7292ff69e3bb90a9322ec68))
+* suppress set-state-in-effect lint errors for intentional localStorage sync pattern ([5f7ff66](https://github.com/OpenCanoeTiming/c123-penalty-check/commit/5f7ff660f23c844cba1a59eb25033247a071c816))
+
 ## [1.4.0](https://github.com/OpenCanoeTiming/c123-penalty-check/compare/v1.3.0...v1.4.0) (2026-04-21)
 
 
