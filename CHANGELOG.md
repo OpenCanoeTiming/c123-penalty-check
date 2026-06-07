@@ -5,6 +5,14 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.4.4](https://github.com/OpenCanoeTiming/c123-penalty-check/compare/v1.4.3...v1.4.4) (2026-06-07)
+
+
+### Bug Fixes
+
+* divide REST result times by 1000 (ms), not 100 (cs) ([#99](https://github.com/OpenCanoeTiming/c123-penalty-check/issues/99)) ([ed2d548](https://github.com/OpenCanoeTiming/c123-penalty-check/commit/ed2d54849fed809a8127832a511a6f71584007ef)), closes [#98](https://github.com/OpenCanoeTiming/c123-penalty-check/issues/98)
+* unify in-app name to C123 Penalty Check ([#102](https://github.com/OpenCanoeTiming/c123-penalty-check/issues/102)) ([e7a6f8c](https://github.com/OpenCanoeTiming/c123-penalty-check/commit/e7a6f8c431bc8c94c9ddd8202d34fb46eb766dbe)), closes [#101](https://github.com/OpenCanoeTiming/c123-penalty-check/issues/101)
+
 ## [1.4.3](https://github.com/OpenCanoeTiming/c123-penalty-check/compare/v1.4.2...v1.4.3) (2026-06-07)
 
 
