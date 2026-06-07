@@ -155,12 +155,12 @@ test.describe('Screenshot Tests - With Data', () => {
   // Helper to skip discovery and connect directly
   async function setupDirectConnection(page: Page) {
     await page.addInitScript(() => {
-      const raw = localStorage.getItem('c123-scoring-settings')
+      const raw = localStorage.getItem('c123-penalty-check-settings')
       const settings = raw ? JSON.parse(raw) : {}
       settings.serverUrl = 'ws://127.0.0.1:27123/ws'
-      localStorage.setItem('c123-scoring-settings', JSON.stringify(settings))
+      localStorage.setItem('c123-penalty-check-settings', JSON.stringify(settings))
       // Clear selected race to test auto-selection
-      localStorage.removeItem('c123-scoring-selected-race')
+      localStorage.removeItem('c123-penalty-check-selected-race')
     })
   }
 
