@@ -20,9 +20,9 @@ describe('fetchRaceResults', () => {
           bib: '1',
           startTime: '08:30:00',
           status: '',
-          time: 7899,
-          pen: 2,
-          total: 8099,
+          time: 78990, // milliseconds (C123 XML unit) → 78.99s
+          pen: 2, // seconds
+          total: 80990, // milliseconds → 80.99s
           rank: 1,
           gates: '  0  0  2  0  0  0',
           participant: {
