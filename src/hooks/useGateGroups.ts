@@ -134,7 +134,7 @@ export function useGateGroups(options: UseGateGroupsOptions = {}): UseGateGroups
   const {
     raceConfig = null,
     raceId = null,
-    storageKeyPrefix = 'c123-scoring-gate-groups',
+    storageKeyPrefix = 'c123-penalty-check-gate-groups',
   } = options
 
   // Storage key based on race ID

@@ -409,14 +409,14 @@ export function Settings({
                   <Input
                     id="client-id"
                     type="text"
-                    value={settings.clientId ?? 'c123-scoring'}
+                    value={settings.clientId ?? 'c123-penalty-check'}
                     onChange={(e) => onSettingsChange({ clientId: e.target.value })}
-                    placeholder="c123-scoring"
+                    placeholder="c123-penalty-check"
                     data-testid="settings-client-id"
                   />
                   <p className="form-hint">
                     Identifier sent to server to distinguish this client from others.
-                    Use unique names like "scoring-1", "scoring-finish", etc.
+                    Use unique names like "penalty-1", "penalty-finish", etc.
                   </p>
                 </div>
               </div>

@@ -21,10 +21,10 @@ test.describe('Screenshot Tests - Static States', () => {
   // so tests go straight to the main UI instead of the discovering screen
   test.beforeEach(async ({ page }) => {
     await page.addInitScript(() => {
-      const raw = localStorage.getItem('c123-scoring-settings')
+      const raw = localStorage.getItem('c123-penalty-check-settings')
       const settings = raw ? JSON.parse(raw) : {}
       settings.serverUrl = 'ws://127.0.0.1:27123/ws'
-      localStorage.setItem('c123-scoring-settings', JSON.stringify(settings))
+      localStorage.setItem('c123-penalty-check-settings', JSON.stringify(settings))
     })
   })
 

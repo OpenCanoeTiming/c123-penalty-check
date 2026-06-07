@@ -9,7 +9,7 @@ import type { ResultsSortOption } from '../types/ui'
 import { setApiBaseUrl, wsToHttpUrl } from '../services/serverConfig'
 import { saveToCache } from '../services/discovery-client'
 
-const STORAGE_KEY = 'c123-scoring-settings'
+const STORAGE_KEY = 'c123-penalty-check-settings'
 const DEFAULT_SERVER_URL = 'ws://localhost:27123/ws'
 const MAX_HISTORY_LENGTH = 10
 const SAVE_DEBOUNCE_MS = 300
@@ -32,7 +32,7 @@ export interface Settings {
 const DEFAULT_SETTINGS: Settings = {
   serverUrl: DEFAULT_SERVER_URL,
   serverHistory: [],
-  clientId: 'c123-scoring',
+  clientId: 'c123-penalty-check',
   theme: 'auto',
   sortBy: 'startOrder',
 }

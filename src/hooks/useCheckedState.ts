@@ -87,7 +87,7 @@ export function useCheckedState(options: UseCheckedStateOptions = {}): UseChecke
   const {
     raceId = null,
     groupId = null,
-    storageKeyPrefix = 'c123-scoring-checked',
+    storageKeyPrefix = 'c123-penalty-check-checked',
   } = options
 
   // Storage key based on race ID only (group filtering happens in memory)

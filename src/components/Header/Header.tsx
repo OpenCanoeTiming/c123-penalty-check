@@ -36,7 +36,7 @@ export function Header({
   return (
     <DSHeader variant="compact">
       <HeaderBrand>
-        <HeaderTitle>C123-SCORING</HeaderTitle>
+        <HeaderTitle>C123-PENALTY-CHECK</HeaderTitle>
       </HeaderBrand>
 
       <div className={styles.raceSelector}>

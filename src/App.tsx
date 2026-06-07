@@ -14,7 +14,7 @@ import { fetchScheduleEnrichment } from './services/scheduleApi'
 import { fetchCourses, type CourseConfig } from './services/coursesApi'
 import { fetchRaceResults } from './services/resultsApi'
 
-const STORAGE_KEY_SELECTED_RACE = 'c123-scoring-selected-race'
+const STORAGE_KEY_SELECTED_RACE = 'c123-penalty-check-selected-race'
 
 // View state types for main content area
 type ViewState =

@@ -1,7 +1,7 @@
 import { test, expect } from '@playwright/test';
 
 /**
- * E2E Tests for C123 Scoring Application
+ * E2E Tests for C123 Penalty Check Application
  *
  * These tests verify actual application behavior without a real server.
  * They test UI navigation, settings, and basic functionality.
@@ -187,7 +187,7 @@ test.describe('Layout Tests', () => {
     // Footer should exist with version info
     const footer = page.locator('footer');
     await expect(footer).toBeVisible();
-    await expect(footer).toContainText('C123 Scoring');
+    await expect(footer).toContainText('C123 Penalty Check');
   });
 
   test('should be responsive on mobile viewport', async ({ page }) => {
