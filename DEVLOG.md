@@ -1247,6 +1247,36 @@ Clean up imports and exports across the codebase - add barrel files, remove unus
 
 ---
 
+## 2026-06-07 - Release Bundle Artifacts (#92)
+
+### Iteration Goal
+
+Attach the built application bundle to GitHub Releases. Until now releases only carried GitHub's auto-generated "Source code" archives — no deployable build.
+
+### Completed
+
+- [x] Added `attach-bundle` job to `.github/workflows/release-please.yml`
+  - Runs only when `release-please` reports `releases_created == true` (i.e. the release PR was merged)
+  - `npm ci` → `npm run build` → zip `dist/` → `gh release upload c123-penalty-check-<tag>.zip`
+- [x] Forced `Release-As: 1.4.2` then `Release-As: 1.4.3` to exercise and verify the pipeline end-to-end (maintenance mode means only `chore(deps)` commits otherwise, which never trigger a release)
+
+### Problems and Solutions
+
+1. **Problem:** First run of `attach-bundle` failed on `npm ci` with `403 Forbidden - Permission installation not allowed to Read organization package` when fetching `@opencanoetiming/timing-design-system` from GitHub Packages.
+   **Solution:** The job declared `permissions: contents: write`, which **replaces** the default token scopes and dropped `packages: read`. Added `packages: read` to the job's permissions block. (`ci.yml` works because it sets no job-level `permissions` and inherits the broader default.)
+   **Lesson:** A job-level `permissions:` block is an allow-list, not a delta. List every scope the job needs — adding `contents: write` silently removes `packages: read`.
+
+2. **Problem:** Manually backfilling the asset for v1.4.2 produced a zip ~40% larger than the CI build (741 KB vs 516 KB uncompressed) because the local `node_modules` had different dependency versions than the reproducible `npm ci`.
+   **Solution:** Deleted the hand-built v1.4.2 asset rather than ship a non-faithful artifact. v1.4.2 stays asset-less (it predates the working pipeline); v1.4.3 onward gets the genuine CI-built bundle automatically.
+
+### Notes
+
+- `releases_created` / `tag_name` come from the `googleapis/release-please-action@v5` step (`id: release`), exposed as job outputs and gated with `needs.release-please.outputs.releases_created == 'true'`.
+- Verified: v1.4.3 release carries `c123-penalty-check-v1.4.3.zip` (264 KB) with `index.html` at the zip root + `assets/` — directly deployable.
+- Every future release now receives its bundle automatically; no manual step.
+
+---
+
 ## Template for Further Entries
 
 ```markdown
