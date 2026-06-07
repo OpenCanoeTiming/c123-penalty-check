@@ -16,9 +16,9 @@ interface RestResultRow {
   bib: string
   startTime?: string
   status?: string
-  time?: number // centiseconds
+  time?: number // milliseconds (raw C123 XML unit, e.g. 76990 = 76.99s)
   pen?: number // seconds
-  total?: number // centiseconds
+  total?: number // milliseconds
   rank?: number
   gates?: string // space-separated per-gate penalties
   participant?: {
@@ -37,12 +37,16 @@ interface RestResultsResponse {
 }
 
 /**
- * Convert centiseconds to formatted seconds string.
- * 7899 → "78.99", undefined → ""
+ * Convert milliseconds to a formatted seconds string.
+ * 78990 → "78.99", undefined → ""
+ *
+ * The c123-server REST API returns time/total in milliseconds (the raw C123
+ * XML unit), despite docs/types historically saying "centiseconds". This
+ * matches c123-scoreboard's `formatRestTime` (see c123ServerApi.ts). See #98.
  */
-function csToSeconds(cs: number | undefined): string {
-  if (cs === undefined || cs === null) return ''
-  return (cs / 100).toFixed(2)
+function msToSeconds(ms: number | undefined): string {
+  if (ms === undefined || ms === null) return ''
+  return (ms / 1000).toFixed(2)
 }
 
 /**
@@ -65,8 +69,8 @@ function transformRow(row: RestResultRow): C123ResultRow {
     startTime: row.startTime ?? '',
     gates: row.gates?.trim() ?? '',
     pen: row.pen ?? 0,
-    time: csToSeconds(row.time),
-    total: csToSeconds(row.total),
+    time: msToSeconds(row.time),
+    total: msToSeconds(row.total),
     behind: '',
     status: row.status || undefined,
   }
