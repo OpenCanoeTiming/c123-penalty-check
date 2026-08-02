@@ -374,9 +374,15 @@ export function normalizeServerUrl(
 ): string {
   let url = input.trim()
 
-  // Add protocol if missing
+  // Add protocol if missing. Follow the page protocol: a bare host typed into
+  // settings on an HTTPS page must not downgrade to http:// and get blocked as
+  // mixed content.
   if (!url.startsWith('http://') && !url.startsWith('https://')) {
-    url = `http://${url}`
+    const protocol =
+      typeof window !== 'undefined' && window.location.protocol === 'https:'
+        ? 'https://'
+        : 'http://'
+    url = `${protocol}${url}`
   }
 
   // Add port if missing

@@ -75,8 +75,18 @@ describe('discovery-client', () => {
       expect(wsToHttpUrl('ws://192.168.1.50:27123/ws')).toBe('http://192.168.1.50:27123')
     })
 
-    it('converts wss:// to http://', () => {
-      expect(wsToHttpUrl('wss://server.example.com:443/ws')).toBe('http://server.example.com:443')
+    it('converts wss:// to https://', () => {
+      expect(wsToHttpUrl('wss://server.example.com:443/ws')).toBe('https://server.example.com:443')
+    })
+
+    it('keeps TLS for a proxied server on the default port', () => {
+      expect(wsToHttpUrl('wss://c123-server.timing/ws')).toBe('https://c123-server.timing')
+    })
+
+    it('strips query parameters from a wss:// URL', () => {
+      expect(wsToHttpUrl('wss://c123-server.timing/ws?clientId=test')).toBe(
+        'https://c123-server.timing'
+      )
     })
 
     it('strips query parameters from /ws path', () => {
@@ -136,6 +146,57 @@ describe('discovery-client', () => {
     it('returns http:// cache entry as-is', () => {
       localStorage.setItem(STORAGE_KEY, 'http://192.168.1.50:27123')
       expect(getApiBaseUrl()).toBe('http://192.168.1.50:27123')
+    })
+
+    it('converts legacy wss:// cache entry to https://', () => {
+      localStorage.setItem(STORAGE_KEY, 'wss://c123-server.timing/ws')
+      expect(getApiBaseUrl()).toBe('https://c123-server.timing')
+    })
+  })
+
+  describe('page protocol handling', () => {
+    const originalLocation = window.location
+
+    function stubLocation(href: string): void {
+      Object.defineProperty(window, 'location', {
+        value: new URL(href),
+        writable: true,
+        configurable: true,
+      })
+    }
+
+    beforeEach(() => {
+      setApiBaseUrl(null)
+      localStorage.clear()
+    })
+
+    afterEach(() => {
+      Object.defineProperty(window, 'location', {
+        value: originalLocation,
+        writable: true,
+        configurable: true,
+      })
+      localStorage.clear()
+    })
+
+    it('falls back to the page origin when the app is served over HTTPS', () => {
+      stubLocation('https://c123-server.timing/penalty-check/')
+      expect(getApiBaseUrl()).toBe('https://c123-server.timing')
+    })
+
+    it('falls back to hostname:27123 when the app is served over HTTP', () => {
+      stubLocation('http://192.168.1.50:8080/')
+      expect(getApiBaseUrl()).toBe('http://192.168.1.50:27123')
+    })
+
+    it('normalizes a bare host to https:// on an HTTPS page', () => {
+      stubLocation('https://c123-server.timing/')
+      expect(normalizeServerUrl('other-server.timing')).toBe('https://other-server.timing:27123')
+    })
+
+    it('normalizes a bare host to http:// on an HTTP page', () => {
+      stubLocation('http://192.168.1.50:8080/')
+      expect(normalizeServerUrl('192.168.1.60')).toBe('http://192.168.1.60:27123')
     })
   })
 })
