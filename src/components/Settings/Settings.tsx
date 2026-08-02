@@ -351,7 +351,9 @@ export function Settings({
                   </div>
                   {urlError && <p className="form-error">{urlError}</p>}
                   <p className="form-hint">
-                    Enter host:port (e.g. 192.168.1.50) or full ws:// URL.
+                    Enter host:port (e.g. 192.168.1.50) or a full ws:// URL.
+                    Behind a TLS reverse proxy use <code>wss://</code> — REST calls
+                    then follow over HTTPS.
                     Use <code>?server=host:port</code> URL param for quick override.
                   </p>
                 </div>

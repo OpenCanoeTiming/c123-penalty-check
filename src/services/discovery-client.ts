@@ -365,7 +365,8 @@ export async function getServerInfo(
  * Normalize server URL (add protocol and port if missing).
  *
  * @param input - User input (e.g., "192.168.1.50", "server.local:8080")
- * @param defaultPort - Port to use if not specified
+ * @param defaultPort - Port to use if not specified. Ignored when the resolved
+ *   scheme is https, where the TLS proxy owns the port (see below).
  * @returns Normalized URL (e.g., "http://192.168.1.50:27123")
  */
 export function normalizeServerUrl(
@@ -374,18 +375,26 @@ export function normalizeServerUrl(
 ): string {
   let url = input.trim()
 
-  // Add protocol if missing
+  // Add protocol if missing. Follow the page protocol: a bare host typed into
+  // settings on an HTTPS page must not downgrade to http:// and get blocked as
+  // mixed content.
   if (!url.startsWith('http://') && !url.startsWith('https://')) {
-    url = `http://${url}`
+    const protocol =
+      typeof window !== 'undefined' && window.location.protocol === 'https:'
+        ? 'https://'
+        : 'http://'
+    url = `${protocol}${url}`
   }
 
-  // Add port if missing
+  // Add port if missing. Not for https: the server itself speaks plain HTTP,
+  // so https means a TLS reverse proxy in front of it, and that listens on the
+  // standard port -- appending 27123 would point past the proxy.
   const protocolEnd = url.indexOf('//') + 2
   const pathStart = url.indexOf('/', protocolEnd)
   const hostPart =
     pathStart === -1 ? url.slice(protocolEnd) : url.slice(protocolEnd, pathStart)
 
-  if (!hostPart.includes(':')) {
+  if (!url.startsWith('https://') && !hostPart.includes(':')) {
     if (pathStart === -1) {
       url = `${url}:${defaultPort}`
     } else {

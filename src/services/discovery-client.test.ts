@@ -46,6 +46,10 @@ describe('discovery-client', () => {
     it('uses custom default port', () => {
       expect(normalizeServerUrl('192.168.1.50', 9999)).toBe('http://192.168.1.50:9999')
     })
+
+    it('does not append the default port to an https URL', () => {
+      expect(normalizeServerUrl('https://server.example.com')).toBe('https://server.example.com')
+    })
   })
 
   describe('getWebSocketUrl', () => {
@@ -75,8 +79,30 @@ describe('discovery-client', () => {
       expect(wsToHttpUrl('ws://192.168.1.50:27123/ws')).toBe('http://192.168.1.50:27123')
     })
 
-    it('converts wss:// to http://', () => {
-      expect(wsToHttpUrl('wss://server.example.com:443/ws')).toBe('http://server.example.com:443')
+    it('converts wss:// to https://', () => {
+      expect(wsToHttpUrl('wss://server.example.com:443/ws')).toBe('https://server.example.com:443')
+    })
+
+    it('keeps TLS for a proxied server on the default port', () => {
+      expect(wsToHttpUrl('wss://c123-server.timing/ws')).toBe('https://c123-server.timing')
+    })
+
+    it('strips query parameters from a wss:// URL', () => {
+      expect(wsToHttpUrl('wss://c123-server.timing/ws?clientId=test')).toBe(
+        'https://c123-server.timing'
+      )
+    })
+
+    it('strips a trailing slash after /ws', () => {
+      expect(wsToHttpUrl('wss://c123-server.timing/ws/')).toBe('https://c123-server.timing')
+    })
+
+    it('strips a fragment after /ws', () => {
+      expect(wsToHttpUrl('wss://c123-server.timing/ws#section')).toBe('https://c123-server.timing')
+    })
+
+    it('preserves a subpath before /ws', () => {
+      expect(wsToHttpUrl('wss://c123-server.timing/c123/ws')).toBe('https://c123-server.timing/c123')
     })
 
     it('strips query parameters from /ws path', () => {
@@ -136,6 +162,70 @@ describe('discovery-client', () => {
     it('returns http:// cache entry as-is', () => {
       localStorage.setItem(STORAGE_KEY, 'http://192.168.1.50:27123')
       expect(getApiBaseUrl()).toBe('http://192.168.1.50:27123')
+    })
+
+    it('converts legacy wss:// cache entry to https://', () => {
+      localStorage.setItem(STORAGE_KEY, 'wss://c123-server.timing/ws')
+      expect(getApiBaseUrl()).toBe('https://c123-server.timing')
+    })
+  })
+
+  describe('page protocol handling', () => {
+    const originalLocation = window.location
+
+    function stubLocation(href: string): void {
+      Object.defineProperty(window, 'location', {
+        value: new URL(href),
+        writable: true,
+        configurable: true,
+      })
+    }
+
+    beforeEach(() => {
+      setApiBaseUrl(null)
+      localStorage.clear()
+    })
+
+    afterEach(() => {
+      Object.defineProperty(window, 'location', {
+        value: originalLocation,
+        writable: true,
+        configurable: true,
+      })
+      localStorage.clear()
+    })
+
+    it('falls back to the page origin when the app is served over HTTPS', () => {
+      stubLocation('https://c123-server.timing/penalty-check/')
+      expect(getApiBaseUrl()).toBe('https://c123-server.timing')
+    })
+
+    it('falls back to hostname:27123 when the app is served over HTTP', () => {
+      stubLocation('http://192.168.1.50:8080/')
+      expect(getApiBaseUrl()).toBe('http://192.168.1.50:27123')
+    })
+
+    it('normalizes a bare host to https:// without forcing port 27123', () => {
+      // Behind a TLS proxy the server is on the standard HTTPS port, not the
+      // plain-HTTP port it listens on behind the proxy.
+      stubLocation('https://c123-server.timing/')
+      expect(normalizeServerUrl('other-server.timing')).toBe('https://other-server.timing')
+    })
+
+    it('keeps an explicit port on an HTTPS page', () => {
+      stubLocation('https://c123-server.timing/')
+      expect(normalizeServerUrl('other-server.timing:8443')).toBe('https://other-server.timing:8443')
+    })
+
+    it('ignores the defaultPort argument on an HTTPS page', () => {
+      // The TLS proxy owns the port; only a port the user typed is honoured.
+      stubLocation('https://c123-server.timing/')
+      expect(normalizeServerUrl('other-server.timing', 9999)).toBe('https://other-server.timing')
+    })
+
+    it('normalizes a bare host to http:// on an HTTP page', () => {
+      stubLocation('http://192.168.1.50:8080/')
+      expect(normalizeServerUrl('192.168.1.60')).toBe('http://192.168.1.60:27123')
     })
   })
 })
