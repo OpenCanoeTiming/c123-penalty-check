@@ -46,6 +46,10 @@ describe('discovery-client', () => {
     it('uses custom default port', () => {
       expect(normalizeServerUrl('192.168.1.50', 9999)).toBe('http://192.168.1.50:9999')
     })
+
+    it('does not append the default port to an https URL', () => {
+      expect(normalizeServerUrl('https://server.example.com')).toBe('https://server.example.com')
+    })
   })
 
   describe('getWebSocketUrl', () => {
@@ -87,6 +91,18 @@ describe('discovery-client', () => {
       expect(wsToHttpUrl('wss://c123-server.timing/ws?clientId=test')).toBe(
         'https://c123-server.timing'
       )
+    })
+
+    it('strips a trailing slash after /ws', () => {
+      expect(wsToHttpUrl('wss://c123-server.timing/ws/')).toBe('https://c123-server.timing')
+    })
+
+    it('strips a fragment after /ws', () => {
+      expect(wsToHttpUrl('wss://c123-server.timing/ws#section')).toBe('https://c123-server.timing')
+    })
+
+    it('preserves a subpath before /ws', () => {
+      expect(wsToHttpUrl('wss://c123-server.timing/c123/ws')).toBe('https://c123-server.timing/c123')
     })
 
     it('strips query parameters from /ws path', () => {
@@ -189,9 +205,16 @@ describe('discovery-client', () => {
       expect(getApiBaseUrl()).toBe('http://192.168.1.50:27123')
     })
 
-    it('normalizes a bare host to https:// on an HTTPS page', () => {
+    it('normalizes a bare host to https:// without forcing port 27123', () => {
+      // Behind a TLS proxy the server is on the standard HTTPS port, not the
+      // plain-HTTP port it listens on behind the proxy.
       stubLocation('https://c123-server.timing/')
-      expect(normalizeServerUrl('other-server.timing')).toBe('https://other-server.timing:27123')
+      expect(normalizeServerUrl('other-server.timing')).toBe('https://other-server.timing')
+    })
+
+    it('keeps an explicit port on an HTTPS page', () => {
+      stubLocation('https://c123-server.timing/')
+      expect(normalizeServerUrl('other-server.timing:8443')).toBe('https://other-server.timing:8443')
     })
 
     it('normalizes a bare host to http:// on an HTTP page', () => {

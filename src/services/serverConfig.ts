@@ -17,7 +17,7 @@ export function wsToHttpUrl(wsUrl: string): string {
   return wsUrl
     .replace(/^wss:\/\//, 'https://')
     .replace(/^ws:\/\//, 'http://')
-    .replace(/\/ws(\?.*)?$/, '')
+    .replace(/\/ws\/?(\?[^#]*)?(#.*)?$/, '')
 }
 
 let _baseUrl: string | null = null

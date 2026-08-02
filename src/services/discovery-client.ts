@@ -385,13 +385,15 @@ export function normalizeServerUrl(
     url = `${protocol}${url}`
   }
 
-  // Add port if missing
+  // Add port if missing. Not for https: the server itself speaks plain HTTP,
+  // so https means a TLS reverse proxy in front of it, and that listens on the
+  // standard port -- appending 27123 would point past the proxy.
   const protocolEnd = url.indexOf('//') + 2
   const pathStart = url.indexOf('/', protocolEnd)
   const hostPart =
     pathStart === -1 ? url.slice(protocolEnd) : url.slice(protocolEnd, pathStart)
 
-  if (!hostPart.includes(':')) {
+  if (!url.startsWith('https://') && !hostPart.includes(':')) {
     if (pathStart === -1) {
       url = `${url}:${defaultPort}`
     } else {
