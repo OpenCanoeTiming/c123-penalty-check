@@ -5,6 +5,13 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.4.5](https://github.com/OpenCanoeTiming/c123-penalty-check/compare/v1.4.4...v1.4.5) (2026-08-02)
+
+
+### Bug Fixes
+
+* preserve TLS when deriving REST URLs from WebSocket URL ([#127](https://github.com/OpenCanoeTiming/c123-penalty-check/issues/127)) ([f84864a](https://github.com/OpenCanoeTiming/c123-penalty-check/commit/f84864a8d0fc38e3e77223d5ee37b38db368121f))
+
 ## [1.4.4](https://github.com/OpenCanoeTiming/c123-penalty-check/compare/v1.4.3...v1.4.4) (2026-06-07)
 
 
