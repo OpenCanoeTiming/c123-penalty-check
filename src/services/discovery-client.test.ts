@@ -217,6 +217,12 @@ describe('discovery-client', () => {
       expect(normalizeServerUrl('other-server.timing:8443')).toBe('https://other-server.timing:8443')
     })
 
+    it('ignores the defaultPort argument on an HTTPS page', () => {
+      // The TLS proxy owns the port; only a port the user typed is honoured.
+      stubLocation('https://c123-server.timing/')
+      expect(normalizeServerUrl('other-server.timing', 9999)).toBe('https://other-server.timing')
+    })
+
     it('normalizes a bare host to http:// on an HTTP page', () => {
       stubLocation('http://192.168.1.50:8080/')
       expect(normalizeServerUrl('192.168.1.60')).toBe('http://192.168.1.60:27123')

@@ -365,7 +365,8 @@ export async function getServerInfo(
  * Normalize server URL (add protocol and port if missing).
  *
  * @param input - User input (e.g., "192.168.1.50", "server.local:8080")
- * @param defaultPort - Port to use if not specified
+ * @param defaultPort - Port to use if not specified. Ignored when the resolved
+ *   scheme is https, where the TLS proxy owns the port (see below).
  * @returns Normalized URL (e.g., "http://192.168.1.50:27123")
  */
 export function normalizeServerUrl(
