@@ -535,6 +535,68 @@ describe('useC123WebSocket', () => {
     })
   })
 
+  describe('check and flag events', () => {
+    it('forwards ChecksChanged events to the callback', async () => {
+      const onChecksChanged = vi.fn()
+      await renderHookAsync(() =>
+        useC123WebSocket({ url: 'ws://localhost:27123/ws', onChecksChanged })
+      )
+
+      const ws = MockWebSocket.getLastInstance()!
+
+      act(() => {
+        ws.simulateOpen()
+        ws.simulateMessage({
+          type: 'ChecksChanged',
+          timestamp: '2026-08-03T10:00:00.000Z',
+          data: {
+            event: 'check-set',
+            raceId: 'K1M_BR1',
+            bib: '42',
+            gate: 5,
+            check: { checkedAt: '2026-08-03T10:00:00.000Z', value: 2 },
+          },
+        })
+      })
+
+      expect(onChecksChanged).toHaveBeenCalledTimes(1)
+      expect(onChecksChanged).toHaveBeenCalledWith(
+        expect.objectContaining({ event: 'check-set', bib: '42', gate: 5 })
+      )
+    })
+
+    it('forwards FlagChanged events and leaves snapshot state untouched', async () => {
+      const onFlagChanged = vi.fn()
+      const { result } = await renderHookAsync(() =>
+        useC123WebSocket({ url: 'ws://localhost:27123/ws', onFlagChanged })
+      )
+
+      const ws = MockWebSocket.getLastInstance()!
+
+      act(() => {
+        ws.simulateOpen()
+        ws.simulateMessage({
+          type: 'FlagChanged',
+          timestamp: '2026-08-03T10:00:00.000Z',
+          data: {
+            event: 'flag-created',
+            raceId: 'K1M_BR1',
+            flag: {
+              id: 'f1', bib: '42', gate: 7, createdAt: '2026-08-03T10:00:00.000Z',
+              comment: 'disputed', resolved: false,
+            },
+          },
+        })
+      })
+
+      expect(onFlagChanged).toHaveBeenCalledTimes(1)
+      // Check events are a stream, not a snapshot: they must not land in the
+      // hook's cached race data.
+      expect(result.current.results.size).toBe(0)
+      expect(result.current.onCourse).toBeNull()
+    })
+  })
+
   describe('error handling', () => {
     it('sets error state on WebSocket error', async () => {
       const { result } = await renderHookAsync(() =>
