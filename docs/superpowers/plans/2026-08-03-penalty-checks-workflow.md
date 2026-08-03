@@ -749,15 +749,22 @@ import { renderHook, act, waitFor } from '@testing-library/react'
 import { useChecks } from './useChecks'
 import { ApiRequestError } from '../services/http'
 
-vi.mock('../services/checksApi', () => ({
-  fetchAllChecks: vi.fn(),
-  setCheck: vi.fn(),
-  removeCheck: vi.fn(),
-  createFlag: vi.fn(),
-  resolveFlag: vi.fn(),
-  deleteFlag: vi.fn(),
-}))
+// importActual keeps the real ChecksUnavailableError class — the hook does an
+// `instanceof` against it, which a fully synthetic mock would break.
+vi.mock('../services/checksApi', async (importActual) => {
+  const actual = await importActual<typeof import('../services/checksApi')>()
+  return {
+    ...actual,
+    fetchAllChecks: vi.fn(),
+    setCheck: vi.fn(),
+    removeCheck: vi.fn(),
+    createFlag: vi.fn(),
+    resolveFlag: vi.fn(),
+    deleteFlag: vi.fn(),
+  }
+})
 import * as api from '../services/checksApi'
+import { ChecksUnavailableError } from '../services/checksApi'
 
 const LOADED = {
   xmlFilename: 'e.xml',
@@ -851,10 +858,20 @@ describe('useChecks', () => {
   })
 
   it('marks itself unavailable when the server has no checks API', async () => {
-    vi.mocked(api.fetchAllChecks).mockRejectedValue(new ApiRequestError('Not found', 404))
+    vi.mocked(api.fetchAllChecks).mockRejectedValue(new ChecksUnavailableError('Not found', 404))
     const { result } = renderHook(() => useChecks({ enabled: true }))
     await waitFor(() => expect(result.current.loading).toBe(false))
     expect(result.current.available).toBe(false)
+  })
+
+  it('stays available when the load fails for an ordinary reason', async () => {
+    // A 500 or a dropped connection is not evidence that the server lacks the
+    // checks API. Switching the feature off on any error would disable
+    // verification mid-race on a transient blip.
+    vi.mocked(api.fetchAllChecks).mockRejectedValue(new ApiRequestError('boom', 500))
+    const { result } = renderHook(() => useChecks({ enabled: true }))
+    await waitFor(() => expect(result.current.loading).toBe(false))
+    expect(result.current.available).toBe(true)
   })
 
   it('applies check-set and check-invalidated events', async () => {
@@ -936,8 +953,7 @@ Expected: FAIL — cannot resolve `./useChecks`.
  */
 
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
-import { fetchAllChecks } from '../services/checksApi'
-import { ApiRequestError } from '../services/http'
+import { fetchAllChecks, ChecksUnavailableError } from '../services/checksApi'
 import {
   createGateKey,
   EMPTY_RACE_CHECKS,
@@ -992,8 +1008,10 @@ export function useChecks(options: { enabled?: boolean } = {}) {
       if (token !== loadToken.current) return
       setRaces({})
       // A server without the checks API is a supported configuration, not a
-      // crash: the feature switches off and says so.
-      setAvailable(!(error instanceof ApiRequestError && error.isUnsupported))
+      // crash: the feature switches off and says so. Only fetchAllChecks can
+      // raise ChecksUnavailableError — a 404 from the other endpoints means
+      // "already gone" and must never disable the feature.
+      setAvailable(!(error instanceof ChecksUnavailableError))
     } finally {
       if (token === loadToken.current) setLoading(false)
     }
