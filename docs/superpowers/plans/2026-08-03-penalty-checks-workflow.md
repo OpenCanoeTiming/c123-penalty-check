@@ -1105,7 +1105,6 @@ export function useChecks(options: { enabled?: boolean } = {}) {
       getRaceProgress,
       applyCheckEvent,
       applyFlagEvent,
-      setRaces,
     }),
     [available, loading, races, load, getStatus, getFlags, getRaceProgress, applyCheckEvent, applyFlagEvent]
   )
