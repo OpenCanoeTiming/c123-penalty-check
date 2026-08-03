@@ -649,22 +649,34 @@ The hook currently folds every message into state. Check events are a stream, no
 
 - [ ] **Step 1: Write the failing test**
 
-Add to `src/hooks/useC123WebSocket.test.ts`, following the mock-socket pattern already used there:
+Add to `src/hooks/useC123WebSocket.test.ts`, using the harness that file already
+provides: the `MockWebSocket` class with `static getLastInstance()`, its
+`simulateOpen()` / `simulateMessage(data)` helpers (`simulateMessage` takes an
+object and stringifies it internally), and the `renderHookAsync` wrapper that
+flushes effects under fake timers. Do not invent a new harness.
 
 ```ts
 it('forwards ChecksChanged events to the callback', async () => {
   const onChecksChanged = vi.fn()
-  const { getSocket } = renderWebSocketHook({ onChecksChanged })
+  await renderHookAsync(() =>
+    useC123WebSocket({ url: 'ws://localhost:27123/ws', onChecksChanged })
+  )
+
+  const ws = MockWebSocket.getLastInstance()!
 
   act(() => {
-    getSocket().onmessage?.({
-      data: JSON.stringify({
-        type: 'ChecksChanged',
-        timestamp: '2026-08-03T10:00:00.000Z',
-        data: { event: 'check-set', raceId: 'K1M_BR1', bib: '42', gate: 5,
-                check: { checkedAt: '2026-08-03T10:00:00.000Z', value: 2 } },
-      }),
-    } as MessageEvent)
+    ws.simulateOpen()
+    ws.simulateMessage({
+      type: 'ChecksChanged',
+      timestamp: '2026-08-03T10:00:00.000Z',
+      data: {
+        event: 'check-set',
+        raceId: 'K1M_BR1',
+        bib: '42',
+        gate: 5,
+        check: { checkedAt: '2026-08-03T10:00:00.000Z', value: 2 },
+      },
+    })
   })
 
   expect(onChecksChanged).toHaveBeenCalledTimes(1)
@@ -672,9 +684,42 @@ it('forwards ChecksChanged events to the callback', async () => {
     expect.objectContaining({ event: 'check-set', bib: '42', gate: 5 })
   )
 })
+
+it('forwards FlagChanged events and leaves snapshot state untouched', async () => {
+  const onFlagChanged = vi.fn()
+  const { result } = await renderHookAsync(() =>
+    useC123WebSocket({ url: 'ws://localhost:27123/ws', onFlagChanged })
+  )
+
+  const ws = MockWebSocket.getLastInstance()!
+
+  act(() => {
+    ws.simulateOpen()
+    ws.simulateMessage({
+      type: 'FlagChanged',
+      timestamp: '2026-08-03T10:00:00.000Z',
+      data: {
+        event: 'flag-created',
+        raceId: 'K1M_BR1',
+        flag: {
+          id: 'f1', bib: '42', gate: 7, createdAt: '2026-08-03T10:00:00.000Z',
+          comment: 'disputed', resolved: false,
+        },
+      },
+    })
+  })
+
+  expect(onFlagChanged).toHaveBeenCalledTimes(1)
+  // Check events are a stream, not a snapshot: they must not land in the
+  // hook's cached race data.
+  expect(result.current.results.size).toBe(0)
+  expect(result.current.onCourse).toBeNull()
+})
 ```
 
-If `renderWebSocketHook` does not exist in that file, use whatever helper the existing tests use to obtain the mocked socket; do not invent a new harness.
+`UseC123WebSocketOptions` currently takes `url`, `clientId`, `autoConnect`,
+`reconnectInterval`, `maxReconnectAttempts` — add the two callbacks alongside
+them.
 
 - [ ] **Step 2: Run to verify it fails**
 
