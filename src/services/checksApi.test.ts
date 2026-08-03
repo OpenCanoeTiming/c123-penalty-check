@@ -1,5 +1,13 @@
 import { describe, it, expect, beforeEach, vi, afterEach } from 'vitest'
-import { fetchAllChecks, setCheck, removeCheck, createFlag, resolveFlag, deleteFlag } from './checksApi'
+import {
+  fetchAllChecks,
+  setCheck,
+  removeCheck,
+  createFlag,
+  resolveFlag,
+  deleteFlag,
+  ChecksUnavailableError,
+} from './checksApi'
 import { ApiRequestError } from './http'
 
 vi.mock('./serverConfig', () => ({
@@ -116,5 +124,45 @@ describe('checksApi', () => {
 
     await expect(fetchAllChecks()).rejects.toBeInstanceOf(ApiRequestError)
     expect(fetch).toHaveBeenCalledTimes(1)
+  })
+
+  it('throws ChecksUnavailableError when fetchAllChecks gets a 404 (no such route)', async () => {
+    vi.mocked(fetch).mockReturnValue(mockJson({ error: 'Not found' }, 404))
+
+    await expect(fetchAllChecks()).rejects.toBeInstanceOf(ChecksUnavailableError)
+  })
+
+  it('throws ChecksUnavailableError when fetchAllChecks gets a 503 (checks store not initialised)', async () => {
+    vi.mocked(fetch).mockReturnValue(mockJson({ error: 'Checks service not available' }, 503))
+
+    await expect(fetchAllChecks()).rejects.toBeInstanceOf(ChecksUnavailableError)
+  }, 10000)
+
+  it('treats a 404 on removeCheck as already-removed (idempotent), not ChecksUnavailableError', async () => {
+    vi.mocked(fetch).mockReturnValue(mockJson({ error: 'Check not found' }, 404))
+
+    await expect(removeCheck('K1M_BR1', '42', 5)).resolves.toBeUndefined()
+  })
+
+  it('treats a 404 on deleteFlag as already-deleted (idempotent), not ChecksUnavailableError', async () => {
+    vi.mocked(fetch).mockReturnValue(mockJson({ error: 'Flag not found' }, 404))
+
+    await expect(deleteFlag('K1M_BR1', 'f1')).resolves.toBeUndefined()
+  })
+
+  it('still throws when resolveFlag gets a 404 — the flag genuinely does not exist', async () => {
+    vi.mocked(fetch).mockReturnValue(
+      mockJson({ error: 'Flag f1 not found in race K1M_BR1' }, 404)
+    )
+
+    let caught: unknown
+    try {
+      await resolveFlag('K1M_BR1', 'f1')
+    } catch (error) {
+      caught = error
+    }
+
+    expect(caught).toBeInstanceOf(ApiRequestError)
+    expect(caught).not.toBeInstanceOf(ChecksUnavailableError)
   })
 })
