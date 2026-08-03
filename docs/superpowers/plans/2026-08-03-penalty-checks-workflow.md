@@ -734,6 +734,7 @@ State first, mutations in Task 6, so each half gets its own review.
 - Produces:
   - `useChecks(options: { enabled?: boolean }): UseChecksReturn`
   - `UseChecksReturn.available: boolean` — false when the server has no checks API
+  - `UseChecksReturn.unavailableReason: { status: number; message: string } | null` — populated only when `available` is false, so Task 11 can tell "server too old" (404) from "no checks file loaded" (503) and show the right instruction
   - `UseChecksReturn.loading: boolean`
   - `UseChecksReturn.getStatus(raceId: string, bib: string, gate: number, liveValue: number | null): GateCheckStatus`
   - `UseChecksReturn.getFlags(raceId: string, bib: string, gate: number): FlagEntry[]`
@@ -858,7 +859,8 @@ describe('useChecks', () => {
   })
 
   it('marks itself unavailable when the server has no checks API', async () => {
-    vi.mocked(api.fetchAllChecks).mockRejectedValue(new ChecksUnavailableError('Not found', 404))
+    // Constructor is (status, detail?) — the message is fixed by the class.
+    vi.mocked(api.fetchAllChecks).mockRejectedValue(new ChecksUnavailableError(404))
     const { result } = renderHook(() => useChecks({ enabled: true }))
     await waitFor(() => expect(result.current.loading).toBe(false))
     expect(result.current.available).toBe(false)
@@ -992,6 +994,8 @@ export function useChecks(options: { enabled?: boolean } = {}) {
 
   const [races, setRaces] = useState<RacesState>({})
   const [available, setAvailable] = useState(false)
+  const [unavailableReason, setUnavailableReason] =
+    useState<{ status: number; message: string } | null>(null)
   const [loading, setLoading] = useState(false)
   const loadToken = useRef(0)
 
@@ -1004,6 +1008,7 @@ export function useChecks(options: { enabled?: boolean } = {}) {
       if (token !== loadToken.current) return
       setRaces(data.races ?? {})
       setAvailable(true)
+      setUnavailableReason(null)
     } catch (error) {
       if (token !== loadToken.current) return
       setRaces({})
@@ -1011,7 +1016,15 @@ export function useChecks(options: { enabled?: boolean } = {}) {
       // crash: the feature switches off and says so. Only fetchAllChecks can
       // raise ChecksUnavailableError — a 404 from the other endpoints means
       // "already gone" and must never disable the feature.
-      setAvailable(!(error instanceof ChecksUnavailableError))
+      if (error instanceof ChecksUnavailableError) {
+        setAvailable(false)
+        // 404 and 503 mean different things to the operator: upgrade the
+        // server, versus load an XML file into the one already running.
+        setUnavailableReason({ status: error.status, message: error.message })
+      } else {
+        setAvailable(true)
+        setUnavailableReason(null)
+      }
     } finally {
       if (token === loadToken.current) setLoading(false)
     }
@@ -1118,6 +1131,7 @@ export function useChecks(options: { enabled?: boolean } = {}) {
   return useMemo(
     () => ({
       available,
+      unavailableReason,
       loading,
       races,
       reload: load,
@@ -1127,7 +1141,7 @@ export function useChecks(options: { enabled?: boolean } = {}) {
       applyCheckEvent,
       applyFlagEvent,
     }),
-    [available, loading, races, load, getStatus, getFlags, getRaceProgress, applyCheckEvent, applyFlagEvent]
+    [available, unavailableReason, loading, races, load, getStatus, getFlags, getRaceProgress, applyCheckEvent, applyFlagEvent]
   )
 }
 
@@ -1765,7 +1779,14 @@ const handlePenaltySubmit = useCallback(
 
 - [ ] **Step 3: Handle an unsupported server**
 
-When `checks.available === false` and the connection is up, render a single unobtrusive notice ("Verification needs c123-server 0.12.0 or newer") and pass no verification props to the grid, so cells render plain. Do **not** fall back to localStorage — the spec rejects it.
+When `checks.available === false` and the connection is up, render a single unobtrusive notice and pass no verification props to the grid, so cells render plain. Do **not** fall back to localStorage — the spec rejects it.
+
+The notice must **distinguish the two causes**, because they demand different operator actions:
+
+- **404** — the server predates 0.12.0. Say so: "Verification needs c123-server 0.12.0 or newer."
+- **503** — the server supports verification but has no checks file loaded. The server's own message is actionable ("No checks file loaded — set an XML path first") and must be shown rather than replaced. Telling this operator to upgrade would send them after the wrong problem entirely.
+
+Use `checks.unavailableReason` for this (see Task 5).
 
 - [ ] **Step 4: Delete the dead hook**
 
