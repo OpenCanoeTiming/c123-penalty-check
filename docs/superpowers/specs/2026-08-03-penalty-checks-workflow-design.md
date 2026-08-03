@@ -45,11 +45,11 @@ head judge can rely on when announcing results.
 | # | Rule |
 |---|---|
 | 1 | The base unit is **a single gate**. Bulk-verifying **one competitor's section** is an accelerator; without gate groups defined the operator works gate by gate and loses nothing. |
-| 2 | **Gate:** arrow keys and spacebar. **Section:** a visible control on the section boundary *inside the row*, plus **Shift+Space** for the section containing the focused cell. |
+| 2 | **Gate:** arrow keys and spacebar. **Section:** a visible control on the section boundary *inside the row*, plus **Shift+Space** for the section containing the focused cell. Both are also reachable from the existing cell context menu, so nothing is shortcut-only. |
 | 3 | **An empty gate cannot be verified.** A value must be entered first. Bulk-verifying a section verifies the rest, **skips the empty gate and moves focus to it**. A section is not complete while an empty gate remains. |
 | 4 | **The operator's own correction also verifies the gate**, with no extra keystroke. |
 | 5 | A change made by someone else, or directly in Canoe123, **invalidates the verification**. |
-| 6 | Flags (podněty) are a rare side branch. They can be **created and resolved**, and must not slow the main flow down. |
+| 6 | Flags (podněty) are a rare side branch. They can be **created and resolved**, and must not slow the main flow down — but where one exists it is **the most prominent signal in the grid**, because it is the one thing demanding the operator's action. |
 | 7 | Only **finished runs without a status** count toward verification. |
 | 8 | State **survives a browser restart and moving to another tablet**. One operator today; live updates yes, conflict resolution no. |
 | 9 | State is tracked **per race and indicated in the race switcher**. "Done" means *everything finished so far is verified*; when another competitor finishes, the indication clears. |
@@ -98,11 +98,30 @@ would read as a dropped input.
 ever verifies; un-verifying stays a per-gate action, so a stray Shift+Space
 cannot wipe a whole section's work.
 
-Section bulk-verification, whether by control or by Shift+Space, applies rule 3:
-gates holding a value are verified, the first empty gate is skipped and receives
-focus so it can be filled immediately.
+Section bulk-verification, whether by control, context menu or Shift+Space,
+applies rule 3: gates holding a value are verified, the first empty gate is
+skipped and receives focus so it can be filled immediately.
 
-### Section control
+### Context menu
+
+`PenaltyContextMenu` already opens on long press and right-click and offers
+0 / 2 / 50 / Delete with their shortcuts. It gains a second group, separated
+from the penalty values:
+
+| Action | Shortcut shown |
+|---|---|
+| Verify gate / Un-verify gate | `Space` |
+| Verify section | `⇧Space` |
+| Add flag… | — |
+| Resolve flag… | — |
+
+The label toggles between *Verify* and *Un-verify* to match the cell's state,
+the way the menu already marks the active penalty value. *Verify gate* is
+disabled on an empty gate, with rule 3 as the reason. The flag entries switch on
+whether the gate already carries an open flag.
+
+This is the discoverable route to everything the keyboard does, so no action is
+reachable only through a shortcut, and it is where flags live — see below.
 
 The existing group boundary inside each row becomes the control. It is
 row-scoped and section-scoped by position, so there is no ambiguity about which
@@ -110,15 +129,36 @@ competitor it applies to — unlike a column header, which belongs to every row.
 
 ### Cell state
 
-A cell must carry four things at once: penalty value, verified or not, whether
-the verification went stale, and whether a flag is attached. The value keeps the
-cell's centre; the other three are expressed through background tone and a thin
-edge marker that consumes no width.
+A cell carries four things at once: penalty value, verified or not, whether the
+verification went stale, and whether a flag is attached. The penalty value always
+keeps the cell's centre and stays fully legible — it is the data, everything else
+is metadata about it.
 
-**The exact visual treatment is deliberately not fixed here.** Four states in a
-36px cell readable on a tablet in daylight is a question to be settled by
-building it and looking at it against replayed race data, not by agreeing on it
-in a document.
+**Verified: hatching.** A verified gate gets a hatch pattern across the cell
+background, behind the value. Hatching is chosen over a flat tint deliberately:
+at grid scale a texture aggregates into a visible block, so the operator sees
+which regions of a large penalty grid are done and which are not **from across
+the table**, without reading a single number. A low-contrast background tint
+does not survive that zoom-out, and a corner tick is invisible at 36px.
+
+**Stale: broken hatching.** A verification whose snapshot no longer matches the
+live value is not a verification. The hatch is rendered visibly interrupted and
+in a warning tone, so it reads as "this was done and no longer counts" rather
+than as either clean state.
+
+**Flag: loud.** A flagged gate is the strongest signal in the grid and must not
+be a thin edge marker — it is the one thing the operator has to act on. It takes
+a saturated fill and border strong enough to be spotted immediately, and it wins
+over hatching when a gate is both flagged and verified.
+
+Visual precedence, loudest first: **flag → stale → verified → plain.**
+
+The value must remain readable through every one of these, which is the binding
+constraint on hatch density and fill opacity. Exact angles, spacing and colour
+tokens are settled by building it and looking at it against replayed race data
+in both themes — not by agreeing on hex values in a document. One thing to watch
+when it is on screen: once a race is fully checked the whole grid is hatched, so
+the pattern has to stay calm enough to live with at that density.
 
 ---
 
@@ -212,10 +252,11 @@ incomplete. No all-or-nothing semantics.
 | Component | Change |
 |---|---|
 | `useCheckedState` | Replaced. Per-gate keying against the server, WebSocket-driven updates, optimistic writes. The `bib:groupId` model and localStorage layer go away. |
-| `ResultsGrid` | Cell verification state, section boundary control, Space / Shift+Space handling. |
+| `ResultsGrid` | Cell verification state (hatching, stale, flag), section boundary control, Space / Shift+Space handling. |
+| `PenaltyContextMenu` | Second action group: verify / un-verify gate, verify section, add and resolve flag. |
 | `RaceSelector` / `Header` | Per-race verification indicator. |
 | `CheckProgress` | Kept; fed by the new hook. Denominator restricted to finished runs. |
-| Flags UI | New, minimal. Placement deferred to implementation. |
+| Flag dialog | New, minimal: required comment, optional suggested value on create; optional resolution note on resolve. Opened from the context menu. |
 
 ---
 
@@ -235,8 +276,8 @@ Playwright screenshots after the visual work, per the project rule.
 
 ## Deferred to implementation
 
-- The visual treatment of four cell states.
-- Where the flags UI lives.
+- Hatch angle, density and colour tokens, and the flag fill, tuned on real data
+  in both themes under the legibility constraint above.
 - Whether `POST /api/checks/new-event` (the operator override when the
   fingerprint heuristic treats a new event as a continuation) belongs in this
   app or in the server's admin dashboard.
