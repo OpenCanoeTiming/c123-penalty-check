@@ -536,9 +536,9 @@ describe('useC123WebSocket', () => {
   })
 
   describe('check and flag events', () => {
-    it('forwards ChecksChanged events to the callback', async () => {
+    it('dispatches ChecksChanged events before the state update, not inside it', async () => {
       const onChecksChanged = vi.fn()
-      await renderHookAsync(() =>
+      const { result } = await renderHookAsync(() =>
         useC123WebSocket({ url: 'ws://localhost:27123/ws', onChecksChanged })
       )
 
@@ -563,9 +563,15 @@ describe('useC123WebSocket', () => {
       expect(onChecksChanged).toHaveBeenCalledWith(
         expect.objectContaining({ event: 'check-set', bib: '42', gate: 5 })
       )
+      // lastMessageTime is stamped unconditionally on the first line of the
+      // setState updater in handleMessage. It staying null here is what
+      // actually proves this event took the early-return path and never
+      // reached setState — do not "helpfully" make ChecksChanged update
+      // this field, that would silently disarm the check.
+      expect(result.current.lastMessageTime).toBeNull()
     })
 
-    it('forwards FlagChanged events and leaves snapshot state untouched', async () => {
+    it('dispatches FlagChanged events before the state update, not inside it', async () => {
       const onFlagChanged = vi.fn()
       const { result } = await renderHookAsync(() =>
         useC123WebSocket({ url: 'ws://localhost:27123/ws', onFlagChanged })
@@ -591,9 +597,17 @@ describe('useC123WebSocket', () => {
 
       expect(onFlagChanged).toHaveBeenCalledTimes(1)
       // Check events are a stream, not a snapshot: they must not land in the
-      // hook's cached race data.
+      // hook's cached race data. Note results/onCourse alone don't prove
+      // placement — they'd stay empty even if this were wrongly folded into
+      // setState, since nothing writes flag data into them either way.
       expect(result.current.results.size).toBe(0)
       expect(result.current.onCourse).toBeNull()
+      // lastMessageTime is stamped unconditionally on the first line of the
+      // setState updater in handleMessage. It staying null here is the real
+      // discriminator: it fails if the dispatch is ever moved inside that
+      // updater. Do not "helpfully" make FlagChanged update this field,
+      // that would silently disarm the check.
+      expect(result.current.lastMessageTime).toBeNull()
     })
   })
 
