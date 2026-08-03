@@ -246,10 +246,14 @@ export interface FlagEntry {
   resolution?: string
 }
 
-/** Checks and flags for one race, keyed by `bib:gate`. */
+/**
+ * Checks and flags for one race. `checks` is keyed by `bib:gate`; `flags` is a
+ * flat array — each entry carries its own bib and gate, so it needs no key.
+ * Mirror the server's `src/checks/types.ts` exactly.
+ */
 export interface RaceChecksData {
   checks: Record<string, CheckEntry>
-  flags: Record<string, FlagEntry[]>
+  flags: FlagEntry[]
 }
 
 /** Response of GET /api/checks — the whole event in one payload. */
@@ -295,7 +299,7 @@ export function createGateKey(bib: string, gate: number): string {
   return `${bib}:${gate}`
 }
 
-export const EMPTY_RACE_CHECKS: RaceChecksData = { checks: {}, flags: {} }
+export const EMPTY_RACE_CHECKS: RaceChecksData = { checks: {}, flags: [] }
 ```
 
 - [ ] **Step 2: Write the failing test `src/services/checksApi.test.ts`**
@@ -761,7 +765,7 @@ const LOADED = {
   races: {
     K1M_BR1: {
       checks: { '42:1': { checkedAt: 't', value: 2 } },
-      flags: { '42:3': [{ id: 'f1', bib: '42', gate: 3, createdAt: 't', comment: 'c', resolved: false }] },
+      flags: [{ id: 'f1', bib: '42', gate: 3, createdAt: 't', comment: 'c', resolved: false }],
     },
   },
 }
@@ -809,7 +813,7 @@ describe('useChecks', () => {
       races: {
         K1M_BR1: {
           checks: {},
-          flags: { '42:3': [{ id: 'f1', bib: '42', gate: 3, createdAt: 't', comment: 'c', resolved: true }] },
+          flags: [{ id: 'f1', bib: '42', gate: 3, createdAt: 't', comment: 'c', resolved: true }],
         },
       },
     } as never)
@@ -1001,7 +1005,7 @@ export function useChecks(options: { enabled?: boolean } = {}) {
 
   const getFlags = useCallback(
     (raceId: string, bib: string, gate: number): FlagEntry[] =>
-      races[raceId]?.flags?.[createGateKey(bib, gate)] ?? [],
+      (races[raceId]?.flags ?? []).filter((flag) => flag.bib === bib && flag.gate === gate),
     [races]
   )
 
@@ -1010,9 +1014,12 @@ export function useChecks(options: { enabled?: boolean } = {}) {
       const key = createGateKey(bib, gate)
       const race = races[raceId] ?? EMPTY_RACE_CHECKS
 
-      if ((race.flags?.[key] ?? []).some((flag) => !flag.resolved)) {
-        return 'flagged'
-      }
+      // The server stores flags as a flat array — each entry carries its own
+      // bib and gate, so there is no key to index by.
+      const hasOpenFlag = (race.flags ?? []).some(
+        (flag) => !flag.resolved && flag.bib === bib && flag.gate === gate
+      )
+      if (hasOpenFlag) return 'flagged'
 
       const check = race.checks?.[key]
       if (!check) return 'plain'
@@ -1052,7 +1059,7 @@ export function useChecks(options: { enabled?: boolean } = {}) {
       const race = prev[event.raceId] ?? EMPTY_RACE_CHECKS
 
       if (event.event === 'checks-cleared') {
-        return { ...prev, [event.raceId]: { checks: {}, flags: {} } }
+        return { ...prev, [event.raceId]: { checks: {}, flags: [] } }
       }
 
       if (event.bib === undefined || event.gate === undefined) return prev
@@ -1065,30 +1072,26 @@ export function useChecks(options: { enabled?: boolean } = {}) {
         delete checks[key]
       }
 
-      return { ...prev, [event.raceId]: { checks, flags: race.flags ?? {} } }
+      return { ...prev, [event.raceId]: { checks, flags: race.flags ?? [] } }
     })
   }, [])
 
   const applyFlagEvent = useCallback((event: FlagChangedEvent) => {
     setRaces((prev) => {
       const race = prev[event.raceId] ?? EMPTY_RACE_CHECKS
-      const key = createGateKey(event.flag.bib, event.flag.gate)
-      const flags = { ...race.flags }
-      const existing = flags[key] ?? []
+      const existing = race.flags ?? []
 
+      let flags: FlagEntry[]
       if (event.event === 'flag-deleted') {
-        const remaining = existing.filter((flag) => flag.id !== event.flag.id)
-        if (remaining.length) flags[key] = remaining
-        else delete flags[key]
+        flags = existing.filter((flag) => flag.id !== event.flag.id)
+      } else if (existing.some((flag) => flag.id === event.flag.id)) {
+        flags = existing.map((flag) => (flag.id === event.flag.id ? event.flag : flag))
       } else {
-        const index = existing.findIndex((flag) => flag.id === event.flag.id)
-        flags[key] = index >= 0
-          ? existing.map((flag) => (flag.id === event.flag.id ? event.flag : flag))
-          : [...existing, event.flag]
+        flags = [...existing, event.flag]
       }
 
       const checks = { ...race.checks }
-      if (event.check) checks[key] = event.check
+      if (event.check) checks[createGateKey(event.flag.bib, event.flag.gate)] = event.check
 
       return { ...prev, [event.raceId]: { checks, flags } }
     })
@@ -1245,7 +1248,7 @@ Expected: FAIL — `verifyGate is not a function`.
         const key = createGateKey(bib, gate)
         if (check) checks[key] = check
         else delete checks[key]
-        return { ...prev, [raceId]: { checks, flags: race.flags ?? {} } }
+        return { ...prev, [raceId]: { checks, flags: race.flags ?? [] } }
       })
     },
     []
