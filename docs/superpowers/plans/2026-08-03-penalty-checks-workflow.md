@@ -1020,7 +1020,12 @@ export function useChecks(options: { enabled?: boolean } = {}) {
         setAvailable(false)
         // 404 and 503 mean different things to the operator: upgrade the
         // server, versus load an XML file into the one already running.
-        setUnavailableReason({ status: error.status, message: error.message })
+        // `detail` carries the server's own text; the class message is the
+        // generic fallback.
+        setUnavailableReason({
+          status: error.status,
+          message: error.detail ?? error.message,
+        })
       } else {
         setAvailable(true)
         setUnavailableReason(null)
