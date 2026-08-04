@@ -38,7 +38,11 @@ export async function fetchAllChecks(): Promise<AllChecksResponse> {
     })
   } catch (error) {
     if (error instanceof ApiRequestError && (error.status === 404 || error.status === 503)) {
-      throw new ChecksUnavailableError(error.status, error.detail)
+      // The server sends its actionable text in `error` (→ ApiRequestError.message),
+      // not `detail` — `detail` is undefined in practice. Falling back to `message`
+      // is what lets the operator see "No checks file loaded — set an XML path
+      // first" instead of the generic ChecksUnavailableError text.
+      throw new ChecksUnavailableError(error.status, error.detail ?? error.message)
     }
     throw error
   }

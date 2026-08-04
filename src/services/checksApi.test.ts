@@ -138,6 +138,28 @@ describe('checksApi', () => {
     await expect(fetchAllChecks()).rejects.toBeInstanceOf(ChecksUnavailableError)
   }, 10000)
 
+  it('preserves the server\'s text through to detail on a 503', async () => {
+    // The server sends its actionable message in `error` (→ ApiRequestError.message),
+    // not `detail` — the response body never has a `detail` field in practice. Losing
+    // that text would leave the operator with the generic ChecksUnavailableError
+    // message instead of "set an XML path first".
+    vi.mocked(fetch).mockReturnValue(
+      mockJson({ error: 'No checks file loaded — set an XML path first' }, 503)
+    )
+
+    let caught: unknown
+    try {
+      await fetchAllChecks()
+    } catch (error) {
+      caught = error
+    }
+
+    expect(caught).toBeInstanceOf(ChecksUnavailableError)
+    expect((caught as ChecksUnavailableError).detail).toBe(
+      'No checks file loaded — set an XML path first'
+    )
+  }, 10000)
+
   it('treats a 404 on removeCheck as already-removed (idempotent), not ChecksUnavailableError', async () => {
     vi.mocked(fetch).mockReturnValue(mockJson({ error: 'Check not found' }, 404))
 
