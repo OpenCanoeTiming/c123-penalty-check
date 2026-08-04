@@ -394,4 +394,172 @@ describe('useChecks', () => {
     })
     expect(result.current.getStatus('K1M_BR1', '42', 8, 0)).toBe('verified')
   })
+
+  it('does not let a stale success resurrect availability after a newer concurrent load already reported unavailable', async () => {
+    // Two loads in flight at once: the initial mount load (attempt 1) and an
+    // explicit reload (attempt 2). The newer one answers first with a 404 —
+    // that verdict must stick even after the older one later succeeds.
+    let resolveOlder!: (value: typeof LOADED) => void
+    const older = new Promise<typeof LOADED>((resolve) => {
+      resolveOlder = resolve
+    })
+    let rejectNewer!: (error: unknown) => void
+    const newer = new Promise<typeof LOADED>((_resolve, reject) => {
+      rejectNewer = reject
+    })
+
+    vi.mocked(api.fetchAllChecks)
+      .mockReturnValueOnce(older as never) // initial load, attempt 1
+      .mockReturnValueOnce(newer as never) // reload, attempt 2
+
+    const { result } = renderHook(() => useChecks({ enabled: true }))
+
+    act(() => {
+      void result.current.reload()
+    })
+
+    await act(async () => {
+      rejectNewer(new ChecksUnavailableError(404))
+      await newer.catch(() => {})
+    })
+    expect(result.current.available).toBe(false)
+
+    // The older attempt resolves successfully after the newer one already
+    // reported unavailable — it must not resurrect availability.
+    await act(async () => {
+      resolveOlder(LOADED as never)
+      await older
+    })
+
+    expect(result.current.available).toBe(false)
+    expect(result.current.loading).toBe(false)
+  })
+
+  it('does not let a stale 404 wipe the checks loaded by a newer concurrent load', async () => {
+    // Mirror of the above: the newer load (attempt 2) succeeds first and
+    // populates checks, then the older load (attempt 1) fails with a 404.
+    // The older failure must not wipe what the newer one just loaded.
+    let rejectOlder!: (error: unknown) => void
+    const older = new Promise<typeof LOADED>((_resolve, reject) => {
+      rejectOlder = reject
+    })
+    let resolveNewer!: (value: typeof LOADED) => void
+    const newer = new Promise<typeof LOADED>((resolve) => {
+      resolveNewer = resolve
+    })
+
+    vi.mocked(api.fetchAllChecks)
+      .mockReturnValueOnce(older as never) // initial load, attempt 1
+      .mockReturnValueOnce(newer as never) // reload, attempt 2
+
+    const { result } = renderHook(() => useChecks({ enabled: true }))
+
+    act(() => {
+      void result.current.reload()
+    })
+
+    await act(async () => {
+      resolveNewer(LOADED as never)
+      await newer
+    })
+    expect(result.current.getStatus('K1M_BR1', '42', 1, 2)).toBe('verified')
+
+    // The older attempt fails after the newer one already loaded — it must
+    // not wipe the newer data or flip availability off.
+    await act(async () => {
+      rejectOlder(new ChecksUnavailableError(404))
+      await older.catch(() => {})
+    })
+
+    expect(result.current.getStatus('K1M_BR1', '42', 1, 2)).toBe('verified')
+    expect(result.current.available).toBe(true)
+    expect(result.current.loading).toBe(false)
+  })
+})
+
+describe('useChecks mutations', () => {
+  beforeEach(() => vi.clearAllMocks())
+  afterEach(() => vi.restoreAllMocks())
+
+  it('verifies a gate optimistically and sends the explicit value', async () => {
+    const { result } = await renderLoaded()
+    vi.mocked(api.setCheck).mockResolvedValue({ checkedAt: 't', value: 0 })
+
+    await act(async () => {
+      await result.current.verifyGate('K1M_BR1', '42', 2, 0)
+    })
+
+    expect(api.setCheck).toHaveBeenCalledWith('K1M_BR1', '42', 2, 0)
+    expect(result.current.getStatus('K1M_BR1', '42', 2, 0)).toBe('verified')
+  })
+
+  it('rolls back when the write fails', async () => {
+    const { result } = await renderLoaded()
+    vi.mocked(api.setCheck).mockRejectedValue(new ApiRequestError('boom', 500))
+
+    await act(async () => {
+      await result.current.verifyGate('K1M_BR1', '42', 2, 0)
+    })
+
+    expect(result.current.getStatus('K1M_BR1', '42', 2, 0)).toBe('plain')
+  })
+
+  it('refuses to verify an empty gate', async () => {
+    const { result } = await renderLoaded()
+
+    let outcome = true
+    await act(async () => {
+      outcome = await result.current.verifyGate('K1M_BR1', '42', 9, null)
+    })
+
+    expect(outcome).toBe(false)
+    expect(api.setCheck).not.toHaveBeenCalled()
+  })
+
+  it('toggles a verified gate back to plain', async () => {
+    const { result } = await renderLoaded()
+    vi.mocked(api.removeCheck).mockResolvedValue(undefined)
+
+    await act(async () => {
+      await result.current.toggleGate('K1M_BR1', '42', 1, 2)
+    })
+
+    expect(api.removeCheck).toHaveBeenCalledWith('K1M_BR1', '42', 1)
+    expect(result.current.getStatus('K1M_BR1', '42', 1, 2)).toBe('plain')
+  })
+
+  it('verifies a section, skipping the empty gate and reporting it', async () => {
+    const { result } = await renderLoaded()
+    vi.mocked(api.setCheck).mockImplementation(
+      async (_r, _b, _g, value) => ({ checkedAt: 't', value: value as number })
+    )
+
+    let outcome!: { verified: number[]; firstEmpty: number | null }
+    await act(async () => {
+      outcome = await result.current.verifySection(
+        'K1M_BR1', '42', [4, 5, 6],
+        new Map([[4, 0], [5, null], [6, 2]])
+      )
+    })
+
+    expect(outcome).toEqual({ verified: [4, 6], firstEmpty: 5 })
+    expect(api.setCheck).toHaveBeenCalledTimes(2)
+    expect(result.current.getStatus('K1M_BR1', '42', 5, null)).toBe('plain')
+  })
+
+  it('keeps the gates that succeeded when one write in a section fails', async () => {
+    const { result } = await renderLoaded()
+    vi.mocked(api.setCheck)
+      .mockResolvedValueOnce({ checkedAt: 't', value: 0 })
+      .mockRejectedValueOnce(new ApiRequestError('boom', 500))
+
+    await act(async () => {
+      await result.current.verifySection(
+        'K1M_BR1', '42', [4, 6], new Map([[4, 0], [6, 2]])
+      )
+    })
+
+    expect(result.current.getStatus('K1M_BR1', '42', 4, 0)).toBe('verified')
+    expect(result.current.getStatus('K1M_BR1', '42', 6, 2)).toBe('plain')
+  })
 })

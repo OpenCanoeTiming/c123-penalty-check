@@ -7,12 +7,13 @@
  */
 
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
-import { fetchAllChecks, ChecksUnavailableError } from '../services/checksApi'
+import { fetchAllChecks, setCheck, removeCheck, ChecksUnavailableError } from '../services/checksApi'
 import { parseResultsGatesString } from '../utils'
 import {
   createGateKey,
   EMPTY_RACE_CHECKS,
   type CheckChangedEvent,
+  type CheckEntry,
   type FlagChangedEvent,
   type FlagEntry,
   type GateCheckStatus,
@@ -250,6 +251,99 @@ export function useChecks(options: { enabled?: boolean } = {}) {
     })
   }, [])
 
+  const writeCheckLocally = useCallback(
+    (raceId: string, bib: string, gate: number, check: CheckEntry | null) => {
+      setRaces((prev) => {
+        const race = prev[raceId] ?? EMPTY_RACE_CHECKS
+        const checks = { ...race.checks }
+        const key = createGateKey(bib, gate)
+        if (check) checks[key] = check
+        else delete checks[key]
+        return { ...prev, [raceId]: { checks, flags: race.flags ?? [] } }
+      })
+    },
+    []
+  )
+
+  const verifyGate = useCallback(
+    async (raceId: string, bib: string, gate: number, liveValue: number | null): Promise<boolean> => {
+      // Rule 3: an empty gate carries nothing to verify against the paper.
+      if (liveValue === null) return false
+
+      const key = createGateKey(bib, gate)
+      const previous = races[raceId]?.checks?.[key] ?? null
+      writeCheckLocally(raceId, bib, gate, { checkedAt: new Date().toISOString(), value: liveValue })
+
+      try {
+        const check = await setCheck(raceId, bib, gate, liveValue)
+        writeCheckLocally(raceId, bib, gate, check)
+        return true
+      } catch {
+        writeCheckLocally(raceId, bib, gate, previous)
+        return false
+      }
+    },
+    [races, writeCheckLocally]
+  )
+
+  const unverifyGate = useCallback(
+    async (raceId: string, bib: string, gate: number): Promise<boolean> => {
+      const key = createGateKey(bib, gate)
+      const previous = races[raceId]?.checks?.[key] ?? null
+      writeCheckLocally(raceId, bib, gate, null)
+
+      try {
+        await removeCheck(raceId, bib, gate)
+        return true
+      } catch {
+        writeCheckLocally(raceId, bib, gate, previous)
+        return false
+      }
+    },
+    [races, writeCheckLocally]
+  )
+
+  const toggleGate = useCallback(
+    (raceId: string, bib: string, gate: number, liveValue: number | null): Promise<boolean> => {
+      const check = races[raceId]?.checks?.[createGateKey(bib, gate)]
+      return check ? unverifyGate(raceId, bib, gate) : verifyGate(raceId, bib, gate, liveValue)
+    },
+    [races, verifyGate, unverifyGate]
+  )
+
+  const verifySection = useCallback(
+    async (
+      raceId: string,
+      bib: string,
+      gates: number[],
+      liveValues: Map<number, number | null>
+    ): Promise<{ verified: number[]; firstEmpty: number | null }> => {
+      let firstEmpty: number | null = null
+      const candidates: number[] = []
+
+      for (const gate of gates) {
+        const value = liveValues.get(gate) ?? null
+        if (value === null) {
+          if (firstEmpty === null) firstEmpty = gate
+          continue
+        }
+        candidates.push(gate)
+      }
+
+      // One request per gate: batch writes are out of scope by decision, and
+      // a partial section simply reads as incomplete.
+      const outcomes = await Promise.all(
+        candidates.map((gate) => verifyGate(raceId, bib, gate, liveValues.get(gate) ?? null))
+      )
+
+      return {
+        verified: candidates.filter((_, index) => outcomes[index]),
+        firstEmpty,
+      }
+    },
+    [verifyGate]
+  )
+
   return useMemo(
     () => ({
       available,
@@ -262,8 +356,27 @@ export function useChecks(options: { enabled?: boolean } = {}) {
       getRaceProgress,
       applyCheckEvent,
       applyFlagEvent,
+      verifyGate,
+      unverifyGate,
+      toggleGate,
+      verifySection,
     }),
-    [available, unavailableReason, loading, races, load, getStatus, getFlags, getRaceProgress, applyCheckEvent, applyFlagEvent]
+    [
+      available,
+      unavailableReason,
+      loading,
+      races,
+      load,
+      getStatus,
+      getFlags,
+      getRaceProgress,
+      applyCheckEvent,
+      applyFlagEvent,
+      verifyGate,
+      unverifyGate,
+      toggleGate,
+      verifySection,
+    ]
   )
 }
 
