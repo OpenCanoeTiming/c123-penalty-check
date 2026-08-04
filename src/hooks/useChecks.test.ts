@@ -280,6 +280,91 @@ describe('useChecks', () => {
     expect(result.current.loading).toBe(false)
   })
 
+  it('keeps the availability verdict from the initial load even when a checks-reset supersedes it before it resolves', async () => {
+    // Unlike a reload superseded by a *newer load*, the initial load here has
+    // no successor to eventually provide its own verdict — the event only
+    // invalidates the data snapshot, not the fact that the server answered.
+    let resolveInitialLoad!: (value: typeof LOADED) => void
+    const pending = new Promise<typeof LOADED>((resolve) => {
+      resolveInitialLoad = resolve
+    })
+    vi.mocked(api.fetchAllChecks).mockReturnValue(pending as never)
+
+    const { result } = renderHook(() => useChecks({ enabled: true }))
+    expect(result.current.available).toBe(false) // nothing has resolved yet
+
+    act(() => {
+      result.current.applyCheckEvent({ event: 'checks-reset', raceId: '' })
+    })
+
+    await act(async () => {
+      resolveInitialLoad(LOADED as never)
+      await pending
+    })
+
+    // The response proves the server has a working checks API — that must
+    // still count even though its data snapshot predates the reset.
+    expect(result.current.available).toBe(true)
+    expect(result.current.loading).toBe(false)
+    // The reset is still honoured: the stale snapshot must not resurrect it.
+    expect(result.current.getStatus('K1M_BR1', '42', 1, 2)).toBe('plain')
+  })
+
+  it('still marks itself unavailable from the initial load\'s failure even when a checks-reset supersedes it first', async () => {
+    // Same reasoning as the success case, applied to the error path: "the
+    // server doesn't have this API" is a fact about the server, so an event
+    // arriving first must not suppress it either.
+    let rejectInitialLoad!: (error: unknown) => void
+    const pending = new Promise<typeof LOADED>((_resolve, reject) => {
+      rejectInitialLoad = reject
+    })
+    vi.mocked(api.fetchAllChecks).mockReturnValue(pending as never)
+
+    const { result } = renderHook(() => useChecks({ enabled: true }))
+
+    act(() => {
+      result.current.applyCheckEvent({ event: 'checks-reset', raceId: '' })
+    })
+
+    await act(async () => {
+      rejectInitialLoad(new ChecksUnavailableError(404))
+      await pending.catch(() => {})
+    })
+
+    // `available` starting `false` is not enough to prove the verdict
+    // applied — `unavailableReason` staying null is what "stuck at the
+    // initial default" would look like.
+    expect(result.current.available).toBe(false)
+    expect(result.current.unavailableReason).not.toBeNull()
+    expect(result.current.loading).toBe(false)
+  })
+
+  it('still applies the initial load\'s "stays available" verdict for an ordinary failure even when superseded by an event', async () => {
+    // The default `available` starts false, so this is the case where a
+    // failure to gate correctly would leave it stuck wrong rather than
+    // coincidentally right.
+    let rejectInitialLoad!: (error: unknown) => void
+    const pending = new Promise<typeof LOADED>((_resolve, reject) => {
+      rejectInitialLoad = reject
+    })
+    vi.mocked(api.fetchAllChecks).mockReturnValue(pending as never)
+
+    const { result } = renderHook(() => useChecks({ enabled: true }))
+    expect(result.current.available).toBe(false)
+
+    act(() => {
+      result.current.applyCheckEvent({ event: 'checks-reset', raceId: '' })
+    })
+
+    await act(async () => {
+      rejectInitialLoad(new ApiRequestError('boom', 500))
+      await pending.catch(() => {})
+    })
+
+    expect(result.current.available).toBe(true)
+    expect(result.current.loading).toBe(false)
+  })
+
   it('clears a single race on checks-cleared', async () => {
     const { result } = await renderLoaded()
 

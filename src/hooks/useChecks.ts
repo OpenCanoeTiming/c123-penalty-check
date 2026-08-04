@@ -41,49 +41,77 @@ export function useChecks(options: { enabled?: boolean } = {}) {
   const [unavailableReason, setUnavailableReason] =
     useState<{ status: number; message: string } | null>(null)
   const [loading, setLoading] = useState(false)
-  // Guards which load's response is allowed to touch state: bumped by a
-  // newer load, by `enabled` toggling, and by an event (checks-reset,
-  // checks-cleared) that must not be undone by a load already in flight.
+  // Two independent guards, deliberately not one:
+  //
+  // - loadAttempt answers "has a *newer load* been started since?" It is
+  //   bumped only by `load()` itself and by disabling/unmounting. A
+  //   response's availability verdict (available / unavailableReason) is
+  //   true about the server regardless of what a WebSocket event did to the
+  //   data meanwhile, so the verdict is gated by this alone — an event must
+  //   never suppress it. Gating it by anything an event touches also broke
+  //   reordering: without a token dedicated to "newer load exists", a slow
+  //   response from an old attempt could overwrite a faster newer one that
+  //   already resolved.
+  // - loadToken answers "is this response's *data* still current?" It is
+  //   bumped by everything loadAttempt is, plus checks-reset/checks-cleared
+  //   events, since those events make an in-flight snapshot stale without
+  //   starting a new load. Only the races snapshot is gated by this.
+  const loadAttempt = useRef(0)
   const loadToken = useRef(0)
-  // Counts requests actually in flight, independent of `loadToken`. A load
-  // whose response gets discarded via the token still completed a real
-  // network round-trip, and `loading` must reflect that — otherwise
-  // discarding a load right before it resolves leaves `loading` stuck true.
+  // Counts requests actually in flight, independent of either token above. A
+  // load whose response gets discarded still completed a real network
+  // round-trip, and `loading` must reflect that — otherwise discarding a
+  // load right before it resolves leaves `loading` stuck true.
   const inFlightCount = useRef(0)
 
   const load = useCallback(async () => {
     if (!enabled) return
+    const attempt = ++loadAttempt.current
     const token = ++loadToken.current
     inFlightCount.current++
     setLoading(true)
     try {
       const data = await fetchAllChecks()
-      if (token !== loadToken.current) return // superseded — see loadToken above
+      // A successful response proves the server has a working checks API
+      // right now — true regardless of whether a reset/cleared event
+      // invalidated this attempt's data snapshot while it was in flight.
+      // Only a strictly newer load attempt should suppress this verdict.
+      if (attempt === loadAttempt.current) {
+        setAvailable(true)
+        setUnavailableReason(null)
+      }
+      if (token !== loadToken.current) return // stale snapshot: verdict kept above, data dropped here
       setRaces(data.races ?? {})
-      setAvailable(true)
-      setUnavailableReason(null)
     } catch (error) {
-      if (token !== loadToken.current) return
       // A server without the checks API is a supported configuration, not a
       // crash: the feature switches off and says so. Only fetchAllChecks can
       // raise ChecksUnavailableError — a 404 from the other endpoints means
       // "already gone" and must never disable the feature.
       if (error instanceof ChecksUnavailableError) {
-        setRaces({})
-        setAvailable(false)
-        // 404 and 503 mean different things to the operator: upgrade the
-        // server, versus load an XML file into the one already running.
-        // `detail` carries the server's own text; the class message is the
-        // generic fallback.
-        setUnavailableReason({
-          status: error.status,
-          message: error.detail ?? error.message,
-        })
-      } else {
+        // Same reasoning as the success path: "the server doesn't have this
+        // API" is a fact about the server, not about any one event, so it is
+        // gated the same way — only a newer load attempt suppresses it. The
+        // data-clear travels with the verdict here (there is no "stale but
+        // valid" data when the whole endpoint is unavailable), so it uses
+        // the same gate rather than loadToken.
+        if (attempt === loadAttempt.current) {
+          setRaces({})
+          setAvailable(false)
+          // 404 and 503 mean different things to the operator: upgrade the
+          // server, versus load an XML file into the one already running.
+          // `detail` carries the server's own text; the class message is the
+          // generic fallback.
+          setUnavailableReason({
+            status: error.status,
+            message: error.detail ?? error.message,
+          })
+        }
+      } else if (attempt === loadAttempt.current) {
         // An ordinary failure (5xx, timeout, dropped connection) says
         // nothing about whether the checks API exists, so the feature stays
         // available — and whatever was already loaded stays on screen
-        // rather than blanking every gate to `plain` mid-race.
+        // rather than blanking every gate to `plain` mid-race. Gated the
+        // same way: a newer load attempt's verdict must win, not this one.
         setAvailable(true)
         setUnavailableReason(null)
       }
@@ -98,11 +126,13 @@ export function useChecks(options: { enabled?: boolean } = {}) {
     return () => {
       // Discard whatever load is still in flight when `enabled` flips (this
       // effect reruns because `load`'s identity changed) or the hook
-      // unmounts: its response predates the transition and must not apply.
-      // loadToken is a plain counter, not a DOM ref, so reading the latest
-      // `.current` here (rather than a value captured at effect-setup time)
-      // is exactly the intended behavior — not the stale-ref hazard the rule
-      // guards against.
+      // unmounts: its response predates the transition and must not apply —
+      // to its verdict or its data, so both tokens are bumped. These are
+      // plain counters, not DOM refs, so reading the latest `.current` here
+      // (rather than a value captured at effect-setup time) is exactly the
+      // intended behavior — not the stale-ref hazard the rule guards against.
+      // eslint-disable-next-line react-hooks/exhaustive-deps
+      loadAttempt.current++
       // eslint-disable-next-line react-hooks/exhaustive-deps
       loadToken.current++
     }
@@ -167,9 +197,12 @@ export function useChecks(options: { enabled?: boolean } = {}) {
     if (event.event === 'checks-reset' || event.event === 'checks-cleared') {
       // A load already in flight when this event arrives carries a snapshot
       // from before it. Let it finish (inFlightCount still tracks it so
-      // `loading` resolves correctly), but bump the token so its result is
+      // `loading` resolves correctly), but bump loadToken so its *data* is
       // ignored — otherwise a stale full reload would silently resurrect
-      // what this event just discarded.
+      // what this event just discarded. loadAttempt is deliberately left
+      // alone: the response is still real information about whether the
+      // server has a working checks API, which this event says nothing
+      // about — see the comment above `loadAttempt`'s declaration.
       loadToken.current++
     }
 
