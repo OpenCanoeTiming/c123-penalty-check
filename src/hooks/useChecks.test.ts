@@ -68,6 +68,21 @@ describe('useChecks', () => {
     expect(result.current.getStatus('K1M_BR1', '42', 3, 0)).toBe('flagged')
   })
 
+  it('lets an open flag win over a check that still matches', async () => {
+    // The fixture above never puts a check and an open flag on the same
+    // gate, so it cannot tell "flag beats plain" from "flag beats verified".
+    // This one does: gate 1 is checked with value 2 and the live value still
+    // matches it, yet an open flag on the same gate must still win.
+    const { result } = await renderLoaded()
+    act(() => {
+      result.current.applyFlagEvent({
+        event: 'flag-created', raceId: 'K1M_BR1',
+        flag: { id: 'f2', bib: '42', gate: 1, createdAt: 't', comment: 'c', resolved: false },
+      })
+    })
+    expect(result.current.getStatus('K1M_BR1', '42', 1, 2)).toBe('flagged')
+  })
+
   it('ignores resolved flags when computing status', async () => {
     vi.mocked(api.fetchAllChecks).mockResolvedValue({
       ...LOADED,
@@ -93,6 +108,38 @@ describe('useChecks', () => {
     expect(result.current.getRaceProgress('K1M_BR1', rows)).toEqual({
       checked: 1,
       total: 2,
+      done: false,
+    })
+  })
+
+  it('does not misnumber gates across a deleted-penalty gap, and never reports a false "done"', async () => {
+    // 6 real gates: 1=0, 2=2, 3 & 4 deleted (blank block in the fixed-width
+    // string), 5=50, 6=0. Checks are recorded at real gates 1-4. A parser
+    // that collapses whitespace instead of reading fixed 3-char blocks sees
+    // only 4 positions here and numbers them 1-4 regardless of the gap — it
+    // would report {checked: 4, total: 4, done: true}, a false "done" while
+    // the real gates 5 and 6 were never touched.
+    vi.mocked(api.fetchAllChecks).mockResolvedValue({
+      ...LOADED,
+      races: {
+        K1M_BR1: {
+          checks: {
+            '42:1': { checkedAt: 't', value: 0 },
+            '42:2': { checkedAt: 't', value: 2 },
+            '42:3': { checkedAt: 't', value: null },
+            '42:4': { checkedAt: 't', value: null },
+          },
+          flags: [],
+        },
+      },
+    } as never)
+    const { result } = renderHook(() => useChecks({ enabled: true }))
+    await waitFor(() => expect(result.current.loading).toBe(false))
+
+    const rows = [{ bib: '42', gates: '  0  2       50  0' }]
+    expect(result.current.getRaceProgress('K1M_BR1', rows)).toEqual({
+      checked: 4,
+      total: 6,
       done: false,
     })
   })
@@ -129,6 +176,49 @@ describe('useChecks', () => {
     expect(result.current.available).toBe(true)
   })
 
+  it('keeps previously loaded verification state when a reload fails for an ordinary reason', async () => {
+    // Staying "available" is not enough on its own: if a failed reload also
+    // blanked every gate to `plain`, the operator would see verification
+    // marks vanish mid-race with no error shown — the worst of both readings.
+    const { result } = await renderLoaded()
+    expect(result.current.getStatus('K1M_BR1', '42', 1, 2)).toBe('verified')
+
+    vi.mocked(api.fetchAllChecks).mockRejectedValueOnce(new ApiRequestError('boom', 500))
+    await act(async () => {
+      await result.current.reload()
+    })
+
+    expect(result.current.available).toBe(true)
+    expect(result.current.getStatus('K1M_BR1', '42', 1, 2)).toBe('verified')
+  })
+
+  it('discards an in-flight load when disabled before it resolves', async () => {
+    let resolveLoad!: (value: typeof LOADED) => void
+    const pending = new Promise<typeof LOADED>((resolve) => {
+      resolveLoad = resolve
+    })
+    vi.mocked(api.fetchAllChecks).mockReturnValue(pending as never)
+
+    const { result, rerender } = renderHook(
+      ({ enabled }: { enabled: boolean }) => useChecks({ enabled }),
+      { initialProps: { enabled: true } }
+    )
+    expect(result.current.loading).toBe(true)
+
+    rerender({ enabled: false })
+
+    await act(async () => {
+      resolveLoad(LOADED as never)
+      await pending
+    })
+
+    // The response arrived after the feature was disabled — it must not
+    // resurrect `available` from its initial `false`, and `loading` must not
+    // get stuck true just because the response was discarded.
+    expect(result.current.available).toBe(false)
+    expect(result.current.loading).toBe(false)
+  })
+
   it('applies check-set and check-invalidated events', async () => {
     const { result } = await renderLoaded()
 
@@ -157,6 +247,37 @@ describe('useChecks', () => {
 
     expect(result.current.getStatus('K1M_BR1', '42', 1, 2)).toBe('plain')
     expect(result.current.getFlags('K1M_BR1', '42', 3)).toEqual([])
+  })
+
+  it('discards a reload response that predates a checks-reset that arrived while it was in flight', async () => {
+    const { result } = await renderLoaded()
+    expect(result.current.getStatus('K1M_BR1', '42', 1, 2)).toBe('verified')
+
+    let resolveReload!: (value: typeof LOADED) => void
+    const pending = new Promise<typeof LOADED>((resolve) => {
+      resolveReload = resolve
+    })
+    vi.mocked(api.fetchAllChecks).mockReturnValueOnce(pending as never)
+
+    act(() => {
+      void result.current.reload()
+    })
+
+    // The reset arrives while the reload above is still in flight.
+    act(() => {
+      result.current.applyCheckEvent({ event: 'checks-reset', raceId: '' })
+    })
+    expect(result.current.getStatus('K1M_BR1', '42', 1, 2)).toBe('plain')
+
+    // The reload's response, snapshotted before the reset, must not
+    // resurrect what the reset just discarded.
+    await act(async () => {
+      resolveReload(LOADED as never)
+      await pending
+    })
+
+    expect(result.current.getStatus('K1M_BR1', '42', 1, 2)).toBe('plain')
+    expect(result.current.loading).toBe(false)
   })
 
   it('clears a single race on checks-cleared', async () => {
