@@ -1477,8 +1477,8 @@ Append to `ResultsGrid.module.css`. Hatching is a repeating gradient so it costs
 }
 
 .flagged {
-  background: var(--color-danger-subtle);
-  box-shadow: inset 0 0 0 2px var(--color-danger);
+  background: var(--color-error-subtle);
+  box-shadow: inset 0 0 0 2px var(--color-error);
   font-weight: var(--font-semibold);
 }
 
@@ -1489,11 +1489,11 @@ Append to `ResultsGrid.module.css`. Hatching is a repeating gradient so it costs
 }
 
 @keyframes flagPulse {
-  50% { box-shadow: inset 0 0 0 2px var(--color-danger), 0 0 0 1px var(--color-danger); }
+  50% { box-shadow: inset 0 0 0 2px var(--color-error), 0 0 0 1px var(--color-error); }
 }
 ```
 
-Confirm every token used exists in the design system; if `--color-success-subtle` or `--color-danger-subtle` are absent, pick the nearest published token rather than inventing a hex value. Check `../timing-design-system/` for the token list.
+These token names are **verified to exist** in `node_modules/@opencanoetiming/timing-design-system`: `--color-success-subtle`, `--color-warning-subtle`, `--color-warning`, `--color-error-subtle`, `--color-error`, `--color-border`, `--color-accent`, `--font-semibold`. There is no `--color-danger*` in this design system — an earlier revision of this plan used that name and it does not resolve. Never invent a hex value; if you need a token not listed above, grep the package for the real name first.
 
 - [ ] **Step 2: Apply the class in the cell**
 
