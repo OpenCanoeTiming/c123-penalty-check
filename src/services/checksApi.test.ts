@@ -138,13 +138,37 @@ describe('checksApi', () => {
     await expect(fetchAllChecks()).rejects.toBeInstanceOf(ChecksUnavailableError)
   }, 10000)
 
-  it('preserves the server\'s text through to detail on a 503', async () => {
-    // The server sends its actionable message in `error` (→ ApiRequestError.message),
-    // not `detail` — the response body never has a `detail` field in practice. Losing
-    // that text would leave the operator with the generic ChecksUnavailableError
-    // message instead of "set an XML path first".
+  it("preserves the server's text through to detail when checksStore is not initialised (503)", async () => {
+    // The only 503 GET /api/checks can actually send: `error` (→
+    // ApiRequestError.message), not `detail` — the response body never has a
+    // `detail` field in practice. Losing that text would leave the operator
+    // with the generic ChecksUnavailableError message instead of the real
+    // reason the checks API isn't responding.
+    vi.mocked(fetch).mockReturnValue(mockJson({ error: 'Checks service not available' }, 503))
+
+    let caught: unknown
+    try {
+      await fetchAllChecks()
+    } catch (error) {
+      caught = error
+    }
+
+    expect(caught).toBeInstanceOf(ChecksUnavailableError)
+    expect((caught as ChecksUnavailableError).detail).toBe('Checks service not available')
+  }, 10000)
+
+  it('does not let a synthesized "HTTP 404" status text override the class message', async () => {
+    // A pre-0.12 server has no /api/checks route at all: express serves an
+    // HTML 404 page, fetchWithRetry's `.json().catch(() => ({}))` turns that
+    // into a body with no `error` field, and ApiRequestError.message falls
+    // back to `HTTP 404` — a status code, not real server text. That must
+    // not beat the class's own "not available on this server" explanation.
     vi.mocked(fetch).mockReturnValue(
-      mockJson({ error: 'No checks file loaded — set an XML path first' }, 503)
+      Promise.resolve({
+        ok: false,
+        status: 404,
+        json: () => Promise.reject(new Error('Unexpected token < in JSON')),
+      } as unknown as Response)
     )
 
     let caught: unknown
@@ -155,10 +179,8 @@ describe('checksApi', () => {
     }
 
     expect(caught).toBeInstanceOf(ChecksUnavailableError)
-    expect((caught as ChecksUnavailableError).detail).toBe(
-      'No checks file loaded — set an XML path first'
-    )
-  }, 10000)
+    expect((caught as ChecksUnavailableError).detail).toBeUndefined()
+  })
 
   it('treats a 404 on removeCheck as already-removed (idempotent), not ChecksUnavailableError', async () => {
     vi.mocked(fetch).mockReturnValue(mockJson({ error: 'Check not found' }, 404))

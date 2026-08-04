@@ -38,11 +38,18 @@ export async function fetchAllChecks(): Promise<AllChecksResponse> {
     })
   } catch (error) {
     if (error instanceof ApiRequestError && (error.status === 404 || error.status === 503)) {
-      // The server sends its actionable text in `error` (→ ApiRequestError.message),
-      // not `detail` — `detail` is undefined in practice. Falling back to `message`
-      // is what lets the operator see "No checks file loaded — set an XML path
-      // first" instead of the generic ChecksUnavailableError text.
-      throw new ChecksUnavailableError(error.status, error.detail ?? error.message)
+      // GET /api/checks itself never sends a `detail` field: its only 503
+      // ("Checks service not available") fires when checksStore is null,
+      // which production never hits, and its "no checks file loaded" case
+      // answers 200 with empty races, not an error. The realistic failure
+      // here is a pre-0.12 server with no route at all — express serves
+      // HTML, fetchWithRetry can't parse it, and `message` falls back to a
+      // synthesized "HTTP 404" that carries no real information. Prefer the
+      // server's own text when there is one, but never let that synthesized
+      // status text beat the class's own explanation.
+      const detail =
+        error.detail ?? (error.message.startsWith('HTTP ') ? undefined : error.message)
+      throw new ChecksUnavailableError(error.status, detail)
     }
     throw error
   }
