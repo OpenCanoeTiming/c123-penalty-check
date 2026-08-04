@@ -1025,14 +1025,12 @@ export interface RaceProgress {
 
 type RacesState = Record<string, RaceChecksData>
 
-/** Gate values as parsed from the `gates` string of a result row. */
-export function parseGateValues(gates: string): Array<number | null> {
-  if (!gates.trim()) return []
-  return gates.trim().split(/\s+/).map((raw) => {
-    const parsed = Number(raw)
-    return Number.isNaN(parsed) ? null : parsed
-  })
-}
+// Gate values come from `parseResultsGatesString` (src/utils/gates.ts), the
+// parser ResultsGrid already uses on these same rows. Do not write a second
+// one: the C123 `gates` string is fixed-width with blanks for deleted
+// penalties, so splitting on whitespace collapses holes — which both
+// under-counts `total` and shifts every gate number after the hole, producing
+// a race that reports "done" while real gates were never checked.
 
 export function useChecks(options: { enabled?: boolean } = {}) {
   const { enabled = true } = options
@@ -1121,7 +1119,9 @@ export function useChecks(options: { enabled?: boolean } = {}) {
 
       for (const row of rows) {
         if (row.status) continue // rule 7: finished runs without a status only
-        const values = parseGateValues(row.gates)
+        // Null positions stay in `total`: an empty gate is unverifiable, so a
+        // race containing one must never read as done.
+        const values = parseResultsGatesString(row.gates)
         for (let index = 0; index < values.length; index++) {
           total++
           if (race.checks?.[createGateKey(row.bib, index + 1)]) checked++
@@ -1219,7 +1219,7 @@ git commit -m "feat: add useChecks with event-wide state and stale detection"
 - Test: `src/hooks/useChecks.test.ts` (extend)
 
 **Interfaces:**
-- Consumes: `setCheck`, `removeCheck` from `checksApi`; `parseGateValues` from Task 5
+- Consumes: `setCheck`, `removeCheck` from `checksApi`; `parseResultsGatesString` from `src/utils/gates.ts` (never a locally written gates parser)
 - Produces:
   - `verifyGate(raceId, bib, gate, liveValue: number | null): Promise<boolean>` — no-op returning `false` when `liveValue === null`
   - `unverifyGate(raceId, bib, gate): Promise<boolean>`
@@ -1831,12 +1831,14 @@ const handlePenaltySubmit = useCallback(
 
 When `checks.available === false` and the connection is up, render a single unobtrusive notice and pass no verification props to the grid, so cells render plain. Do **not** fall back to localStorage — the spec rejects it.
 
-The notice must **distinguish the two causes**, because they demand different operator actions:
+**Correction to an earlier assumption in this plan.** An earlier revision claimed the notice must distinguish 404 from 503 because 503 meant "no checks file loaded — set an XML path". That is wrong for this route: `handleGetAllChecks` does **not** call `requireChecks`. With no checks file loaded it answers **200** with `{xmlFilename: null, fingerprint: null, races: {}}`. The actionable "set an XML path" text belongs to the mutating routes, which `fetchAllChecks` never touches. Its only 503 is `Checks service not available` when the store is null, which production always initialises.
 
-- **404** — the server predates 0.12.0. Say so: "Verification needs c123-server 0.12.0 or newer."
-- **503** — the server supports verification but has no checks file loaded. The server's own message is actionable ("No checks file loaded — set an XML path first") and must be shown rather than replaced. Telling this operator to upgrade would send them after the wrong problem entirely.
+So the practical cases collapse:
 
-Use `checks.unavailableReason` for this (see Task 5).
+- **Unavailable at all** (404, or the near-impossible 503) — the server predates 0.12.0. Say: "Verification needs c123-server 0.12.0 or newer."
+- **"No checks file loaded"** arrives as `available: true` with `races: {}` and is **indistinguishable from "loaded, nothing verified yet"** through this hook. Do not attempt to tell them apart here; showing an empty grid with everything unverified is the honest rendering of both.
+
+Still use `checks.unavailableReason` for the message — it carries the server's own text when there is one, and the class message otherwise — but do not branch the instruction on its status code.
 
 - [ ] **Step 4: Delete the dead hook**
 
