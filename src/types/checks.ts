@@ -79,4 +79,19 @@ export function createGateKey(bib: string, gate: number): string {
   return `${bib}:${gate}`
 }
 
-export const EMPTY_RACE_CHECKS: RaceChecksData = { checks: {}, flags: [] }
+// Frozen: consumers default an unknown race to this shared instance rather
+// than allocating a new one, so `flags`/`checks` must never be mutated in
+// place — a future `.push()` on what looked like "this race's flags" would
+// silently corrupt the constant for every race that ever defaulted through
+// it. Freezing turns that into an immediate TypeError instead. The nested
+// objects are frozen in place (not just the container) so the mutable-looking
+// `RaceChecksData` type can still describe it.
+const emptyChecks: Record<string, CheckEntry> = {}
+const emptyFlags: FlagEntry[] = []
+Object.freeze(emptyChecks)
+Object.freeze(emptyFlags)
+
+export const EMPTY_RACE_CHECKS: RaceChecksData = Object.freeze({
+  checks: emptyChecks,
+  flags: emptyFlags,
+})
