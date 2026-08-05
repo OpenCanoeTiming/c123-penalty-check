@@ -475,6 +475,48 @@ describe('useChecks', () => {
     expect(result.current.available).toBe(true)
     expect(result.current.loading).toBe(false)
   })
+
+  it('does not let a stale ordinary failure re-enable the feature a newer 404 already disabled', async () => {
+    // Third concurrent-load scenario, mirroring the two above: the newer
+    // load (attempt 2) answers first with a 404, switching the feature off.
+    // The older load (attempt 1) then fails for an ordinary reason (a 500) —
+    // that must not flip availability back on against a server that has no
+    // checks API at all.
+    let rejectOlder!: (e: unknown) => void
+    const older = new Promise<typeof LOADED>((_resolve, reject) => {
+      rejectOlder = reject
+    })
+    let rejectNewer!: (e: unknown) => void
+    const newer = new Promise<typeof LOADED>((_resolve, reject) => {
+      rejectNewer = reject
+    })
+
+    vi.mocked(api.fetchAllChecks)
+      .mockReturnValueOnce(older as never) // initial load, attempt 1
+      .mockReturnValueOnce(newer as never) // reload, attempt 2
+
+    const { result } = renderHook(() => useChecks({ enabled: true }))
+    act(() => {
+      void result.current.reload()
+    })
+
+    await act(async () => {
+      rejectNewer(new ChecksUnavailableError(404))
+      await newer.catch(() => {})
+    })
+    expect(result.current.available).toBe(false)
+
+    // The older attempt then fails with an ordinary 500 — it must not
+    // re-enable a feature the newer attempt proved is absent.
+    await act(async () => {
+      rejectOlder(new ApiRequestError('boom', 500))
+      await older.catch(() => {})
+    })
+
+    expect(result.current.available).toBe(false)
+    expect(result.current.unavailableReason).not.toBeNull()
+    expect(result.current.loading).toBe(false)
+  })
 })
 
 describe('useChecks mutations', () => {
@@ -561,5 +603,214 @@ describe('useChecks mutations', () => {
 
     expect(result.current.getStatus('K1M_BR1', '42', 4, 0)).toBe('verified')
     expect(result.current.getStatus('K1M_BR1', '42', 6, 2)).toBe('plain')
+  })
+
+  it('toggles a plain gate to verified', async () => {
+    // Mirror of "toggles a verified gate back to plain" — the un-verify
+    // direction had a test, the verify direction (the most common tap in the
+    // app) did not.
+    const { result } = await renderLoaded()
+    vi.mocked(api.setCheck).mockResolvedValue({ checkedAt: 't', value: 0 })
+
+    await act(async () => {
+      await result.current.toggleGate('K1M_BR1', '42', 2, 0)
+    })
+
+    expect(api.setCheck).toHaveBeenCalledWith('K1M_BR1', '42', 2, 0)
+    expect(result.current.getStatus('K1M_BR1', '42', 2, 0)).toBe('verified')
+  })
+
+  it('shows the gate as verified immediately, before the write settles', async () => {
+    // The whole point of "optimistic": the grid must update on tap, not on
+    // ack. Every other test awaits the settled promise before reading
+    // status, so none of them can tell an optimistic write from one that
+    // waits for the round trip — this one reads status while the request is
+    // still open.
+    const { result } = await renderLoaded()
+    let resolveWrite!: (value: { checkedAt: string; value: number }) => void
+    const pending = new Promise<{ checkedAt: string; value: number }>((resolve) => {
+      resolveWrite = resolve
+    })
+    vi.mocked(api.setCheck).mockReturnValueOnce(pending as never)
+
+    let verifyPromise!: Promise<boolean>
+    act(() => {
+      verifyPromise = result.current.verifyGate('K1M_BR1', '42', 2, 0)
+    })
+
+    expect(result.current.getStatus('K1M_BR1', '42', 2, 0)).toBe('verified')
+
+    await act(async () => {
+      resolveWrite({ checkedAt: 't', value: 0 })
+      await verifyPromise
+    })
+
+    expect(result.current.getStatus('K1M_BR1', '42', 2, 0)).toBe('verified')
+  })
+
+  it('does not resurrect a check that a concurrent event deleted when the write later fails', async () => {
+    // Gate 1 starts verified at value 2 (fixture). The judge re-verifies
+    // against a drifted live value while, on another tablet, someone
+    // un-verifies the same gate — the check-removed event lands before our
+    // write fails.
+    const { result } = await renderLoaded()
+    let rejectWrite!: (error: unknown) => void
+    const pending = new Promise<never>((_resolve, reject) => {
+      rejectWrite = reject
+    })
+    vi.mocked(api.setCheck).mockReturnValueOnce(pending as never)
+
+    let verifyPromise!: Promise<boolean>
+    act(() => {
+      verifyPromise = result.current.verifyGate('K1M_BR1', '42', 1, 50)
+    })
+
+    act(() => {
+      result.current.applyCheckEvent({
+        event: 'check-removed', raceId: 'K1M_BR1', bib: '42', gate: 1,
+      })
+    })
+    expect(result.current.getStatus('K1M_BR1', '42', 1, 50)).toBe('plain')
+
+    // Our write fails after the concurrent delete — it must not resurrect
+    // the check the event already removed.
+    await act(async () => {
+      rejectWrite(new ApiRequestError('boom', 500))
+      await verifyPromise
+    })
+
+    expect(result.current.getStatus('K1M_BR1', '42', 1, 50)).toBe('plain')
+  })
+
+  it('does not clobber a concurrent check-set when a failed unverify tries to restore the old value', async () => {
+    // Mirror of the above for unverifyGate's rollback. Gate 1 starts
+    // verified at value 2; while our removal is in flight, another tablet
+    // re-verifies the same gate at a new value (5) — our failed removal must
+    // not restore the stale value 2 over it.
+    const { result } = await renderLoaded()
+    let rejectRemove!: (error: unknown) => void
+    const pending = new Promise<never>((_resolve, reject) => {
+      rejectRemove = reject
+    })
+    vi.mocked(api.removeCheck).mockReturnValueOnce(pending as never)
+
+    let unverifyPromise!: Promise<boolean>
+    act(() => {
+      unverifyPromise = result.current.unverifyGate('K1M_BR1', '42', 1)
+    })
+
+    act(() => {
+      result.current.applyCheckEvent({
+        event: 'check-set', raceId: 'K1M_BR1', bib: '42', gate: 1,
+        check: { checkedAt: 't2', value: 5 },
+      })
+    })
+    expect(result.current.getStatus('K1M_BR1', '42', 1, 5)).toBe('verified')
+
+    await act(async () => {
+      rejectRemove(new ApiRequestError('boom', 500))
+      await unverifyPromise
+    })
+
+    expect(result.current.getStatus('K1M_BR1', '42', 1, 5)).toBe('verified')
+  })
+
+  it('does not let a successful write resurrect a race that checks-reset already discarded', async () => {
+    // The operator loads a new XML mid-write: the server broadcasts
+    // checks-reset while our verify is still in flight. The write later
+    // succeeds — it must not re-create the race the reset just discarded.
+    const { result } = await renderLoaded()
+    let resolveWrite!: (value: { checkedAt: string; value: number }) => void
+    const pending = new Promise<{ checkedAt: string; value: number }>((resolve) => {
+      resolveWrite = resolve
+    })
+    vi.mocked(api.setCheck).mockReturnValueOnce(pending as never)
+
+    let verifyPromise!: Promise<boolean>
+    act(() => {
+      verifyPromise = result.current.verifyGate('K1M_BR1', '42', 2, 0)
+    })
+
+    act(() => {
+      result.current.applyCheckEvent({ event: 'checks-reset', raceId: '' })
+    })
+    expect(result.current.getStatus('K1M_BR1', '42', 2, 0)).toBe('plain')
+
+    await act(async () => {
+      resolveWrite({ checkedAt: 't', value: 0 })
+      await verifyPromise
+    })
+
+    expect(result.current.races['K1M_BR1']).toBeUndefined()
+  })
+
+  it('does not let a failed write\'s rollback resurrect a race that checks-reset already discarded', async () => {
+    // Mirror of the above via the rollback path instead of the success path
+    // — the fix guards both, per the same loadToken reasoning as load().
+    const { result } = await renderLoaded()
+    let rejectWrite!: (error: unknown) => void
+    const pending = new Promise<never>((_resolve, reject) => {
+      rejectWrite = reject
+    })
+    vi.mocked(api.setCheck).mockReturnValueOnce(pending as never)
+
+    let verifyPromise!: Promise<boolean>
+    act(() => {
+      verifyPromise = result.current.verifyGate('K1M_BR1', '42', 2, 0)
+    })
+
+    act(() => {
+      result.current.applyCheckEvent({ event: 'checks-reset', raceId: '' })
+    })
+    expect(result.current.getStatus('K1M_BR1', '42', 2, 0)).toBe('plain')
+
+    await act(async () => {
+      rejectWrite(new ApiRequestError('boom', 500))
+      await verifyPromise
+    })
+
+    expect(result.current.races['K1M_BR1']).toBeUndefined()
+  })
+
+  it('does not let a failed write\'s rollback race ahead of a newer load already in flight', async () => {
+    // A second load (e.g. an explicit reload) starts and bumps loadToken
+    // while our write is still in flight, before anything has touched the
+    // key our optimistic write set. The rollback must defer to the newer
+    // load rather than restoring `previous` right as a fresher snapshot is
+    // about to supersede it — the same reordering reasoning as load() itself.
+    const { result } = await renderLoaded()
+
+    let rejectWrite!: (error: unknown) => void
+    const writePending = new Promise<never>((_resolve, reject) => {
+      rejectWrite = reject
+    })
+    vi.mocked(api.setCheck).mockReturnValueOnce(writePending as never)
+
+    let verifyPromise!: Promise<boolean>
+    act(() => {
+      verifyPromise = result.current.verifyGate('K1M_BR1', '42', 2, 0)
+    })
+    expect(result.current.getStatus('K1M_BR1', '42', 2, 0)).toBe('verified')
+
+    // A newer load starts — and is itself still in flight — before our write
+    // settles.
+    const reloadPending = new Promise<typeof LOADED>(() => {
+      // Deliberately never resolved: this test only needs the newer load to
+      // have started (bumping loadToken), not to complete.
+    })
+    vi.mocked(api.fetchAllChecks).mockReturnValueOnce(reloadPending as never)
+    act(() => {
+      void result.current.reload()
+    })
+
+    // Our write now fails. Nothing else has touched the key yet, so a naive
+    // rollback would restore `previous` — but a newer load is already in
+    // flight and will decide the final state, so the rollback must not act.
+    await act(async () => {
+      rejectWrite(new ApiRequestError('boom', 500))
+      await verifyPromise
+    })
+
+    expect(result.current.getStatus('K1M_BR1', '42', 2, 0)).toBe('verified')
   })
 })

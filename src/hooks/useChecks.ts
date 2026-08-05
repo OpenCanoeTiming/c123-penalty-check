@@ -265,6 +265,60 @@ export function useChecks(options: { enabled?: boolean } = {}) {
     []
   )
 
+  // Applies a mutation's server-confirmed result. Guarded only by `token`
+  // (captured from loadToken before the request went out): a checks-reset/
+  // -cleared that arrived while the request was in flight already discarded
+  // this race's context entirely (the operator loaded a new XML), and the
+  // response — even a successful one — must not resurrect it. Unlike the
+  // rollback below, this is deliberately NOT guarded by an identity check
+  // against a concurrent single-gate event: the REST response is direct
+  // confirmation of what *this specific request* achieved, which outranks
+  // whatever a same-key WS event did to the local snapshot meanwhile.
+  const applyMutationResult = useCallback(
+    (raceId: string, bib: string, gate: number, token: number, check: CheckEntry | null) => {
+      if (loadToken.current !== token) return
+      writeCheckLocally(raceId, bib, gate, check)
+    },
+    [writeCheckLocally]
+  )
+
+  // Restores `previous` after a failed write, guarded two ways:
+  //
+  // - `token`: same reasoning as applyMutationResult — a checks-reset/
+  //   -cleared since the request started means this race is gone; resurrecting
+  //   it from a failed request's rollback would be just as wrong as from a
+  //   successful one.
+  // - `expected` (compared by reference, not value): the optimistic entry
+  //   this call itself wrote, or `undefined` for an optimistic delete
+  //   (unverifyGate). Restoring is only safe if the entry is still exactly
+  //   what we left it as — if a concurrent single-gate event (another
+  //   tablet's check-removed/-invalidated/-set) already changed it, that
+  //   change is real server state and blindly overwriting it with our stale
+  //   `previous` would resurrect something the event legitimately
+  //   superseded.
+  const rollbackMutation = useCallback(
+    (
+      raceId: string,
+      bib: string,
+      gate: number,
+      token: number,
+      expected: CheckEntry | undefined,
+      previous: CheckEntry | null
+    ) => {
+      if (loadToken.current !== token) return
+      const key = createGateKey(bib, gate)
+      setRaces((prev) => {
+        const race = prev[raceId] ?? EMPTY_RACE_CHECKS
+        if (race.checks?.[key] !== expected) return prev
+        const checks = { ...race.checks }
+        if (previous) checks[key] = previous
+        else delete checks[key]
+        return { ...prev, [raceId]: { checks, flags: race.flags ?? [] } }
+      })
+    },
+    []
+  )
+
   const verifyGate = useCallback(
     async (raceId: string, bib: string, gate: number, liveValue: number | null): Promise<boolean> => {
       // Rule 3: an empty gate carries nothing to verify against the paper.
@@ -272,35 +326,38 @@ export function useChecks(options: { enabled?: boolean } = {}) {
 
       const key = createGateKey(bib, gate)
       const previous = races[raceId]?.checks?.[key] ?? null
-      writeCheckLocally(raceId, bib, gate, { checkedAt: new Date().toISOString(), value: liveValue })
+      const token = loadToken.current
+      const optimistic: CheckEntry = { checkedAt: new Date().toISOString(), value: liveValue }
+      writeCheckLocally(raceId, bib, gate, optimistic)
 
       try {
         const check = await setCheck(raceId, bib, gate, liveValue)
-        writeCheckLocally(raceId, bib, gate, check)
+        applyMutationResult(raceId, bib, gate, token, check)
         return true
       } catch {
-        writeCheckLocally(raceId, bib, gate, previous)
+        rollbackMutation(raceId, bib, gate, token, optimistic, previous)
         return false
       }
     },
-    [races, writeCheckLocally]
+    [races, writeCheckLocally, applyMutationResult, rollbackMutation]
   )
 
   const unverifyGate = useCallback(
     async (raceId: string, bib: string, gate: number): Promise<boolean> => {
       const key = createGateKey(bib, gate)
       const previous = races[raceId]?.checks?.[key] ?? null
+      const token = loadToken.current
       writeCheckLocally(raceId, bib, gate, null)
 
       try {
         await removeCheck(raceId, bib, gate)
         return true
       } catch {
-        writeCheckLocally(raceId, bib, gate, previous)
+        rollbackMutation(raceId, bib, gate, token, undefined, previous)
         return false
       }
     },
-    [races, writeCheckLocally]
+    [races, writeCheckLocally, rollbackMutation]
   )
 
   const toggleGate = useCallback(
