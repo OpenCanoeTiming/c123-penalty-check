@@ -458,3 +458,46 @@
     box-shadow: inset 0 0 4px var(--color-accent);
   }
 }
+
+/* ==========================================================================
+   VERIFICATION STATE
+   Value stays legible through every state — that is the binding constraint.
+   Precedence: flagged > stale > verified > plain.
+   ========================================================================== */
+
+.verified {
+  background-image: repeating-linear-gradient(
+    45deg,
+    var(--color-success-subtle) 0,
+    var(--color-success-subtle) 2px,
+    transparent 2px,
+    transparent 6px
+  );
+}
+
+.stale {
+  background-image: repeating-linear-gradient(
+    45deg,
+    var(--color-warning-subtle) 0,
+    var(--color-warning-subtle) 2px,
+    transparent 2px,
+    transparent 10px
+  );
+  box-shadow: inset 0 -2px 0 var(--color-warning);
+}
+
+.flagged {
+  background: var(--color-error-subtle);
+  box-shadow: inset 0 0 0 2px var(--color-error);
+  font-weight: var(--font-semibold);
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .flagged {
+    animation: flagPulse 2s ease-in-out 3;
+  }
+}
+
+@keyframes flagPulse {
+  50% { box-shadow: inset 0 0 0 2px var(--color-error), 0 0 0 1px var(--color-error); }
+}

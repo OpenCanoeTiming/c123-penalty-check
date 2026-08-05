@@ -15,6 +15,7 @@ import { useRef, useEffect, useCallback, useMemo, useState, memo, type UIEvent }
 import type { C123ResultRow, C123RaceConfigData } from '../../types/c123server'
 import type { GateGroup, ResultsSortOption } from '../../types/ui'
 import type { PenaltyValue } from '../../types/scoring'
+import type { GateCheckStatus } from '../../types/checks'
 import { useFocusNavigation, useKeyboardInput, useMultiTap } from '../../hooks'
 import { parseResultsGatesString } from '../../utils'
 import { PenaltyContextMenu } from './PenaltyContextMenu'
@@ -36,6 +37,7 @@ interface PenaltyCellProps {
   isColFocus: boolean
   isRowFocus: boolean
   isBoundary: boolean
+  getGateStatus?: (bib: string, gate: number) => GateCheckStatus
   onCellClick: (e: React.MouseEvent, rowIndex: number, colIndex: number) => void
   onMouseDown: (e: React.MouseEvent, rowIndex: number, colIndex: number) => void
   onMouseUp: () => void
@@ -58,6 +60,7 @@ const PenaltyCell = memo(function PenaltyCell({
   isColFocus,
   isRowFocus,
   isBoundary,
+  getGateStatus,
   onCellClick,
   onMouseDown,
   onMouseUp,
@@ -106,6 +109,10 @@ const PenaltyCell = memo(function PenaltyCell({
     className += ` ${styles.penaltyBoundary}`
   }
 
+  // Verification state - flagged > stale > verified > plain (loudest first)
+  const status = getGateStatus?.(competitorBib, gateNumber) ?? 'plain'
+  if (status !== 'plain') className += ` ${styles[status]}`
+
   // Build aria-label: "Gate 5, Bib 10, clear" or "Gate 5, Bib 10, empty"
   const ariaLabel = `Gate ${gateNumber}, Bib ${competitorBib}, ${penaltyLabel}`
 
@@ -137,6 +144,7 @@ interface ResultsGridProps {
   sortBy: ResultsSortOption
   onGroupSelect?: (groupId: string | null) => void
   onPenaltySubmit: (bib: string, gate: number, value: PenaltyValue, raceId?: string) => void
+  getGateStatus?: (bib: string, gate: number) => GateCheckStatus
 }
 
 // Scroll constants for auto-scrolling focused cell into view
@@ -169,6 +177,7 @@ export function ResultsGrid({
   sortBy,
   onGroupSelect,
   onPenaltySubmit,
+  getGateStatus,
 }: ResultsGridProps) {
   // Refs for scroll sync
   const groupsHeaderRef = useRef<HTMLDivElement>(null)
@@ -669,6 +678,7 @@ export function ResultsGrid({
                       isColFocus={isColFocus}
                       isRowFocus={isRowFocus}
                       isBoundary={isBoundary}
+                      getGateStatus={getGateStatus}
                       onCellClick={handleCellClick}
                       onMouseDown={handleCellMouseDown}
                       onMouseUp={handleCellMouseUp}
