@@ -475,20 +475,36 @@
   );
 }
 
+/*
+ * Stale and flagged express their marker bar as a background-image layer,
+ * not box-shadow: .penaltyCellColFocus / .penaltyCellRowFocus (below, but
+ * earlier in source and therefore losing the cascade on a shared property)
+ * are pure box-shadow. A status class that also set box-shadow would win
+ * outright and silently erase the column/row focus guide on exactly the
+ * cells the checking workflow is about. background-image doesn't compete.
+ */
 .stale {
-  background-image: repeating-linear-gradient(
-    45deg,
-    var(--color-warning-subtle) 0,
-    var(--color-warning-subtle) 2px,
-    transparent 2px,
-    transparent 10px
-  );
-  box-shadow: inset 0 -2px 0 var(--color-warning);
+  background-image:
+    linear-gradient(to top, var(--color-warning) 2px, transparent 2px),
+    repeating-linear-gradient(
+      45deg,
+      var(--color-warning-subtle) 0,
+      var(--color-warning-subtle) 2px,
+      transparent 2px,
+      transparent 10px
+    );
 }
 
+/*
+ * Flagged must stay unmistakable from an ordinary 50-penalty cell
+ * (.penaltyMiss below is already error-subtle + semibold) - a hairline ring
+ * is not enough once a race has several misses on the sheet, and a flag
+ * will often sit on a miss (a missed gate is the most disputed call).
+ * A solid 4px bar is a channel none of the value classes use.
+ */
 .flagged {
-  background: var(--color-error-subtle);
-  box-shadow: inset 0 0 0 2px var(--color-error);
+  background-color: var(--color-error-subtle);
+  background-image: linear-gradient(to top, var(--color-error) 4px, transparent 4px);
   font-weight: var(--font-semibold);
 }
 
