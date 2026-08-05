@@ -500,12 +500,31 @@
  * (.penaltyMiss below is already error-subtle + semibold) - a hairline ring
  * is not enough once a race has several misses on the sheet, and a flag
  * will often sit on a miss (a missed gate is the most disputed call).
- * A solid 4px bar is a channel none of the value classes use.
+ *
+ * The marker bar is a ::after overlay, not a background layer:
+ * .content tr.disabled td (below) sets `background: … !important`, which
+ * resets background-image on every layer regardless of specificity - a flag
+ * on a DNS/DNF/DSQ row is not decoration the checking model can skip (unlike
+ * verified/stale there), it is frequently the dispute over the removal
+ * itself, and needs a channel that survives. A pseudo-element is a separate
+ * paint layer nothing else in this file touches, kept out of flow so it
+ * cannot affect the cell's box size, and doesn't set box-shadow so it can't
+ * re-open the focus-guide collision above.
  */
 .flagged {
+  position: relative;
   background-color: var(--color-error-subtle);
-  background-image: linear-gradient(to top, var(--color-error) 4px, transparent 4px);
   font-weight: var(--font-semibold);
+}
+
+.flagged::after {
+  content: '';
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  height: 4px;
+  background: var(--color-error);
 }
 
 @media (prefers-reduced-motion: no-preference) {
