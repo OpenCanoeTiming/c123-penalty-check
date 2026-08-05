@@ -1572,11 +1572,15 @@ Expected: FAIL — callbacks not called.
 
 In the grid's existing `keydown` handler, before the digit shortcuts:
 
+The focus state comes from `useFocusNavigation` and is named **`position`**, of type
+`FocusPosition = { row: number; column: number }` (`src/hooks/useFocusNavigation.ts:6-9`).
+Note `column`, not `col`. The grid destructures it at `ResultsGrid.tsx:260`.
+
 ```tsx
 if (event.key === ' ') {
   event.preventDefault()
-  const row = sortedRows[focusedCell.row]
-  const gate = visibleGateIndices[focusedCell.col] + 1
+  const row = sortedRows[position.row]
+  const gate = visibleGateIndices[position.column] + 1
   if (event.shiftKey) {
     onVerifySection?.(row.bib, sectionGatesFor(gate))
   } else {
@@ -1590,15 +1594,20 @@ if (event.key === ' ') {
 
 - [ ] **Step 4: Add the section control**
 
-Widen the existing boundary and make it hit-testable. In `ResultsGrid.module.css`, replace the `border-right` on `.boundary` inside body rows (leave the header rule at `:141` alone):
+The body-row boundary already exists as **`.penaltyBoundary`** (`ResultsGrid.module.css:353-355`,
+`border-right: 2px solid var(--color-border)`), applied at `ResultsGrid.tsx:105-107` when
+`isBoundary` is true. Do not confuse it with `.colHeaders th.boundary` (`:141`), which is the
+header rule and must be left alone.
+
+Widen the body rule and make it hit-testable:
 
 ```css
-.cellBoundary {
+.penaltyBoundary {
   border-right: 12px solid var(--color-border);
   cursor: pointer;
 }
 
-.cellBoundary:hover {
+.penaltyBoundary:hover {
   border-right-color: var(--color-accent);
 }
 ```
