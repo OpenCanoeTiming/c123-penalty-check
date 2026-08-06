@@ -92,28 +92,16 @@ test.describe('Section handle does not clip the penalty digit', () => {
     await context.close();
   });
 
-  test('values PenaltyCell does not render as text (team-race cumulative values) cannot be clipped, because nothing is painted', async ({ page }) => {
-    // Documents the reviewer's finding: 100/150/52 etc. fall through to
-    // .penaltyEmpty (value = ''). This is a pre-existing display gap, not
-    // something the handle causes or this spec needs to fix - asserted here
-    // so a future fix to that gap trips this spec and gets the glyph-fit
-    // question asked again for those values.
-    await page.goto('/grid-harness.html', { waitUntil: 'networkidle' });
-    await page.waitForSelector('[class*="_content_"]');
-
-    const rendersNothing = await page.evaluate(() => {
-      // None of the harness's three rows carry a team value; this checks
-      // the general PenaltyCell contract that only 0/2/50 render text at
-      // all, by confirming no cell in the harness renders anything else.
-      const cells = Array.from(document.querySelectorAll('[class*="_penaltyCell_"]'));
-      const values = new Set(
-        cells
-          .map((c) => Array.from(c.childNodes).find((n) => n.nodeType === Node.TEXT_NODE)?.textContent?.trim() ?? '')
-          .filter(Boolean)
-      );
-      return [...values].sort();
-    });
-
-    expect(rendersNothing).toEqual(['0', '2', '50']);
-  });
+  // No team-race cumulative-value case (52/100/150) here on purpose. The
+  // data model carries them (src/types/checks.ts), but PenaltyCell has no UI
+  // path that renders them as text today - they fall through to
+  // .penaltyEmpty with value = '', so there is no glyph to measure yet, and
+  // a test asserting that would only be asserting a property of this
+  // harness's fixture data, not of PenaltyCell (a prior version of this spec
+  // did exactly that, and stayed green under a mutation that made
+  // PenaltyCell render those values as text - a vacuous test is worse than
+  // no test). Whoever gives team values a UI path has to re-run this whole
+  // glyph-fit question in the boundary cell specifically - it is the
+  // narrowest place a three-character value can land, at either pointer
+  // size, and 8px/12px do not obviously survive three characters.
 });
