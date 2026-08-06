@@ -1599,18 +1599,29 @@ The body-row boundary already exists as **`.penaltyBoundary`** (`ResultsGrid.mod
 `isBoundary` is true. Do not confuse it with `.colHeaders th.boundary` (`:141`), which is the
 header rule and must be left alone.
 
-Widen the body rule and make it hit-testable:
+**A border cannot be the click target.** An earlier revision of this plan said to widen the border
+and "make it hit-testable"; that is impossible. A border hit-tests to its own element, and an
+absolutely positioned child lays out against its containing block's *padding* box, so an overlay
+pinned with `right: 0` lands over the penalty digit rather than over the border. Measured, that put
+the handle at local x 18–29 while the painted border occupied 30–42 — no overlap at all, so tapping
+the visible separator did nothing and a second tap reached the multi-tap handler and wrote a real
+penalty to C123.
 
-```css
-.penaltyBoundary {
-  border-right: 12px solid var(--color-border);
-  cursor: pointer;
-}
+Give the handle **its own visible presence** as a real element docked to the cell's right edge, with
+the `cursor` and hover affordance on the handle itself rather than on the cell. Width: 8px on a fine
+pointer, 12px inside the existing `@media (pointer: coarse)` block — 12px clips the `50` glyph in a
+36px cell, measured at −2.5px clearance.
 
-.penaltyBoundary:hover {
-  border-right-color: var(--color-accent);
-}
-```
+The handle must stop `mousedown`, `touchstart`, `touchend`, `mouseup` and `contextmenu`, not just
+`click`: otherwise the long-press timer still runs, opening the context menu and leaving
+`longPressTriggered` set so the next tap anywhere in the grid is swallowed.
+
+Every section needs a handle, including the **last** one and the **filtered single-group view** —
+derive them from a dedicated `sectionEndGates`, not from `groupBoundaries`, which excludes the final
+visible gate because it exists to draw separators.
+
+Pin the geometry with a real-browser assertion. A test that clicks the handle element directly
+cannot see that the handle is in the wrong place, which is exactly how this shipped the first time.
 
 Bind `onClick` on that border region to `onVerifySection(row.bib, sectionGatesFor(gate))`. Give it `title` and `aria-label` naming the section so it is not a mystery target.
 
