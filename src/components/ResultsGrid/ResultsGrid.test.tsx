@@ -186,7 +186,10 @@ describe('ResultsGrid section boundary click target', () => {
       />
     )
 
-    const handle = screen.getByRole('button', { name: /verify section ending at gate 3/i })
+    // The handle is aria-hidden (see M-3: fully reachable via Shift+Space,
+    // not independently focusable/activatable, so it isn't announced as a
+    // button to assistive tech) - query it by its title tooltip instead.
+    const handle = screen.getByTitle('Verify section ending at gate 3')
     fireEvent.click(handle)
 
     expect(onVerifySection).toHaveBeenCalledWith('42', [1, 2, 3])
@@ -195,9 +198,133 @@ describe('ResultsGrid section boundary click target', () => {
     expect(onPenaltySubmit).not.toHaveBeenCalled()
   })
 
-  it('does not render a boundary handle when no gate groups are defined (Rule 1)', () => {
+  it('does not render a section handle when no gate groups are defined (Rule 1)', () => {
     renderGrid({ activeGateGroup: null, allGateGroups: [] })
 
-    expect(screen.queryByRole('button', { name: /verify section/i })).not.toBeInTheDocument()
+    expect(screen.queryByTitle(/verify section/i)).not.toBeInTheDocument()
+  })
+
+  it('renders a handle for every section end in the row, including the last one (I-1)', () => {
+    // groupBoundaries (the visual separator line) never includes the last
+    // visible gate - correct for a separator, but the handle must not be
+    // driven by that set, or the last section in every row has no click
+    // target at all.
+    renderGrid({
+      activeGateGroup: null,
+      allGateGroups: [
+        { id: 'gA', name: 'A', gates: [1, 2, 3] },
+        { id: 'gB', name: 'B', gates: [4, 5, 6] },
+      ],
+    })
+
+    expect(screen.getByTitle('Verify section ending at gate 3')).toBeInTheDocument()
+    expect(screen.getByTitle('Verify section ending at gate 6')).toBeInTheDocument()
+  })
+
+  it('still renders a handle in a filtered single-group view (I-1)', () => {
+    // groupBoundaries is empty whenever only one group's gates are visible
+    // (nothing differs from a "next" gate within the filtered set). A judge
+    // filtered to one section is exactly who needs the handle most.
+    const groupB = { id: 'gB', name: 'B', gates: [4, 5, 6] }
+    renderGrid({
+      activeGateGroup: groupB,
+      allGateGroups: [{ id: 'gA', name: 'A', gates: [1, 2, 3] }, groupB],
+    })
+
+    expect(screen.getByTitle('Verify section ending at gate 6')).toBeInTheDocument()
+  })
+
+  it('does not let a populated "all gates" pseudo-group hijack a real section (M-1)', () => {
+    // useGateGroups builds allGroups as [ALL_GATES_GROUP, ...segments,
+    // ...custom], with the all-gates group first. Its gates array is empty
+    // today, but sectionGatesFor must resolve through customGroups (which
+    // strips id 'all'), not allGateGroups directly - otherwise the moment
+    // that pseudo-group's gates were ever populated, .find() would match it
+    // before any real section and a click/Shift+Space would verify the
+    // entire course in one press.
+    const onVerifySection = vi.fn()
+    const allGatesPseudoGroup: GateGroup = { id: 'all', name: 'All Gates', gates: [1, 2, 3, 4, 5, 6] }
+    const realGroup: GateGroup = { id: 'g1', name: 'A', gates: [1, 2, 3] }
+    render(
+      <ResultsGrid
+        rows={[buildRow()]}
+        raceConfig={raceConfig}
+        raceId="race-001"
+        activeGateGroup={null}
+        allGateGroups={[allGatesPseudoGroup, realGroup]}
+        sortBy="rank"
+        onPenaltySubmit={vi.fn()}
+        onVerifySection={onVerifySection}
+      />
+    )
+
+    fireEvent.click(screen.getByTitle('Verify section ending at gate 3'))
+
+    expect(onVerifySection).toHaveBeenCalledWith('42', [1, 2, 3])
+  })
+
+  it('a long-press+click on the handle opens no context menu, verifies once, and does not block the next plain tap (C-2)', () => {
+    vi.useFakeTimers()
+    try {
+      const onVerifySection = vi.fn()
+      const onPenaltySubmit = vi.fn()
+      render(
+        <ResultsGrid
+          rows={[buildRow()]}
+          raceConfig={raceConfig}
+          raceId="race-001"
+          activeGateGroup={null}
+          allGateGroups={[{ id: 'g1', name: 'A', gates: [1, 2, 3] }]}
+          sortBy="rank"
+          onPenaltySubmit={onPenaltySubmit}
+          onVerifySection={onVerifySection}
+        />
+      )
+
+      const handle = screen.getByTitle('Verify section ending at gate 3')
+      // mousedown must not bubble to the cell's own long-press handling -
+      // if it did, holding past LONG_PRESS_DURATION (500ms) would open the
+      // penalty context menu underneath what looks like a single tap.
+      fireEvent.mouseDown(handle)
+      vi.advanceTimersByTime(600)
+      expect(screen.queryByRole('menu', { name: /penalty options/i })).not.toBeInTheDocument()
+
+      fireEvent.click(handle)
+      expect(onVerifySection).toHaveBeenCalledWith('42', [1, 2, 3])
+
+      // An unrelated cell's own double-tap must still register normally -
+      // the handle interaction must not leave stray long-press state
+      // (longPressTriggered) behind that swallows the next tap anywhere
+      // in the grid.
+      const otherCell = screen.getAllByRole('gridcell')[4] // gate 5, outside the section
+      fireEvent.click(otherCell)
+      fireEvent.click(otherCell)
+      vi.advanceTimersByTime(400) // past the 300ms multi-tap debounce
+
+      expect(onPenaltySubmit).toHaveBeenCalledWith('42', 5, 0, 'race-001')
+    } finally {
+      vi.useRealTimers()
+    }
+  })
+})
+
+describe('ResultsGrid empty-gate announcement', () => {
+  it('re-announces on repeated Space presses over the same empty gate (M-2)', () => {
+    renderGrid({ rows: [rowWithEmptyGate] })
+
+    pressKey('ArrowRight')
+    pressKey('ArrowRight')
+    pressKey('ArrowRight')
+    pressKey(' ')
+    const first = screen.getByRole('status').textContent
+
+    pressKey(' ')
+    const second = screen.getByRole('status').textContent
+
+    // A screen reader only re-announces an aria-live region on an actual
+    // text change - an identical string is a no-op.
+    expect(second).not.toBe(first)
+    expect(first).toMatch(/gate 4.*empty/i)
+    expect(second).toMatch(/gate 4.*empty/i)
   })
 })

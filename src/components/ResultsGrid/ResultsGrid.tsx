@@ -37,6 +37,8 @@ interface PenaltyCellProps {
   isColFocus: boolean
   isRowFocus: boolean
   isBoundary: boolean
+  /** This gate is the last gate of a section (independent of isBoundary - see sectionEndGates) */
+  isSectionEnd: boolean
   getGateStatus?: (bib: string, gate: number) => GateCheckStatus
   onCellClick: (e: React.MouseEvent, rowIndex: number, colIndex: number) => void
   onMouseDown: (e: React.MouseEvent, rowIndex: number, colIndex: number) => void
@@ -45,7 +47,7 @@ interface PenaltyCellProps {
   onTouchStart: (e: React.TouchEvent, rowIndex: number, colIndex: number) => void
   onTouchEnd: () => void
   onContextMenu: (e: React.MouseEvent, rowIndex: number, colIndex: number) => void
-  /** Verify the whole section ending at this gate (widened boundary border acts as a click target) */
+  /** Verify the whole section ending at this gate - the click counterpart to Shift+Space */
   onSectionVerify: (bib: string, gate: number) => void
 }
 
@@ -62,6 +64,7 @@ const PenaltyCell = memo(function PenaltyCell({
   isColFocus,
   isRowFocus,
   isBoundary,
+  isSectionEnd,
   getGateStatus,
   onCellClick,
   onMouseDown,
@@ -134,13 +137,29 @@ const PenaltyCell = memo(function PenaltyCell({
       onContextMenu={(e) => onContextMenu(e, rowIndex, colIndex)}
     >
       {value}
-      {isBoundary && (
+      {isSectionEnd && (
         <span
           className={styles.sectionHandle}
-          role="button"
-          tabIndex={-1}
+          // Not a real button: not focusable, no keyboard activation - the
+          // section-verify action is fully reachable via Shift+Space, so
+          // this is a redundant mouse/touch shortcut, not its own a11y
+          // affordance. Hidden from assistive tech rather than announced as
+          // an unusable button; the title tooltip still serves sighted
+          // mouse users.
+          aria-hidden="true"
           title={`Verify section ending at gate ${gateNumber}`}
-          aria-label={`Verify section ending at gate ${gateNumber}`}
+          // Stop every pointer-interaction event the cell itself listens
+          // for, not just click: mousedown/touchstart bubbling up would
+          // otherwise start the cell's long-press timer, which fires the
+          // penalty context menu out from under a tap meant to verify a
+          // section, and leaves longPressTriggered stuck true (the cell's
+          // own onClick guard that clears it never runs, because this
+          // handle's click never reaches it - see task-8 review C-2).
+          onMouseDown={(e) => e.stopPropagation()}
+          onMouseUp={(e) => e.stopPropagation()}
+          onTouchStart={(e) => e.stopPropagation()}
+          onTouchEnd={(e) => e.stopPropagation()}
+          onContextMenu={(e) => e.stopPropagation()}
           onClick={(e) => {
             e.stopPropagation()
             onSectionVerify(competitorBib, gateNumber)
@@ -174,6 +193,12 @@ const SCROLL_BUFFER = 18 // Extra buffer to ensure visibility
 
 // Long press duration for context menu (ms)
 const LONG_PRESS_DURATION = 500
+
+// Invisible marker toggled onto repeat identical live-region announcements
+// so the text actually changes and gets re-announced (see handleVerifyKeyDown).
+// Built from a char code, not a literal, so the source has no invisible
+// characters in it.
+const ZERO_WIDTH_SPACE = String.fromCharCode(8203)
 
 // Format time - display in seconds only
 function formatTime(seconds: number | null | undefined): string {
@@ -264,6 +289,30 @@ export function ResultsGrid({
     return boundaries
   }, [visibleGateIndices, customGroups])
 
+  // Gates that end a section (the highest gate number in a group), among the
+  // currently visible gates - independent of groupBoundaries. groupBoundaries
+  // only marks a *separator line* between two differently-grouped adjacent
+  // columns, so it never includes the last visible column and is empty
+  // whenever a single group is the active filter (nothing differs to the
+  // "next" gate because there is no next visible gate at all, or only one
+  // group is shown). A section-verify handle has to exist for those cases
+  // too - the last group in an unfiltered view, and every gate in a filtered
+  // single-group view - or the click route to that section vanishes.
+  const sectionEndGates = useMemo(() => {
+    const ends = new Set<number>()
+    if (customGroups.length === 0) return ends
+
+    const visibleGateSet = new Set(visibleGateIndices.map((i) => i + 1))
+    for (const group of customGroups) {
+      if (group.gates.length === 0) continue
+      const lastGate = Math.max(...group.gates)
+      if (visibleGateSet.has(lastGate)) {
+        ends.add(lastGate)
+      }
+    }
+    return ends
+  }, [visibleGateIndices, customGroups])
+
   // Sort rows
   const sortedRows = useMemo(() => {
     const sorted = [...rows]
@@ -341,15 +390,28 @@ export function ResultsGrid({
       if (e.shiftKey) {
         // Shift+Space only ever verifies - it must never be able to toggle a
         // gate (and so a whole section) back to unverified on a stray press.
-        onVerifySection?.(row.bib, sectionGatesFor(gate, allGateGroups))
+        // customGroups, not allGateGroups: allGateGroups can carry the
+        // synthetic "all gates" pseudo-group (id 'all'), which today has an
+        // empty gates array but isn't guaranteed to stay that way - were it
+        // ever populated, it sits first in allGroups and .find() would match
+        // it before any real section, verifying the entire course on one
+        // press. customGroups already excludes it.
+        onVerifySection?.(row.bib, sectionGatesFor(gate, customGroups))
         return true
       }
 
       const penalties = parsedPenaltiesMap.get(row.bib) ?? []
       if (penalties[gateIndex] == null) {
         // An empty gate has nothing to verify against the paper protocol -
-        // report why instead of silently eating the keystroke.
-        setAnnouncement(`Gate ${gate} is empty - nothing to verify.`)
+        // report why instead of silently eating the keystroke. Toggle a
+        // trailing zero-width space (invisible, inaudible) so back-to-back
+        // presses on the same empty gate still change the announced text -
+        // React (and so the aria-live region) treats an unchanged string as
+        // a no-op, and a screen reader only re-announces on an actual change.
+        setAnnouncement((prev) => {
+          const message = `Gate ${gate} is empty - nothing to verify.`
+          return prev.endsWith(ZERO_WIDTH_SPACE) ? message : message + ZERO_WIDTH_SPACE
+        })
         return true
       }
 
@@ -361,7 +423,7 @@ export function ResultsGrid({
       position,
       visibleGateIndices,
       parsedPenaltiesMap,
-      allGateGroups,
+      customGroups,
       onVerifySection,
       onToggleCheck,
     ]
@@ -432,13 +494,15 @@ export function ResultsGrid({
     }
   }, [hasRows])
 
-  // Verify the section a boundary cell ends - the click counterpart to
-  // Shift+Space, bound to the widened boundary border as a touch target.
+  // Verify the section a gate ends - the click counterpart to Shift+Space,
+  // bound to the section handle (see sectionEndGates / isSectionEnd).
+  // customGroups, not allGateGroups - see the matching comment in
+  // handleVerifyKeyDown.
   const handleSectionVerify = useCallback(
     (bib: string, gate: number) => {
-      onVerifySection?.(bib, sectionGatesFor(gate, allGateGroups))
+      onVerifySection?.(bib, sectionGatesFor(gate, customGroups))
     },
-    [onVerifySection, allGateGroups]
+    [onVerifySection, customGroups]
   )
 
   // Submit penalty for a specific cell
@@ -747,6 +811,7 @@ export function ResultsGrid({
                   const isColFocus = colIndex === position.column && rowIndex !== position.row
                   const isRowFocus = rowIndex === position.row && colIndex !== position.column
                   const isBoundary = groupBoundaries.has(gateNum)
+                  const isSectionEnd = sectionEndGates.has(gateNum)
                   const isReverse = gateConfig[gateIndex] === 'R'
 
                   return (
@@ -763,6 +828,7 @@ export function ResultsGrid({
                       isColFocus={isColFocus}
                       isRowFocus={isRowFocus}
                       isBoundary={isBoundary}
+                      isSectionEnd={isSectionEnd}
                       getGateStatus={getGateStatus}
                       onCellClick={handleCellClick}
                       onMouseDown={handleCellMouseDown}

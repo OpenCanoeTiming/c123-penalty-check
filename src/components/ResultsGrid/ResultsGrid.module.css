@@ -306,6 +306,12 @@
    ========================================================================== */
 
 .penaltyCell {
+  /* Containing block for .sectionHandle (see below). Set here, not only on
+     .penaltyBoundary, because a section-end handle can appear on a cell that
+     isn't a visual .penaltyBoundary (the last gate of the last group, or any
+     gate in a single-group filtered view - see sectionEndGates in
+     ResultsGrid.tsx) and still needs a positioning ancestor. */
+  position: relative;
   width: 36px;
   min-width: 36px;
   height: 32px;
@@ -350,28 +356,39 @@
   border-bottom: 2px solid var(--color-warning);
 }
 
-/* Group boundary separator - widened into a click/touch target for
-   verifying the whole section at once (see .sectionHandle below) */
+/* Group boundary separator - subtle but visible. Purely a visual grid line;
+   the section-verify click/touch target is the separate .sectionHandle
+   below, not this border - a widened border cannot itself be a hit target
+   (an absolutely positioned overlay sized to "match" it lands over the
+   padding/content box, not the border box, and border-collapse then centers
+   the painted border on the shared cell edge on top of that: measured in
+   Chromium, an overlay built that way sits entirely over the digit with a
+   dead gap between it and the border. See task-8 review, finding C-1.) */
 .penaltyBoundary {
-  position: relative;
-  border-right: 12px solid var(--color-border);
-  cursor: pointer;
+  border-right: 2px solid var(--color-border);
 }
 
-.penaltyBoundary:hover {
-  border-right-color: var(--color-accent);
-}
-
-/* Click target overlaid on the widened boundary border. Sized to match the
-   border width so it hit-tests only the border itself, not the whole cell -
-   the cell's own click handling (multi-tap penalty entry) must stay intact. */
+/* Section-verify click/touch target: a real, visible element docked to the
+   cell's right edge, not an invisible strip trying to align with a border.
+   What looks clickable IS clickable, by construction - there's no separate
+   "visual" position to fall out of sync with. Rendered on every gate that
+   ends a section (isSectionEnd, driven by sectionEndGates), independent of
+   whether this cell also happens to be a .penaltyBoundary - see the comment
+   on sectionEndGates in ResultsGrid.tsx for why those two are not the same
+   set (last section in the row, and a filtered single-group view, have no
+   .penaltyBoundary but must still get a handle). */
 .sectionHandle {
   position: absolute;
   top: 0;
   right: 0;
   bottom: 0;
   width: 12px;
+  background: var(--color-border);
   cursor: pointer;
+}
+
+.sectionHandle:hover {
+  background: var(--color-accent);
 }
 
 /* Focus states - active cell */
