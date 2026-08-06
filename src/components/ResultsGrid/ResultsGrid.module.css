@@ -376,13 +376,22 @@
    whether this cell also happens to be a .penaltyBoundary - see the comment
    on sectionEndGates in ResultsGrid.tsx for why those two are not the same
    set (last section in the row, and a filtered single-group view, have no
-   .penaltyBoundary but must still get a handle). */
+   .penaltyBoundary but must still get a handle).
+
+   Width is a fine/coarse-pointer split, not one constant (see the
+   @media (pointer: coarse) override below): measured against the real
+   JetBrains Mono glyphs, 12px clips the trailing 0 of "50" by ~2.75px in
+   the 36px fine-pointer cell - the highest-stakes value on the sheet,
+   clipped on every row that has a missed gate. 8px is the widest value
+   that clears "50" at that cell size, and a mouse has the precision for an
+   8px target. The 48px coarse-pointer cell has room to keep 12px clear of
+   every glyph and give a finger the bigger target it needs. */
 .sectionHandle {
   position: absolute;
   top: 0;
   right: 0;
   bottom: 0;
-  width: 12px;
+  width: 8px;
   background: var(--color-border);
   cursor: pointer;
 }
@@ -478,6 +487,12 @@
   .colHeaders th {
     min-width: 48px;
     width: 48px;
+  }
+
+  /* Wider touch target where the 48px cell has room to keep it clear of
+     every glyph (0/2/50) - see the comment on the base .sectionHandle rule. */
+  .sectionHandle {
+    width: 12px;
   }
 }
 
