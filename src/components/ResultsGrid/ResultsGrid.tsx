@@ -17,7 +17,7 @@ import type { GateGroup, ResultsSortOption } from '../../types/ui'
 import type { PenaltyValue } from '../../types/scoring'
 import type { GateCheckStatus } from '../../types/checks'
 import { useFocusNavigation, useKeyboardInput, useMultiTap } from '../../hooks'
-import { parseResultsGatesString } from '../../utils'
+import { parseResultsGatesString, sectionGatesFor } from '../../utils'
 import { PenaltyContextMenu } from './PenaltyContextMenu'
 import styles from './ResultsGrid.module.css'
 
@@ -45,6 +45,8 @@ interface PenaltyCellProps {
   onTouchStart: (e: React.TouchEvent, rowIndex: number, colIndex: number) => void
   onTouchEnd: () => void
   onContextMenu: (e: React.MouseEvent, rowIndex: number, colIndex: number) => void
+  /** Verify the whole section ending at this gate (widened boundary border acts as a click target) */
+  onSectionVerify: (bib: string, gate: number) => void
 }
 
 /** Memoized penalty cell - only re-renders when its specific props change */
@@ -68,6 +70,7 @@ const PenaltyCell = memo(function PenaltyCell({
   onTouchStart,
   onTouchEnd,
   onContextMenu,
+  onSectionVerify,
 }: PenaltyCellProps) {
   const pen = penalties[gateIndex]
 
@@ -131,6 +134,19 @@ const PenaltyCell = memo(function PenaltyCell({
       onContextMenu={(e) => onContextMenu(e, rowIndex, colIndex)}
     >
       {value}
+      {isBoundary && (
+        <span
+          className={styles.sectionHandle}
+          role="button"
+          tabIndex={-1}
+          title={`Verify section ending at gate ${gateNumber}`}
+          aria-label={`Verify section ending at gate ${gateNumber}`}
+          onClick={(e) => {
+            e.stopPropagation()
+            onSectionVerify(competitorBib, gateNumber)
+          }}
+        />
+      )}
     </td>
   )
 })
@@ -145,6 +161,10 @@ interface ResultsGridProps {
   onGroupSelect?: (groupId: string | null) => void
   onPenaltySubmit: (bib: string, gate: number, value: PenaltyValue, raceId?: string) => void
   getGateStatus?: (bib: string, gate: number) => GateCheckStatus
+  /** Toggle verification of a single gate (Space) */
+  onToggleCheck?: (bib: string, gate: number) => void
+  /** Verify every gate in a section at once (Shift+Space, or the boundary click target) */
+  onVerifySection?: (bib: string, gates: number[]) => void
 }
 
 // Scroll constants for auto-scrolling focused cell into view
@@ -178,6 +198,8 @@ export function ResultsGrid({
   onGroupSelect,
   onPenaltySubmit,
   getGateStatus,
+  onToggleCheck,
+  onVerifySection,
 }: ResultsGridProps) {
   // Refs for scroll sync
   const groupsHeaderRef = useRef<HTMLDivElement>(null)
@@ -192,6 +214,11 @@ export function ResultsGrid({
     row: number
     col: number
   } | null>(null)
+
+  // Announcement for keyboard actions that intentionally do nothing (e.g.
+  // Space on an empty gate) - screen-reader-only, so silence doesn't read as
+  // a dropped keystroke
+  const [announcement, setAnnouncement] = useState('')
 
   // Long press timer ref
   const longPressTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
@@ -298,15 +325,58 @@ export function ResultsGrid({
     },
   })
 
+  // Space verifies the focused gate; Shift+Space verifies its whole section.
+  // Checked ahead of the digit/nav handlers so it can't be shadowed by them.
+  const handleVerifyKeyDown = useCallback(
+    (e: React.KeyboardEvent): boolean => {
+      if (e.key !== ' ') return false
+      e.preventDefault()
+
+      const row = sortedRows[position.row]
+      if (!row) return true
+
+      const gateIndex = visibleGateIndices[position.column]
+      const gate = gateIndex + 1
+
+      if (e.shiftKey) {
+        // Shift+Space only ever verifies - it must never be able to toggle a
+        // gate (and so a whole section) back to unverified on a stray press.
+        onVerifySection?.(row.bib, sectionGatesFor(gate, allGateGroups))
+        return true
+      }
+
+      const penalties = parsedPenaltiesMap.get(row.bib) ?? []
+      if (penalties[gateIndex] == null) {
+        // An empty gate has nothing to verify against the paper protocol -
+        // report why instead of silently eating the keystroke.
+        setAnnouncement(`Gate ${gate} is empty - nothing to verify.`)
+        return true
+      }
+
+      onToggleCheck?.(row.bib, gate)
+      return true
+    },
+    [
+      sortedRows,
+      position,
+      visibleGateIndices,
+      parsedPenaltiesMap,
+      allGateGroups,
+      onVerifySection,
+      onToggleCheck,
+    ]
+  )
+
   // Combined keyboard handler
   const handleKeyDown = useCallback(
     (e: React.KeyboardEvent) => {
+      if (handleVerifyKeyDown(e)) return
       const inputHandled = handleInputKeyDown(e)
       if (!inputHandled) {
         handleNavKeyDown(e)
       }
     },
-    [handleInputKeyDown, handleNavKeyDown]
+    [handleVerifyKeyDown, handleInputKeyDown, handleNavKeyDown]
   )
 
   // Scroll sync
@@ -361,6 +431,15 @@ export function ResultsGrid({
       contentRef.current?.focus()
     }
   }, [hasRows])
+
+  // Verify the section a boundary cell ends - the click counterpart to
+  // Shift+Space, bound to the widened boundary border as a touch target.
+  const handleSectionVerify = useCallback(
+    (bib: string, gate: number) => {
+      onVerifySection?.(bib, sectionGatesFor(gate, allGateGroups))
+    },
+    [onVerifySection, allGateGroups]
+  )
 
   // Submit penalty for a specific cell
   const submitPenalty = useCallback(
@@ -533,6 +612,12 @@ export function ResultsGrid({
       onKeyDown={handleKeyDown}
       tabIndex={0}
     >
+      {/* Screen-reader-only feedback for keyboard actions that intentionally
+          do nothing, e.g. Space on an empty gate */}
+      <div role="status" aria-live="polite" className="visually-hidden">
+        {announcement}
+      </div>
+
       {/* GATE GROUPS - Row 1 (always render for consistent grid) */}
       <div className={styles.groupsCorner} />
       <div className={styles.groupsHeader} ref={groupsHeaderRef}>
@@ -686,6 +771,7 @@ export function ResultsGrid({
                       onTouchStart={handleCellTouchStart}
                       onTouchEnd={handleCellTouchEnd}
                       onContextMenu={handleCellContextMenu}
+                      onSectionVerify={handleSectionVerify}
                     />
                   )
                 })}

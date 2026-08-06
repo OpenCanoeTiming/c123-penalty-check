@@ -2,4 +2,4 @@
  * Utility exports
  */
 
-export { parseResultsGatesString } from './gates'
+export { parseResultsGatesString, sectionGatesFor } from './gates'

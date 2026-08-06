@@ -2,6 +2,8 @@
  * Utilities for parsing and working with gate penalty data
  */
 
+import type { GateGroup } from '../types/ui'
+
 /**
  * Parse the gates string from C123 Results into an array of penalty values
  *
@@ -54,4 +56,16 @@ function parseFixedWidthGates(gates: string): (number | null)[] {
   }
 
   return result
+}
+
+/**
+ * Gates covered by the section (gate group) containing `gate`.
+ *
+ * A gate is the base unit for verification; a group is just an accelerator
+ * over it. When no group covers `gate` (including when no groups are
+ * defined at all), the gate is its own one-gate section.
+ */
+export function sectionGatesFor(gate: number, allGateGroups: GateGroup[]): number[] {
+  const group = allGateGroups.find((g) => g.gates.includes(gate))
+  return group ? group.gates : [gate]
 }
