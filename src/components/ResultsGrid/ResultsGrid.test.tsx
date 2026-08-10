@@ -328,3 +328,46 @@ describe('ResultsGrid empty-gate announcement', () => {
     expect(second).toMatch(/gate 4.*empty/i)
   })
 })
+
+describe('ResultsGrid context menu verify wiring', () => {
+  // The context menu's checkStatus/canVerify/onToggleCheck/onVerifySection
+  // props are derived from the grid's own getGateStatus/onToggleCheck/
+  // onVerifySection - the same plumbing the keyboard route already uses -
+  // so a right-click reaches the same verify actions as Space/Shift+Space.
+  it('shows Un-verify when the clicked cell is already verified', () => {
+    const getGateStatus = vi.fn().mockReturnValue('verified' as GateCheckStatus)
+    renderGrid({ getGateStatus })
+
+    fireEvent.contextMenu(screen.getAllByRole('gridcell')[0])
+
+    expect(screen.getByText('Un-verify gate')).toBeInTheDocument()
+  })
+
+  it('disables Verify gate in the menu for an empty gate', () => {
+    renderGrid({ rows: [rowWithEmptyGate] })
+
+    fireEvent.contextMenu(screen.getAllByRole('gridcell')[3]) // gate 4, empty in this fixture
+
+    expect(screen.getByRole('menuitem', { name: /Verify gate/ })).toBeDisabled()
+  })
+
+  it("routes the menu's Verify gate action to onToggleCheck for the clicked cell", () => {
+    const onToggleCheck = vi.fn()
+    renderGrid({ onToggleCheck })
+
+    fireEvent.contextMenu(screen.getAllByRole('gridcell')[0])
+    fireEvent.click(screen.getByRole('menuitem', { name: /Verify gate/ }))
+
+    expect(onToggleCheck).toHaveBeenCalledWith('42', 1)
+  })
+
+  it("routes the menu's Verify section action to onVerifySection for the clicked cell's section", () => {
+    const onVerifySection = vi.fn()
+    renderGrid({ onVerifySection, activeGateGroup: { id: 'g1', name: 'A', gates: [1, 2, 3] } })
+
+    fireEvent.contextMenu(screen.getAllByRole('gridcell')[0])
+    fireEvent.click(screen.getByText('Verify section'))
+
+    expect(onVerifySection).toHaveBeenCalledWith('42', [1, 2, 3])
+  })
+})

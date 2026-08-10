@@ -664,6 +664,12 @@ export function ResultsGrid({
     return null
   }
 
+  // Bib/gate under the context menu, if any - shared by the verify/flag
+  // wiring below so each doesn't re-derive them from contextMenu.row/col.
+  const contextMenuBib = contextMenu ? (sortedRows[contextMenu.row]?.bib ?? null) : null
+  const contextMenuGateIndex = contextMenu ? visibleGateIndices[contextMenu.col] : undefined
+  const contextMenuGate = contextMenuGateIndex !== undefined ? contextMenuGateIndex + 1 : null
+
   if (sortedRows.length === 0 || nrGates === 0) {
     return <div className={styles.gridContainer}>No data</div>
   }
@@ -855,6 +861,29 @@ export function ResultsGrid({
           currentValue={getContextMenuValue()}
           onSelect={handleContextMenuSelect}
           onClose={handleContextMenuClose}
+          checkStatus={
+            contextMenuBib && contextMenuGate
+              ? (getGateStatus?.(contextMenuBib, contextMenuGate) ?? 'plain')
+              : 'plain'
+          }
+          canVerify={getContextMenuValue() !== null}
+          // No flag data source exists in this component yet - wiring real
+          // flag state through here is task 11's job, once useChecks is
+          // connected to the app. Add flag.../Resolve flag... are reachable
+          // from the menu but inert until then.
+          openFlag={null}
+          onToggleCheck={() => {
+            if (contextMenuBib && contextMenuGate) {
+              onToggleCheck?.(contextMenuBib, contextMenuGate)
+            }
+          }}
+          onVerifySection={() => {
+            if (contextMenuBib && contextMenuGate) {
+              onVerifySection?.(contextMenuBib, sectionGatesFor(contextMenuGate, customGroups))
+            }
+          }}
+          onAddFlag={() => {}}
+          onResolveFlag={() => {}}
         />
       )}
     </div>
