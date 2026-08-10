@@ -33,6 +33,20 @@
   font-style: italic;
 }
 
+/*
+ * Per-race verification indicator, rendered inside each <option>. Native
+ * select popups only ever show flattened text - no color, no layout - so
+ * these rules exist for completeness/consistency with the rest of the
+ * design system rather than for any visible effect in the dropdown itself.
+ */
+.checkProgress {
+  color: var(--color-text-tertiary);
+}
+
+.checkDone {
+  color: var(--color-success);
+}
+
 /* Hide next label on smaller screens */
 @media (max-width: 1200px) {
   .nextLabel {

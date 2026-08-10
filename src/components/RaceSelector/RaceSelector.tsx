@@ -1,7 +1,15 @@
 import { useMemo } from 'react'
+import type { ReactNode } from 'react'
 import { Select, Button } from '@opencanoetiming/timing-design-system'
 import type { ProcessedRace } from '../../hooks/useSchedule'
 import styles from './RaceSelector.module.css'
+
+/** Verification progress for one race, as reported by useChecks' getRaceProgress. */
+interface RaceCheckState {
+  checked: number
+  total: number
+  done: boolean
+}
 
 interface RaceSelectorProps {
   races: ProcessedRace[]
@@ -9,6 +17,40 @@ interface RaceSelectorProps {
   onSelectRace: (raceId: string) => void
   onlyRunning: boolean
   onToggleOnlyRunning: () => void
+  /** Per-race verification progress, keyed by raceId. Omit to show no indicator. */
+  getRaceCheckState?: (raceId: string) => RaceCheckState
+}
+
+/**
+ * Renders the per-race verification indicator: nothing while there is
+ * nothing to check yet, `checked/total` while in progress, a checkmark
+ * once every gate is checked.
+ *
+ * Deliberately re-derives "done" from the raw counts instead of trusting
+ * `state.done` as given: this indicator is the operator's signal that a
+ * race is safe to finalize, so a false "done" here - from a stale caller,
+ * a future refactor, or a mismatched `total`/`checked` pair - is the worst
+ * possible failure mode. Exact equality (not `>=`) and the `total > 0`
+ * guard both matter, same as in getRaceProgress (src/hooks/useChecks.ts),
+ * which this mirrors on purpose rather than importing.
+ */
+function raceCheckIndicator(state: RaceCheckState | undefined): ReactNode {
+  if (!state) return null
+  if (state.total > 0 && state.checked === state.total) {
+    return (
+      <span className={styles.checkDone} aria-label="verified">
+        ✓
+      </span>
+    )
+  }
+  if (state.total > 0) {
+    return (
+      <span className={styles.checkProgress}>
+        {state.checked}/{state.total}
+      </span>
+    )
+  }
+  return null
 }
 
 export function RaceSelector({
@@ -17,6 +59,7 @@ export function RaceSelector({
   onSelectRace,
   onlyRunning,
   onToggleOnlyRunning,
+  getRaceCheckState,
 }: RaceSelectorProps) {
   // Find current index in races array
   const currentIndex = useMemo(() => {
@@ -80,12 +123,16 @@ export function RaceSelector({
         <option value="" disabled>
           Select race...
         </option>
-        {races.map((race) => (
-          <option key={race.raceId} value={race.raceId}>
-            {race.isRunning ? '● ' : ''}
-            {race.displayTitle}
-          </option>
-        ))}
+        {races.map((race) => {
+          const indicator = getRaceCheckState && raceCheckIndicator(getRaceCheckState(race.raceId))
+          return (
+            <option key={race.raceId} value={race.raceId}>
+              {race.isRunning ? '● ' : ''}
+              {race.displayTitle}
+              {indicator && <> {indicator}</>}
+            </option>
+          )
+        })}
       </Select>
 
       {/* Next arrow */}
