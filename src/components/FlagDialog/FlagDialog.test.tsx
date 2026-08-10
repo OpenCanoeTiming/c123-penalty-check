@@ -74,6 +74,36 @@ describe('FlagDialog create mode', () => {
     render(<FlagDialog mode="create" onSubmit={vi.fn()} onClose={vi.fn()} />)
     expect(screen.queryByLabelText(/Resolution note/)).not.toBeInTheDocument()
   })
+
+  it('keeps the footer reachable with a long comment - header/body/footer are direct children of the modal, not wrapped in an extra div', () => {
+    // .modal-body's scrolling (overflow-y: auto; flex-grow: 1) and .modal's
+    // max-height only apply while ModalHeader/ModalBody/ModalFooter are
+    // direct flex children of .modal. A focus-trap wrapper div around them
+    // breaks that layout contract and pushes the footer (Cancel/Add flag or
+    // Cancel/Resolve) out of the dialog with nothing to scroll it back into
+    // view - see task-9 review, Important 1. jsdom does not compute real
+    // layout/scrolling, so this pins the DOM structure the CSS depends on
+    // instead of the pixels.
+    render(<FlagDialog mode="create" onSubmit={vi.fn()} onClose={vi.fn()} />)
+
+    fireEvent.change(screen.getByLabelText('Comment'), {
+      target: { value: 'x'.repeat(2000) },
+    })
+
+    const dialog = screen.getByRole('dialog')
+    const directChildClasses = Array.from(dialog.children).map(
+      (el) => el.className
+    )
+
+    expect(directChildClasses).toEqual([
+      expect.stringContaining('modal-header'),
+      expect.stringContaining('modal-body'),
+      expect.stringContaining('modal-footer'),
+    ])
+    // The footer - and the submit button inside it - is still part of the
+    // dialog's own DOM regardless of comment length.
+    expect(screen.getByRole('button', { name: 'Add flag' })).toBeInTheDocument()
+  })
 })
 
 describe('FlagDialog resolve mode', () => {

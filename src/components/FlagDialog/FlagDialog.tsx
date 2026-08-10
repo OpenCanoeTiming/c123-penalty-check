@@ -82,91 +82,96 @@ export function FlagDialog({ mode, flag, onSubmit, onClose }: FlagDialogProps) {
   }
 
   return (
-    <Modal open onClose={onClose} size="sm">
-      <div ref={dialogRef}>
-        <ModalHeader>
-          <ModalTitle>{isCreate ? 'Add flag' : 'Resolve flag'}</ModalTitle>
-          <ModalClose onClick={onClose} />
-        </ModalHeader>
+    // The focus-trap ref goes on Modal itself (a forwardRef onto the .modal
+    // element), not a wrapper div around its children - .modal-body's
+    // scrolling and .modal's max-height both depend on ModalHeader/Body/
+    // Footer being direct flex children of .modal. A wrapper div breaks that
+    // layout contract: the body never gets a definite height, never
+    // scrolls, and a long comment pushes the footer out of the dialog with
+    // no way to reach it (see task-9 review, Important 1).
+    <Modal open onClose={onClose} size="sm" ref={dialogRef}>
+      <ModalHeader>
+        <ModalTitle>{isCreate ? 'Add flag' : 'Resolve flag'}</ModalTitle>
+        <ModalClose onClick={onClose} />
+      </ModalHeader>
 
-        <ModalBody>
-          {isCreate ? (
-            <>
-              <div className={styles.formField}>
-                <label htmlFor={commentId} className={styles.label}>
-                  Comment
-                </label>
-                <textarea
-                  id={commentId}
-                  className={styles.textarea}
-                  value={comment}
-                  onChange={(e) => setComment(e.target.value)}
-                  placeholder="What is being disputed or should be reviewed?"
-                  rows={3}
-                  required
-                />
-              </div>
+      <ModalBody>
+        {isCreate ? (
+          <>
+            <div className={styles.formField}>
+              <label htmlFor={commentId} className={styles.label}>
+                Comment
+              </label>
+              <textarea
+                id={commentId}
+                className={styles.textarea}
+                value={comment}
+                onChange={(e) => setComment(e.target.value)}
+                placeholder="What is being disputed or should be reviewed?"
+                rows={3}
+                required
+              />
+            </div>
 
-              <div className={styles.formField}>
-                <span className={styles.label}>Suggested value (optional)</span>
-                <div className={styles.radioGroup}>
-                  {SUGGESTED_VALUE_OPTIONS.map((option) => (
-                    <Radio
-                      key={option.label}
-                      name="flag-suggested-value"
-                      checked={suggestedValue === option.value}
-                      onChange={() => setSuggestedValue(option.value)}
-                    >
-                      {option.label}
-                    </Radio>
-                  ))}
-                </div>
+            <div className={styles.formField}>
+              <span className={styles.label}>Suggested value (optional)</span>
+              <div className={styles.radioGroup}>
+                {SUGGESTED_VALUE_OPTIONS.map((option) => (
+                  <Radio
+                    key={option.label}
+                    name="flag-suggested-value"
+                    checked={suggestedValue === option.value}
+                    onChange={() => setSuggestedValue(option.value)}
+                  >
+                    {option.label}
+                  </Radio>
+                ))}
               </div>
-            </>
-          ) : (
-            <>
-              <div className={styles.formField}>
-                <span className={styles.label}>Comment</span>
-                <p className={styles.readOnlyText}>{flag?.comment}</p>
-              </div>
+            </div>
+          </>
+        ) : (
+          <>
+            <div className={styles.formField}>
+              <span className={styles.label}>Comment</span>
+              <p className={styles.readOnlyText}>{flag?.comment}</p>
+            </div>
 
-              <div className={styles.formField}>
-                <span className={styles.label}>Suggested value</span>
-                <p className={styles.readOnlyText}>
-                  {formatSuggestedValue(flag?.suggestedValue)}
-                </p>
-              </div>
+            <div className={styles.formField}>
+              <span className={styles.label}>Suggested value</span>
+              <p className={styles.readOnlyText}>
+                {formatSuggestedValue(flag?.suggestedValue)}
+              </p>
+            </div>
 
-              <div className={styles.formField}>
-                <label htmlFor={resolutionId} className={styles.label}>
-                  Resolution note (optional)
-                </label>
-                <textarea
-                  id={resolutionId}
-                  className={styles.textarea}
-                  value={resolution}
-                  onChange={(e) => setResolution(e.target.value)}
-                  placeholder="How was this resolved?"
-                  rows={3}
-                />
-              </div>
-            </>
-          )}
-        </ModalBody>
+            <div className={styles.formField}>
+              <label htmlFor={resolutionId} className={styles.label}>
+                Resolution note (optional)
+              </label>
+              <textarea
+                id={resolutionId}
+                className={styles.textarea}
+                value={resolution}
+                onChange={(e) => setResolution(e.target.value)}
+                placeholder="How was this resolved?"
+                rows={3}
+              />
+            </div>
+          </>
+        )}
+      </ModalBody>
 
-        <ModalFooter>
-          <Button variant="secondary" onClick={onClose}>
-            Cancel
-          </Button>
-          <Button
-            variant="primary"
-            onClick={handleSubmit}
-            disabled={isSubmitDisabled}
-          >
-            {isCreate ? 'Add flag' : 'Resolve'}
-          </Button>
-        </ModalFooter>
-      </div>
+      <ModalFooter>
+        <Button variant="secondary" onClick={onClose}>
+          Cancel
+        </Button>
+        <Button
+          variant="primary"
+          onClick={handleSubmit}
+          disabled={isSubmitDisabled}
+        >
+          {isCreate ? 'Add flag' : 'Resolve'}
+        </Button>
+      </ModalFooter>
     </Modal>
   )
 }

@@ -43,6 +43,12 @@ const rowWithEmptyGate = buildRow({
   gates: ['  0', '  0', '  0', '   ', '  0', '  2'].join(''),
 })
 
+// Gate 1 carries a team-race cumulative value (two boats each penalized:
+// 2 + 50 = 52) - see types/checks.ts. Not 0/2/50, but very much not empty.
+const rowWithTeamValueGate = buildRow({
+  gates: '52 0 0 2 0 0',
+})
+
 interface RenderGridOptions {
   onToggleCheck?: (bib: string, gate: number) => void
   onVerifySection?: (bib: string, gates: number[]) => void
@@ -105,7 +111,10 @@ describe('ResultsGrid keyboard verification', () => {
 
   it('verifies the whole section on Shift+Space', () => {
     const onVerifySection = vi.fn()
-    renderGrid({ onVerifySection, activeGateGroup: { id: 'g1', name: 'A', gates: [1, 2, 3] } })
+    renderGrid({
+      onVerifySection,
+      activeGateGroup: { id: 'g1', name: 'A', gates: [1, 2, 3] },
+    })
 
     fireEvent.click(screen.getAllByRole('gridcell')[0])
     pressKey(' ', { shiftKey: true })
@@ -217,8 +226,12 @@ describe('ResultsGrid section boundary click target', () => {
       ],
     })
 
-    expect(screen.getByTitle('Verify section ending at gate 3')).toBeInTheDocument()
-    expect(screen.getByTitle('Verify section ending at gate 6')).toBeInTheDocument()
+    expect(
+      screen.getByTitle('Verify section ending at gate 3')
+    ).toBeInTheDocument()
+    expect(
+      screen.getByTitle('Verify section ending at gate 6')
+    ).toBeInTheDocument()
   })
 
   it('still renders a handle in a filtered single-group view (I-1)', () => {
@@ -231,7 +244,9 @@ describe('ResultsGrid section boundary click target', () => {
       allGateGroups: [{ id: 'gA', name: 'A', gates: [1, 2, 3] }, groupB],
     })
 
-    expect(screen.getByTitle('Verify section ending at gate 6')).toBeInTheDocument()
+    expect(
+      screen.getByTitle('Verify section ending at gate 6')
+    ).toBeInTheDocument()
   })
 
   it('does not let a populated "all gates" pseudo-group hijack a real section (M-1)', () => {
@@ -243,7 +258,11 @@ describe('ResultsGrid section boundary click target', () => {
     // before any real section and a click/Shift+Space would verify the
     // entire course in one press.
     const onVerifySection = vi.fn()
-    const allGatesPseudoGroup: GateGroup = { id: 'all', name: 'All Gates', gates: [1, 2, 3, 4, 5, 6] }
+    const allGatesPseudoGroup: GateGroup = {
+      id: 'all',
+      name: 'All Gates',
+      gates: [1, 2, 3, 4, 5, 6],
+    }
     const realGroup: GateGroup = { id: 'g1', name: 'A', gates: [1, 2, 3] }
     render(
       <ResultsGrid
@@ -287,7 +306,9 @@ describe('ResultsGrid section boundary click target', () => {
       // penalty context menu underneath what looks like a single tap.
       fireEvent.mouseDown(handle)
       vi.advanceTimersByTime(600)
-      expect(screen.queryByRole('menu', { name: /penalty options/i })).not.toBeInTheDocument()
+      expect(
+        screen.queryByRole('menu', { name: /penalty options/i })
+      ).not.toBeInTheDocument()
 
       fireEvent.click(handle)
       expect(onVerifySection).toHaveBeenCalledWith('42', [1, 2, 3])
@@ -351,6 +372,20 @@ describe('ResultsGrid context menu verify wiring', () => {
     expect(screen.getByRole('menuitem', { name: /Verify gate/ })).toBeDisabled()
   })
 
+  it('does not disable Verify gate for a team-race cumulative value (e.g. 52) - matches the keyboard route', () => {
+    // canVerify must come from the same raw-value check handleVerifyKeyDown
+    // uses, not the narrowed 0/2/50 PenaltyValue - a gate holding 52 is not
+    // empty, and getContextMenuValue() collapsing it to null would
+    // wrongly disable Verify here while Space still verifies it fine.
+    renderGrid({ rows: [rowWithTeamValueGate] })
+
+    fireEvent.contextMenu(screen.getAllByRole('gridcell')[0]) // gate 1, value 52
+
+    expect(
+      screen.getByRole('menuitem', { name: /Verify gate/ })
+    ).not.toBeDisabled()
+  })
+
   it("routes the menu's Verify gate action to onToggleCheck for the clicked cell", () => {
     const onToggleCheck = vi.fn()
     renderGrid({ onToggleCheck })
@@ -363,7 +398,10 @@ describe('ResultsGrid context menu verify wiring', () => {
 
   it("routes the menu's Verify section action to onVerifySection for the clicked cell's section", () => {
     const onVerifySection = vi.fn()
-    renderGrid({ onVerifySection, activeGateGroup: { id: 'g1', name: 'A', gates: [1, 2, 3] } })
+    renderGrid({
+      onVerifySection,
+      activeGateGroup: { id: 'g1', name: 'A', gates: [1, 2, 3] },
+    })
 
     fireEvent.contextMenu(screen.getAllByRole('gridcell')[0])
     fireEvent.click(screen.getByText('Verify section'))

@@ -11,7 +11,15 @@
  * +------------------------+------------------------+
  */
 
-import { useRef, useEffect, useCallback, useMemo, useState, memo, type UIEvent } from 'react'
+import {
+  useRef,
+  useEffect,
+  useCallback,
+  useMemo,
+  useState,
+  memo,
+  type UIEvent,
+} from 'react'
 import type { C123ResultRow, C123RaceConfigData } from '../../types/c123server'
 import type { GateGroup, ResultsSortOption } from '../../types/ui'
 import type { PenaltyValue } from '../../types/scoring'
@@ -44,9 +52,17 @@ interface PenaltyCellProps {
   onMouseDown: (e: React.MouseEvent, rowIndex: number, colIndex: number) => void
   onMouseUp: () => void
   onMouseLeave: () => void
-  onTouchStart: (e: React.TouchEvent, rowIndex: number, colIndex: number) => void
+  onTouchStart: (
+    e: React.TouchEvent,
+    rowIndex: number,
+    colIndex: number
+  ) => void
   onTouchEnd: () => void
-  onContextMenu: (e: React.MouseEvent, rowIndex: number, colIndex: number) => void
+  onContextMenu: (
+    e: React.MouseEvent,
+    rowIndex: number,
+    colIndex: number
+  ) => void
   /** Verify the whole section ending at this gate - the click counterpart to Shift+Space */
   onSectionVerify: (bib: string, gate: number) => void
 }
@@ -178,7 +194,12 @@ interface ResultsGridProps {
   allGateGroups: GateGroup[]
   sortBy: ResultsSortOption
   onGroupSelect?: (groupId: string | null) => void
-  onPenaltySubmit: (bib: string, gate: number, value: PenaltyValue, raceId?: string) => void
+  onPenaltySubmit: (
+    bib: string,
+    gate: number,
+    value: PenaltyValue,
+    raceId?: string
+  ) => void
   getGateStatus?: (bib: string, gate: number) => GateCheckStatus
   /** Toggle verification of a single gate (Space) */
   onToggleCheck?: (bib: string, gate: number) => void
@@ -250,8 +271,8 @@ export function ResultsGrid({
   const longPressTriggered = useRef(false)
 
   // Filter gate groups (exclude 'all' group)
-  const customGroups = useMemo(() =>
-    allGateGroups.filter((g) => g.id !== 'all' && g.gates.length > 0),
+  const customGroups = useMemo(
+    () => allGateGroups.filter((g) => g.id !== 'all' && g.gates.length > 0),
     [allGateGroups]
   )
 
@@ -264,7 +285,9 @@ export function ResultsGrid({
     if (!activeGateGroup || activeGateGroup.gates.length === 0) {
       return Array.from({ length: nrGates }, (_, i) => i)
     }
-    return activeGateGroup.gates.map((g) => g - 1).filter((i) => i >= 0 && i < nrGates)
+    return activeGateGroup.gates
+      .map((g) => g - 1)
+      .filter((i) => i >= 0 && i < nrGates)
   }, [activeGateGroup, nrGates])
 
   // Detect group boundaries for visual separators
@@ -410,7 +433,9 @@ export function ResultsGrid({
         // a no-op, and a screen reader only re-announces on an actual change.
         setAnnouncement((prev) => {
           const message = `Gate ${gate} is empty - nothing to verify.`
-          return prev.endsWith(ZERO_WIDTH_SPACE) ? message : message + ZERO_WIDTH_SPACE
+          return prev.endsWith(ZERO_WIDTH_SPACE)
+            ? message
+            : message + ZERO_WIDTH_SPACE
         })
         return true
       }
@@ -460,7 +485,9 @@ export function ResultsGrid({
     const content = contentRef.current
     if (!content) return
 
-    const cell = content.querySelector(`.${styles.penaltyCellFocused}`) as HTMLElement
+    const cell = content.querySelector(
+      `.${styles.penaltyCellFocused}`
+    ) as HTMLElement
     if (!cell) return
 
     const cellRect = cell.getBoundingClientRect()
@@ -642,14 +669,17 @@ export function ResultsGrid({
   }, [])
 
   // Handle group click
-  const handleGroupClick = useCallback((groupId: string) => {
-    if (!onGroupSelect) return
-    if (activeGateGroup?.id === groupId) {
-      onGroupSelect(null) // Deselect
-    } else {
-      onGroupSelect(groupId)
-    }
-  }, [onGroupSelect, activeGateGroup])
+  const handleGroupClick = useCallback(
+    (groupId: string) => {
+      if (!onGroupSelect) return
+      if (activeGateGroup?.id === groupId) {
+        onGroupSelect(null) // Deselect
+      } else {
+        onGroupSelect(groupId)
+      }
+    },
+    [onGroupSelect, activeGateGroup]
+  )
 
   // Get current cell value for context menu
   const getContextMenuValue = (): PenaltyValue => {
@@ -666,9 +696,26 @@ export function ResultsGrid({
 
   // Bib/gate under the context menu, if any - shared by the verify/flag
   // wiring below so each doesn't re-derive them from contextMenu.row/col.
-  const contextMenuBib = contextMenu ? (sortedRows[contextMenu.row]?.bib ?? null) : null
-  const contextMenuGateIndex = contextMenu ? visibleGateIndices[contextMenu.col] : undefined
-  const contextMenuGate = contextMenuGateIndex !== undefined ? contextMenuGateIndex + 1 : null
+  const contextMenuBib = contextMenu
+    ? (sortedRows[contextMenu.row]?.bib ?? null)
+    : null
+  const contextMenuGateIndex = contextMenu
+    ? visibleGateIndices[contextMenu.col]
+    : undefined
+  const contextMenuGate =
+    contextMenuGateIndex !== undefined ? contextMenuGateIndex + 1 : null
+
+  // Whether the context menu's gate can be verified - mirrors
+  // handleVerifyKeyDown's own check (raw parsed value, not narrowed to
+  // 0/2/50) so the menu and the keyboard agree on team-race gates, which
+  // carry cumulative values like 52/100/150 that getContextMenuValue()
+  // collapses to null. An empty gate is not verifiable; a 52 gate is not
+  // empty.
+  const contextMenuCanVerify =
+    contextMenuBib !== null && contextMenuGateIndex !== undefined
+      ? (parsedPenaltiesMap.get(contextMenuBib) ?? [])[contextMenuGateIndex] !=
+        null
+      : false
 
   if (sortedRows.length === 0 || nrGates === 0) {
     return <div className={styles.gridContainer}>No data</div>
@@ -691,28 +738,35 @@ export function ResultsGrid({
       {/* GATE GROUPS - Row 1 (always render for consistent grid) */}
       <div className={styles.groupsCorner} />
       <div className={styles.groupsHeader} ref={groupsHeaderRef}>
-        {customGroups.length > 0 && visibleGateIndices.map((gateIndex) => {
-          const gateNum = gateIndex + 1
-          const group = customGroups.find((g) => g.gates.includes(gateNum))
-          const isFirstInGroup = group && group.gates[0] === gateNum
-          const isActive = group && activeGateGroup?.id === group.id
+        {customGroups.length > 0 &&
+          visibleGateIndices.map((gateIndex) => {
+            const gateNum = gateIndex + 1
+            const group = customGroups.find((g) => g.gates.includes(gateNum))
+            const isFirstInGroup = group && group.gates[0] === gateNum
+            const isActive = group && activeGateGroup?.id === group.id
 
-          if (isFirstInGroup) {
+            if (isFirstInGroup) {
+              return (
+                <button
+                  key={gateIndex}
+                  className={`${styles.groupBtn} ${isActive ? styles.groupBtnActive : ''}`}
+                  onClick={() => handleGroupClick(group.id)}
+                  style={{ flex: `0 0 ${group.gates.length * 36}px` }}
+                  title={`${group.name}: Gates ${group.gates.join(', ')}`}
+                >
+                  {group.name}
+                </button>
+              )
+            }
+            if (group) return null
             return (
-              <button
+              <div
                 key={gateIndex}
-                className={`${styles.groupBtn} ${isActive ? styles.groupBtnActive : ''}`}
-                onClick={() => handleGroupClick(group.id)}
-                style={{ flex: `0 0 ${group.gates.length * 36}px` }}
-                title={`${group.name}: Gates ${group.gates.join(', ')}`}
-              >
-                {group.name}
-              </button>
+                className={styles.groupBtn}
+                style={{ visibility: 'hidden' }}
+              />
             )
-          }
-          if (group) return null
-          return <div key={gateIndex} className={styles.groupBtn} style={{ visibility: 'hidden' }} />
-        })}
+          })}
       </div>
 
       {/* CORNER - Fixed column headers */}
@@ -774,14 +828,30 @@ export function ResultsGrid({
               const rowClasses = [
                 isFocused && styles.focused,
                 isDisabled && styles.disabled,
-              ].filter(Boolean).join(' ')
+              ]
+                .filter(Boolean)
+                .join(' ')
 
               return (
-                <tr key={row.bib} className={rowClasses || undefined} role="row">
-                  <td className={styles.colBib} role="rowheader" aria-label={`Bib ${row.bib}`}>{row.bib}</td>
+                <tr
+                  key={row.bib}
+                  className={rowClasses || undefined}
+                  role="row"
+                >
+                  <td
+                    className={styles.colBib}
+                    role="rowheader"
+                    aria-label={`Bib ${row.bib}`}
+                  >
+                    {row.bib}
+                  </td>
                   <td className={styles.colName}>{row.name}</td>
-                  <td className={`${styles.colTime} ${isDisabled ? styles.colStatus : ''}`}>
-                    {isDisabled ? row.status : formatTime(row.time ? parseFloat(row.time) : null)}
+                  <td
+                    className={`${styles.colTime} ${isDisabled ? styles.colStatus : ''}`}
+                  >
+                    {isDisabled
+                      ? row.status
+                      : formatTime(row.time ? parseFloat(row.time) : null)}
                   </td>
                   <td className={styles.colPen}>
                     {isDisabled ? '' : calculatePenaltyTotal(penalties)}
@@ -810,45 +880,52 @@ export function ResultsGrid({
               const isDisabled = isRowDisabled(row)
               const penalties = parsedPenaltiesMap.get(row.bib) ?? []
               return (
-              <tr key={row.bib} className={isDisabled ? styles.disabled : undefined}>
-                {visibleGateIndices.map((gateIndex, colIndex) => {
-                  const gateNum = gateIndex + 1
-                  const isFocused = rowIndex === position.row && colIndex === position.column
-                  const isColFocus = colIndex === position.column && rowIndex !== position.row
-                  const isRowFocus = rowIndex === position.row && colIndex !== position.column
-                  const isBoundary = groupBoundaries.has(gateNum)
-                  const isSectionEnd = sectionEndGates.has(gateNum)
-                  const isReverse = gateConfig[gateIndex] === 'R'
+                <tr
+                  key={row.bib}
+                  className={isDisabled ? styles.disabled : undefined}
+                >
+                  {visibleGateIndices.map((gateIndex, colIndex) => {
+                    const gateNum = gateIndex + 1
+                    const isFocused =
+                      rowIndex === position.row && colIndex === position.column
+                    const isColFocus =
+                      colIndex === position.column && rowIndex !== position.row
+                    const isRowFocus =
+                      rowIndex === position.row && colIndex !== position.column
+                    const isBoundary = groupBoundaries.has(gateNum)
+                    const isSectionEnd = sectionEndGates.has(gateNum)
+                    const isReverse = gateConfig[gateIndex] === 'R'
 
-                  return (
-                    <PenaltyCell
-                      key={gateIndex}
-                      penalties={penalties}
-                      gateIndex={gateIndex}
-                      colIndex={colIndex}
-                      rowIndex={rowIndex}
-                      gateNumber={gateNum}
-                      competitorBib={row.bib}
-                      isReverse={isReverse}
-                      isFocused={isFocused}
-                      isColFocus={isColFocus}
-                      isRowFocus={isRowFocus}
-                      isBoundary={isBoundary}
-                      isSectionEnd={isSectionEnd}
-                      getGateStatus={getGateStatus}
-                      onCellClick={handleCellClick}
-                      onMouseDown={handleCellMouseDown}
-                      onMouseUp={handleCellMouseUp}
-                      onMouseLeave={handleCellMouseLeave}
-                      onTouchStart={handleCellTouchStart}
-                      onTouchEnd={handleCellTouchEnd}
-                      onContextMenu={handleCellContextMenu}
-                      onSectionVerify={handleSectionVerify}
-                    />
-                  )
-                })}
-              </tr>
-            )})}
+                    return (
+                      <PenaltyCell
+                        key={gateIndex}
+                        penalties={penalties}
+                        gateIndex={gateIndex}
+                        colIndex={colIndex}
+                        rowIndex={rowIndex}
+                        gateNumber={gateNum}
+                        competitorBib={row.bib}
+                        isReverse={isReverse}
+                        isFocused={isFocused}
+                        isColFocus={isColFocus}
+                        isRowFocus={isRowFocus}
+                        isBoundary={isBoundary}
+                        isSectionEnd={isSectionEnd}
+                        getGateStatus={getGateStatus}
+                        onCellClick={handleCellClick}
+                        onMouseDown={handleCellMouseDown}
+                        onMouseUp={handleCellMouseUp}
+                        onMouseLeave={handleCellMouseLeave}
+                        onTouchStart={handleCellTouchStart}
+                        onTouchEnd={handleCellTouchEnd}
+                        onContextMenu={handleCellContextMenu}
+                        onSectionVerify={handleSectionVerify}
+                      />
+                    )
+                  })}
+                </tr>
+              )
+            })}
           </tbody>
         </table>
       </div>
@@ -866,7 +943,7 @@ export function ResultsGrid({
               ? (getGateStatus?.(contextMenuBib, contextMenuGate) ?? 'plain')
               : 'plain'
           }
-          canVerify={getContextMenuValue() !== null}
+          canVerify={contextMenuCanVerify}
           // No flag data source exists in this component yet - wiring real
           // flag state through here is task 11's job, once useChecks is
           // connected to the app. Add flag.../Resolve flag... are reachable
@@ -879,7 +956,10 @@ export function ResultsGrid({
           }}
           onVerifySection={() => {
             if (contextMenuBib && contextMenuGate) {
-              onVerifySection?.(contextMenuBib, sectionGatesFor(contextMenuGate, customGroups))
+              onVerifySection?.(
+                contextMenuBib,
+                sectionGatesFor(contextMenuGate, customGroups)
+              )
             }
           }}
           onAddFlag={() => {}}
