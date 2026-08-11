@@ -32,26 +32,21 @@ const base = {
 
 describe('RaceSelector verification indicator', () => {
   it('marks a fully verified race as done', () => {
-    render(
-      <RaceSelector {...base} getRaceCheckState={() => ({ checked: 8, total: 8, done: true })} />
-    )
+    render(<RaceSelector {...base} getRaceCheckState={() => ({ checked: 8, total: 8 })} />)
     expect(screen.getByLabelText(/verified/i)).toBeInTheDocument()
   })
 
   it('shows progress while a race is partly verified', () => {
-    render(
-      <RaceSelector {...base} getRaceCheckState={() => ({ checked: 3, total: 8, done: false })} />
-    )
+    render(<RaceSelector {...base} getRaceCheckState={() => ({ checked: 3, total: 8 })} />)
     expect(screen.getByText('3/8')).toBeInTheDocument()
   })
 
   it('shows nothing when there is nothing to verify yet', () => {
-    render(
-      <RaceSelector {...base} getRaceCheckState={() => ({ checked: 0, total: 0, done: false })} />
-    )
+    render(<RaceSelector {...base} getRaceCheckState={() => ({ checked: 0, total: 0 })} />)
     expect(screen.queryByText('0/0')).not.toBeInTheDocument()
-    // Also confirm no checkmark sneaks in via the done branch - a state
-    // where total is 0 must never read as verified either.
+    // checked === total holds here too (0 === 0) - this also confirms the
+    // "done" branch requires total > 0 as its own guard, not just equal
+    // counts, since equality alone would wrongly read this race as verified.
     expect(screen.queryByLabelText(/verified/i)).not.toBeInTheDocument()
   })
 
@@ -61,29 +56,14 @@ describe('RaceSelector verification indicator', () => {
     expect(screen.queryByText(/\d\/\d/)).not.toBeInTheDocument()
   })
 
-  // The next two tests cover a caller whose `done` flag disagrees with its
-  // own `checked`/`total` - a bug in whatever eventually wires this up
-  // (task 11), a stale snapshot, anything. The indicator must not take
-  // `done` at face value: see the comment on raceCheckIndicator in
-  // RaceSelector.tsx. Without these, a regression that trusts `state.done`
-  // directly (or loosens `===` to `>=`) would pass the two tests above
-  // unnoticed, since both of those always give a `done` that agrees with
-  // the counts.
-
-  it('never marks a race done from checked exceeding total, even if the caller claims done', () => {
-    render(
-      <RaceSelector {...base} getRaceCheckState={() => ({ checked: 9, total: 8, done: true })} />
-    )
+  // "Done" is derived here from checked/total, not taken as a given flag
+  // (see the comment on raceCheckIndicator in RaceSelector.tsx). checked
+  // exceeding total should never happen from a correct getRaceProgress, but
+  // this guards the derivation itself: exact equality, not `checked >= total`.
+  it('does not mark a race done when checked exceeds total', () => {
+    render(<RaceSelector {...base} getRaceCheckState={() => ({ checked: 9, total: 8 })} />)
     expect(screen.queryByLabelText(/verified/i)).not.toBeInTheDocument()
     expect(screen.getByText('9/8')).toBeInTheDocument()
-  })
-
-  it('never marks a zero-total race done, even if the caller claims done', () => {
-    render(
-      <RaceSelector {...base} getRaceCheckState={() => ({ checked: 0, total: 0, done: true })} />
-    )
-    expect(screen.queryByLabelText(/verified/i)).not.toBeInTheDocument()
-    expect(screen.queryByText('0/0')).not.toBeInTheDocument()
   })
 
   it('looks up check state per race rather than sharing one state across the list', () => {
@@ -92,7 +72,7 @@ describe('RaceSelector verification indicator', () => {
       buildRace({ raceId: 'race-002', displayTitle: 'C1w - 1. jízda' }),
     ]
     const getRaceCheckState = vi.fn((raceId: string) =>
-      raceId === 'race-001' ? { checked: 8, total: 8, done: true } : { checked: 2, total: 5, done: false }
+      raceId === 'race-001' ? { checked: 8, total: 8 } : { checked: 2, total: 5 }
     )
 
     render(<RaceSelector {...base} races={races} getRaceCheckState={getRaceCheckState} />)

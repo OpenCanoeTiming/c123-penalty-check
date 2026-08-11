@@ -4,11 +4,10 @@ import { Select, Button } from '@opencanoetiming/timing-design-system'
 import type { ProcessedRace } from '../../hooks/useSchedule'
 import styles from './RaceSelector.module.css'
 
-/** Verification progress for one race, as reported by useChecks' getRaceProgress. */
+/** Verification progress for one race: how many gates are checked, out of how many. */
 interface RaceCheckState {
   checked: number
   total: number
-  done: boolean
 }
 
 interface RaceSelectorProps {
@@ -26,13 +25,17 @@ interface RaceSelectorProps {
  * nothing to check yet, `checked/total` while in progress, a checkmark
  * once every gate is checked.
  *
- * Deliberately re-derives "done" from the raw counts instead of trusting
- * `state.done` as given: this indicator is the operator's signal that a
- * race is safe to finalize, so a false "done" here - from a stale caller,
- * a future refactor, or a mismatched `total`/`checked` pair - is the worst
- * possible failure mode. Exact equality (not `>=`) and the `total > 0`
- * guard both matter, same as in getRaceProgress (src/hooks/useChecks.ts),
- * which this mirrors on purpose rather than importing.
+ * "Done" is a presentation decision (tick vs. ratio) and is made right
+ * here from the raw counts, not accepted as a precomputed flag: this
+ * indicator is the operator's signal that a race is safe to finalize, so
+ * a false "done" is the worst possible failure mode this feature can
+ * produce, and a boolean handed in from elsewhere is one more place that
+ * could get it wrong (or drift from getRaceProgress's definition without
+ * this component ever noticing). Exact equality (not `>=`) and the
+ * `total > 0` guard both matter, same as in getRaceProgress
+ * (src/hooks/useChecks.ts), which this intentionally mirrors rather than
+ * imports - if "done" ever needs a new condition there, it needs one here
+ * too, on purpose, not by accident.
  */
 function raceCheckIndicator(state: RaceCheckState | undefined): ReactNode {
   if (!state) return null
