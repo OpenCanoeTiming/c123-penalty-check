@@ -56,9 +56,29 @@ export function useChecks(options: { enabled?: boolean } = {}) {
   // - loadToken answers "is this response's *data* still current?" It is
   //   bumped by everything loadAttempt is, plus checks-reset/checks-cleared
   //   events, since those events make an in-flight snapshot stale without
-  //   starting a new load. Only the races snapshot is gated by this.
+  //   starting a new load. Only the races snapshot is gated by this. It is
+  //   deliberately NOT bumped by an ordinary single-gate event (check-set,
+  //   flag-created, ...): applyMutationResult/rollbackMutation also gate on
+  //   this same token to decide whether *their own* request's result is
+  //   still safe to apply, and that guard must survive an unrelated
+  //   concurrent event elsewhere in the event (see their own comments) - a
+  //   failed write whose rollback got skipped because someone else verified
+  //   a different gate would leave a wrong optimistic entry stuck forever,
+  //   with nothing left to correct it.
   const loadAttempt = useRef(0)
   const loadToken = useRef(0)
+  // Answers a narrower question than loadToken: "has *any* check/flag event
+  // been applied since this load started?" Bumped by every applied event,
+  // check or flag, reset/cleared included - unlike loadToken, an ordinary
+  // single-gate event counts too. load() snapshots this alongside loadToken
+  // and refuses to apply its response if either moved: a check-set that
+  // arrives while a load's fetch is in flight is strictly newer than that
+  // fetch's snapshot, so applying the snapshot afterwards would silently
+  // overwrite the event's own update - and nothing would re-fetch to
+  // recover it. Not reused by applyMutationResult/rollbackMutation - see
+  // loadToken's comment for why those two must stay unaffected by an
+  // unrelated single-gate event.
+  const eventToken = useRef(0)
   // Counts requests actually in flight, independent of either token above. A
   // load whose response gets discarded still completed a real network
   // round-trip, and `loading` must reflect that — otherwise discarding a
@@ -69,6 +89,7 @@ export function useChecks(options: { enabled?: boolean } = {}) {
     if (!enabled) return
     const attempt = ++loadAttempt.current
     const token = ++loadToken.current
+    const eventsSeen = eventToken.current
     inFlightCount.current++
     setLoading(true)
     try {
@@ -82,6 +103,10 @@ export function useChecks(options: { enabled?: boolean } = {}) {
         setUnavailableReason(null)
       }
       if (token !== loadToken.current) return // stale snapshot: verdict kept above, data dropped here
+      // Same idea, narrower trigger: an ordinary single-gate event (not just
+      // reset/cleared) landed while this fetch was in flight, so the fetch's
+      // snapshot predates it and must not overwrite it.
+      if (eventsSeen !== eventToken.current) return
       setRaces(data.races ?? {})
     } catch (error) {
       // A server without the checks API is a supported configuration, not a
@@ -195,15 +220,19 @@ export function useChecks(options: { enabled?: boolean } = {}) {
   )
 
   const applyCheckEvent = useCallback((event: CheckChangedEvent) => {
+    // Every applied event bumps eventToken, so a load() already in flight
+    // (its snapshot necessarily predates this event) discards its response
+    // rather than overwriting what this event is about to write - see the
+    // comment above `eventToken`'s declaration. checks-reset/checks-cleared
+    // additionally bump loadToken, which also invalidates
+    // applyMutationResult/rollbackMutation's in-flight mutations for this
+    // race - an ordinary single-gate event deliberately does not do that
+    // (see loadToken's comment). loadAttempt is left alone either way: the
+    // response is still real information about whether the server has a
+    // working checks API, which no applied event says anything about — see
+    // the comment above `loadAttempt`'s declaration.
+    eventToken.current++
     if (event.event === 'checks-reset' || event.event === 'checks-cleared') {
-      // A load already in flight when this event arrives carries a snapshot
-      // from before it. Let it finish (inFlightCount still tracks it so
-      // `loading` resolves correctly), but bump loadToken so its *data* is
-      // ignored — otherwise a stale full reload would silently resurrect
-      // what this event just discarded. loadAttempt is deliberately left
-      // alone: the response is still real information about whether the
-      // server has a working checks API, which this event says nothing
-      // about — see the comment above `loadAttempt`'s declaration.
       loadToken.current++
     }
 
@@ -231,6 +260,14 @@ export function useChecks(options: { enabled?: boolean } = {}) {
   }, [])
 
   const applyFlagEvent = useCallback((event: FlagChangedEvent) => {
+    // Same reasoning as applyCheckEvent's eventToken bump: a
+    // flag-created/-resolved/-deleted is strictly newer than a load()
+    // response requested before it, so that response's snapshot must not be
+    // allowed to silently overwrite what this event just wrote. Flag events
+    // never wipe a whole race the way checks-reset/-cleared do, so loadToken
+    // itself is untouched here - see loadToken's comment.
+    eventToken.current++
+
     setRaces((prev) => {
       const race = prev[event.raceId] ?? EMPTY_RACE_CHECKS
       const existing = race.flags ?? []

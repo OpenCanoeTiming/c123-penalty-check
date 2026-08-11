@@ -102,7 +102,9 @@ interface AppContentProps {
   openSettingsOnMount?: boolean
 }
 
-function AppContent({ settings, updateSettings, openSettingsOnMount }: AppContentProps) {
+// Named export for testing: renders with settings supplied directly as
+// props, bypassing the server-discovery gate `App` wraps it in.
+export function AppContent({ settings, updateSettings, openSettingsOnMount }: AppContentProps) {
   // Scoring API integration
   const {
     setGatePenalty,

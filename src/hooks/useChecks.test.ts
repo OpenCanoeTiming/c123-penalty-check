@@ -280,6 +280,115 @@ describe('useChecks', () => {
     expect(result.current.loading).toBe(false)
   })
 
+  it('discards a reload response that predates a check-set event from another tablet that arrived while it was in flight', async () => {
+    // Same shape as the checks-reset test above, but for an ordinary
+    // single-gate event: it must invalidate an in-flight load's snapshot
+    // too, not just a full reset/clear - otherwise the newer check-set gets
+    // silently overwritten a moment later by the older snapshot, and nothing
+    // re-fetches to recover it (task 11 review, Minor-5).
+    const { result } = await renderLoaded()
+    expect(result.current.getStatus('K1M_BR1', '42', 5, 50)).toBe('plain')
+
+    let resolveReload!: (value: typeof LOADED) => void
+    const pending = new Promise<typeof LOADED>((resolve) => {
+      resolveReload = resolve
+    })
+    vi.mocked(api.fetchAllChecks).mockReturnValueOnce(pending as never)
+
+    act(() => {
+      void result.current.reload()
+    })
+
+    // Another tablet verifies gate 5 while the reload above is still in
+    // flight - the fetch was already on the wire when this happened, so its
+    // snapshot cannot possibly include it.
+    act(() => {
+      result.current.applyCheckEvent({
+        event: 'check-set', raceId: 'K1M_BR1', bib: '42', gate: 5,
+        check: { checkedAt: 't2', value: 50 },
+      })
+    })
+    expect(result.current.getStatus('K1M_BR1', '42', 5, 50)).toBe('verified')
+
+    // The reload's response, snapshotted before the check-set, must not
+    // resurrect the pre-event (unverified) state.
+    await act(async () => {
+      resolveReload(LOADED as never)
+      await pending
+    })
+
+    expect(result.current.getStatus('K1M_BR1', '42', 5, 50)).toBe('verified')
+    expect(result.current.loading).toBe(false)
+  })
+
+  it('discards a reload response that predates a flag event that arrived while it was in flight', async () => {
+    // Same fix, exercised via applyFlagEvent instead of applyCheckEvent.
+    const { result } = await renderLoaded()
+    const flag = { id: 'f9', bib: '42', gate: 8, createdAt: 't', comment: 'x', resolved: false }
+    expect(result.current.getStatus('K1M_BR1', '42', 8, 0)).toBe('plain')
+
+    let resolveReload!: (value: typeof LOADED) => void
+    const pending = new Promise<typeof LOADED>((resolve) => {
+      resolveReload = resolve
+    })
+    vi.mocked(api.fetchAllChecks).mockReturnValueOnce(pending as never)
+
+    act(() => {
+      void result.current.reload()
+    })
+
+    act(() => {
+      result.current.applyFlagEvent({ event: 'flag-created', raceId: 'K1M_BR1', flag })
+    })
+    expect(result.current.getStatus('K1M_BR1', '42', 8, 0)).toBe('flagged')
+
+    await act(async () => {
+      resolveReload(LOADED as never)
+      await pending
+    })
+
+    expect(result.current.getStatus('K1M_BR1', '42', 8, 0)).toBe('flagged')
+    expect(result.current.loading).toBe(false)
+  })
+
+  it('does not let an unrelated single-gate event block a mutation\'s own rollback (loadToken stays scoped to reset/cleared)', async () => {
+    // eventToken (Minor-5's fix) and loadToken (applyMutationResult/
+    // rollbackMutation's guard) are deliberately two different counters.
+    // Someone else verifying gate 3 must not stop *our* failed write to
+    // gate 1 from rolling back - if it did, a wrong "verified" would stick
+    // to gate 1 forever, since nothing else would ever correct it.
+    const { result } = await renderLoaded()
+    let rejectWrite!: (error: unknown) => void
+    const pending = new Promise<never>((_resolve, reject) => {
+      rejectWrite = reject
+    })
+    vi.mocked(api.setCheck).mockReturnValueOnce(pending as never)
+
+    let verifyPromise!: Promise<boolean>
+    act(() => {
+      verifyPromise = result.current.verifyGate('K1M_BR1', '42', 2, 0)
+    })
+    expect(result.current.getStatus('K1M_BR1', '42', 2, 0)).toBe('verified')
+
+    // An unrelated event lands on a different gate while our write is still
+    // in flight - this bumps eventToken but must not touch loadToken.
+    act(() => {
+      result.current.applyCheckEvent({
+        event: 'check-set', raceId: 'K1M_BR1', bib: '42', gate: 3,
+        check: { checkedAt: 't3', value: 2 },
+      })
+    })
+
+    await act(async () => {
+      rejectWrite(new ApiRequestError('boom', 500))
+      await verifyPromise
+    })
+
+    // Our optimistic write to gate 2 rolled back, exactly as it would have
+    // with no unrelated event at all.
+    expect(result.current.getStatus('K1M_BR1', '42', 2, 0)).toBe('plain')
+  })
+
   it('keeps the availability verdict from the initial load even when a checks-reset supersedes it before it resolves', async () => {
     // Unlike a reload superseded by a *newer load*, the initial load here has
     // no successor to eventually provide its own verdict — the event only
