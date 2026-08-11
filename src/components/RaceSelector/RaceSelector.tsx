@@ -1,5 +1,4 @@
 import { useMemo } from 'react'
-import type { ReactNode } from 'react'
 import { Select, Button } from '@opencanoetiming/timing-design-system'
 import type { ProcessedRace } from '../../hooks/useSchedule'
 import styles from './RaceSelector.module.css'
@@ -21,9 +20,17 @@ interface RaceSelectorProps {
 }
 
 /**
- * Renders the per-race verification indicator: nothing while there is
- * nothing to check yet, `checked/total` while in progress, a checkmark
- * once every gate is checked.
+ * Text suffix for the per-race verification indicator: nothing while there
+ * is nothing to check yet, ` checked/total` while in progress, ` ✓` once
+ * every gate is checked.
+ *
+ * Plain text, not markup: a native <select> never lays out an <option>'s
+ * children - it paints only the option's flattened text - so an element
+ * here (a <span> for styling or aria-label) would exist in the DOM but be
+ * invisible and inaccessible, while React additionally logs invalid-nesting
+ * errors for it. Returning a string sidesteps all of that; the "✓" and
+ * "checked/total" reach the user (and assistive tech, via the option's own
+ * accessible name) exactly the way they would anyway.
  *
  * "Done" is a presentation decision (tick vs. ratio) and is made right
  * here from the raw counts, not accepted as a precomputed flag: this
@@ -37,23 +44,11 @@ interface RaceSelectorProps {
  * imports - if "done" ever needs a new condition there, it needs one here
  * too, on purpose, not by accident.
  */
-function raceCheckIndicator(state: RaceCheckState | undefined): ReactNode {
-  if (!state) return null
-  if (state.total > 0 && state.checked === state.total) {
-    return (
-      <span className={styles.checkDone} aria-label="verified">
-        ✓
-      </span>
-    )
-  }
-  if (state.total > 0) {
-    return (
-      <span className={styles.checkProgress}>
-        {state.checked}/{state.total}
-      </span>
-    )
-  }
-  return null
+function raceCheckIndicator(state: RaceCheckState | undefined): string {
+  if (!state) return ''
+  if (state.total > 0 && state.checked === state.total) return ' ✓'
+  if (state.total > 0) return ` ${state.checked}/${state.total}`
+  return ''
 }
 
 export function RaceSelector({
@@ -127,12 +122,12 @@ export function RaceSelector({
           Select race...
         </option>
         {races.map((race) => {
-          const indicator = getRaceCheckState && raceCheckIndicator(getRaceCheckState(race.raceId))
+          const indicator = getRaceCheckState ? raceCheckIndicator(getRaceCheckState(race.raceId)) : ''
           return (
             <option key={race.raceId} value={race.raceId}>
               {race.isRunning ? '● ' : ''}
               {race.displayTitle}
-              {indicator && <> {indicator}</>}
+              {indicator}
             </option>
           )
         })}
