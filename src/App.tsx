@@ -1,9 +1,11 @@
-import { useState, useEffect, useCallback, useMemo } from 'react'
-import { Layout, Header, ResultsGrid, GateGroupEditor, CheckProgress, Settings, EmptyState } from './components'
+import { useState, useEffect, useCallback, useMemo, useRef } from 'react'
+import { Badge } from '@opencanoetiming/timing-design-system'
+import { Layout, Header, ResultsGrid, GateGroupEditor, CheckProgress, Settings, EmptyState, FlagDialog } from './components'
+import type { FlagDialogSubmitInput } from './components'
 import { useC123WebSocket } from './hooks/useC123WebSocket'
 import { useSchedule } from './hooks/useSchedule'
 import { useGateGroups } from './hooks/useGateGroups'
-import { useCheckedState } from './hooks/useCheckedState'
+import { useChecks } from './hooks/useChecks'
 import { useSettings } from './hooks/useSettings'
 import { useSettingsShortcut } from './hooks/useSettingsShortcut'
 import { useScoring } from './hooks/useScoring'
@@ -13,6 +15,9 @@ import { saveToCache } from './services/discovery-client'
 import { fetchScheduleEnrichment } from './services/scheduleApi'
 import { fetchCourses, type CourseConfig } from './services/coursesApi'
 import { fetchRaceResults } from './services/resultsApi'
+import { createFlag, resolveFlag } from './services/checksApi'
+import { parseResultsGatesString, pickVerificationProps, submitPenaltyAndVerify } from './utils'
+import type { CheckChangedEvent, FlagChangedEvent, FlagEntry, GateCheckStatus } from './types/checks'
 
 const STORAGE_KEY_SELECTED_RACE = 'c123-penalty-check-selected-race'
 
@@ -119,6 +124,23 @@ function AppContent({ settings, updateSettings, openSettingsOnMount }: AppConten
     enabled: !showSettings && !showGateGroupEditor,
   })
 
+  // useChecks needs the connectionState useC123WebSocket produces, but
+  // useC123WebSocket needs checks.applyCheckEvent/applyFlagEvent as
+  // callbacks - a real cycle within one render. Refs break it: these two
+  // wrapper callbacks have stable identity forever, so useC123WebSocket only
+  // ever wires them up once, while the refs themselves are kept pointing at
+  // checks' latest (also stable) handlers once `checks` exists below.
+  const applyCheckEventRef = useRef<(event: CheckChangedEvent) => void>(() => {})
+  const applyFlagEventRef = useRef<(event: FlagChangedEvent) => void>(() => {})
+  const handleChecksChanged = useCallback(
+    (event: CheckChangedEvent) => applyCheckEventRef.current(event),
+    []
+  )
+  const handleFlagChanged = useCallback(
+    (event: FlagChangedEvent) => applyFlagEventRef.current(event),
+    []
+  )
+
   const {
     connectionState,
     schedule,
@@ -128,7 +150,18 @@ function AppContent({ settings, updateSettings, openSettingsOnMount }: AppConten
   } = useC123WebSocket({
     url: settings.serverUrl,
     clientId: settings.clientId,
+    onChecksChanged: handleChecksChanged,
+    onFlagChanged: handleFlagChanged,
   })
+
+  // Penalty verification state - event-wide, loaded once the server
+  // connection is up.
+  const checks = useChecks({ enabled: connectionState === 'connected' })
+
+  useEffect(() => {
+    applyCheckEventRef.current = checks.applyCheckEvent
+    applyFlagEventRef.current = checks.applyFlagEvent
+  }, [checks.applyCheckEvent, checks.applyFlagEvent])
 
   // REST API state
   const [dateMap, setDateMap] = useState<Map<string, string>>(new Map())
@@ -272,25 +305,125 @@ function AppContent({ settings, updateSettings, openSettingsOnMount }: AppConten
     [updateSettings]
   )
 
-  // Protocol check state
-  const { getProgress } = useCheckedState({
-    raceId: effectiveSelectedRaceId,
-    groupId: activeGroupId,
-  })
+  // Penalty verification wiring
+  // ---------------------------------------------------------------------
 
-  // Get list of finished competitor bibs for progress calculation (from Results)
-  const finishedCompetitorBibs = useMemo(() => {
-    if (!selectedRaceResults?.rows) return []
-    // Results rows without status (DNS/DNF/DSQ) are finished competitors
-    return selectedRaceResults.rows
-      .filter((r) => !r.status)
-      .map((r) => r.bib)
-  }, [selectedRaceResults])
+  // The live value of a gate, read from the currently selected race's
+  // results row - useChecks needs it explicitly for both the empty-gate
+  // rule (rule 3) and the check snapshot, since it never trusts a stale
+  // value carried in its own state.
+  const getLiveGateValue = useCallback(
+    (bib: string, gate: number): number | null => {
+      const row = selectedRaceResults?.rows.find((r) => r.bib === bib)
+      if (!row) return null
+      return parseResultsGatesString(row.gates)[gate - 1] ?? null
+    },
+    [selectedRaceResults]
+  )
 
-  // Calculate check progress
-  const checkProgress = useMemo(() => {
-    return getProgress(finishedCompetitorBibs)
-  }, [getProgress, finishedCompetitorBibs])
+  const getGateStatus = useCallback(
+    (bib: string, gate: number): GateCheckStatus => {
+      if (!effectiveSelectedRaceId) return 'plain'
+      return checks.getStatus(effectiveSelectedRaceId, bib, gate, getLiveGateValue(bib, gate))
+    },
+    [effectiveSelectedRaceId, checks, getLiveGateValue]
+  )
+
+  const handleToggleCheck = useCallback(
+    (bib: string, gate: number) => {
+      if (!effectiveSelectedRaceId) return
+      void checks.toggleGate(effectiveSelectedRaceId, bib, gate, getLiveGateValue(bib, gate))
+    },
+    [effectiveSelectedRaceId, checks, getLiveGateValue]
+  )
+
+  const handleVerifySection = useCallback(
+    (bib: string, gates: number[]) => {
+      if (!effectiveSelectedRaceId) return
+      const liveValues = new Map(gates.map((gate) => [gate, getLiveGateValue(bib, gate)]))
+      void checks.verifySection(effectiveSelectedRaceId, bib, gates, liveValues)
+    },
+    [effectiveSelectedRaceId, checks, getLiveGateValue]
+  )
+
+  const getOpenFlag = useCallback(
+    (bib: string, gate: number): FlagEntry | null => {
+      if (!effectiveSelectedRaceId) return null
+      return checks.getFlags(effectiveSelectedRaceId, bib, gate).find((flag) => !flag.resolved) ?? null
+    },
+    [effectiveSelectedRaceId, checks]
+  )
+
+  // Flag dialog (create/resolve) - a REST call away, not wrapped by
+  // useChecks. Its effect reaches the UI the same way a penalty submission
+  // does: the server broadcasts FlagChanged to every client (including the
+  // one that made the request), and applyFlagEvent folds it in from there -
+  // no optimistic update needed here.
+  const [flagTarget, setFlagTarget] = useState<
+    | { mode: 'create'; raceId: string; bib: string; gate: number }
+    | { mode: 'resolve'; raceId: string; flag: FlagEntry }
+    | null
+  >(null)
+
+  const handleAddFlag = useCallback(
+    (bib: string, gate: number) => {
+      if (!effectiveSelectedRaceId) return
+      setFlagTarget({ mode: 'create', raceId: effectiveSelectedRaceId, bib, gate })
+    },
+    [effectiveSelectedRaceId]
+  )
+
+  const handleResolveFlag = useCallback(
+    (flag: FlagEntry) => {
+      if (!effectiveSelectedRaceId) return
+      setFlagTarget({ mode: 'resolve', raceId: effectiveSelectedRaceId, flag })
+    },
+    [effectiveSelectedRaceId]
+  )
+
+  const handleFlagDialogClose = useCallback(() => setFlagTarget(null), [])
+
+  const handleFlagDialogSubmit = useCallback(
+    async (input: FlagDialogSubmitInput) => {
+      if (!flagTarget) return
+      try {
+        if (flagTarget.mode === 'create') {
+          await createFlag(flagTarget.raceId, flagTarget.bib, flagTarget.gate, input.comment ?? '', input.suggestedValue)
+        } else {
+          await resolveFlag(flagTarget.raceId, flagTarget.flag.id, input.resolution)
+        }
+      } catch (error) {
+        console.error('Failed to submit flag:', error)
+      } finally {
+        setFlagTarget(null)
+      }
+    },
+    [flagTarget]
+  )
+
+  // Per-race verification progress for the race switcher - only for races
+  // whose rows are already in memory (WebSocket or lazily-fetched REST);
+  // an unloaded race simply shows no indicator, same as "nothing to verify yet".
+  const getRaceCheckState = useCallback(
+    (raceId: string) => {
+      const raceResults = results.get(raceId) ?? restResults.get(raceId)
+      if (!raceResults) return { checked: 0, total: 0 }
+      const { checked, total } = checks.getRaceProgress(raceId, raceResults.rows)
+      return { checked, total }
+    },
+    [results, restResults, checks]
+  )
+
+  // Footer verification progress for the selected race
+  const raceProgress = useMemo(() => {
+    if (!effectiveSelectedRaceId || !selectedRaceResults) return { checked: 0, total: 0, done: false }
+    return checks.getRaceProgress(effectiveSelectedRaceId, selectedRaceResults.rows)
+  }, [checks, effectiveSelectedRaceId, selectedRaceResults])
+
+  const footerProgress = useMemo(() => {
+    const { checked, total } = raceProgress
+    return { checked, total, percentage: total > 0 ? Math.round((checked / total) * 100) : 0 }
+  }, [raceProgress])
 
   // Apply theme to document element
   // Design system uses .theme-light / .theme-dark classes on :root
@@ -308,12 +441,17 @@ function AppContent({ settings, updateSettings, openSettingsOnMount }: AppConten
     // For 'auto', no class needed - DS uses @media (prefers-color-scheme: dark)
   }, [settings.theme])
 
-  // Handler for penalty submission
+  // Handler for penalty submission - the write/verify ordering (rule 4) and
+  // the empty-gate guard (rule 3) live in submitPenaltyAndVerify, tested on
+  // their own in src/utils/verification.test.ts.
   const handlePenaltySubmit = useCallback(
-    async (bib: string, gate: number, value: import('./types/scoring').PenaltyValue, raceId?: string) => {
-      await setGatePenalty(bib, gate, value, raceId)
-    },
-    [setGatePenalty]
+    (bib: string, gate: number, value: import('./types/scoring').PenaltyValue, raceId?: string) =>
+      submitPenaltyAndVerify(bib, gate, value, raceId, {
+        setGatePenalty,
+        verifyGate: checks.verifyGate,
+        checksAvailable: checks.available,
+      }),
+    [setGatePenalty, checks]
   )
 
   return (
@@ -327,6 +465,7 @@ function AppContent({ settings, updateSettings, openSettingsOnMount }: AppConten
           onOpenSettings={() => setShowSettings(true)}
           onlyRunning={onlyRunning}
           onToggleOnlyRunning={() => setOnlyRunning((v) => !v)}
+          {...pickVerificationProps(checks.available, { getRaceCheckState })}
         />
       }
       footer={
@@ -340,15 +479,19 @@ function AppContent({ settings, updateSettings, openSettingsOnMount }: AppConten
                 <span className="pending-count">{pendingCount}</span>
               </span>
             )}
+            {connectionState === 'connected' && !checks.loading && !checks.available && (
+              <Badge
+                variant="warning"
+                title={checks.unavailableReason?.message ?? 'This server does not support penalty verification.'}
+              >
+                Verification unavailable
+              </Badge>
+            )}
           </span>
 
           {/* Right: Check progress */}
-          {finishedCompetitorBibs.length > 0 && (
-            <CheckProgress
-              progress={checkProgress}
-              label={activeGroup ? `${activeGroup.name}` : 'Checked'}
-              compact
-            />
+          {checks.available && (
+            <CheckProgress progress={footerProgress} label="Verified" compact />
           )}
         </div>
       }
@@ -381,6 +524,16 @@ function AppContent({ settings, updateSettings, openSettingsOnMount }: AppConten
           gateGroups={customGroups}
           onOpenGateGroupEditor={() => setShowGateGroupEditor(true)}
           onClose={() => setShowSettings(false)}
+        />
+      )}
+
+      {/* Flag Dialog (create/resolve) */}
+      {flagTarget && (
+        <FlagDialog
+          mode={flagTarget.mode}
+          flag={flagTarget.mode === 'resolve' ? flagTarget.flag : undefined}
+          onSubmit={handleFlagDialogSubmit}
+          onClose={handleFlagDialogClose}
         />
       )}
 
@@ -432,6 +585,14 @@ function AppContent({ settings, updateSettings, openSettingsOnMount }: AppConten
                 sortBy={settings.sortBy}
                 onGroupSelect={setActiveGroup}
                 onPenaltySubmit={handlePenaltySubmit}
+                {...pickVerificationProps(checks.available, {
+                  getGateStatus,
+                  onToggleCheck: handleToggleCheck,
+                  onVerifySection: handleVerifySection,
+                  getOpenFlag,
+                  onAddFlag: handleAddFlag,
+                  onResolveFlag: handleResolveFlag,
+                })}
               />
             )
         }

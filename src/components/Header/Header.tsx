@@ -22,6 +22,8 @@ interface HeaderProps {
   isConnected: boolean
   // Actions
   onOpenSettings: () => void
+  /** Per-race verification progress, keyed by raceId. Omit to show no indicator. */
+  getRaceCheckState?: (raceId: string) => { checked: number; total: number }
 }
 
 export function Header({
@@ -32,6 +34,7 @@ export function Header({
   onToggleOnlyRunning,
   isConnected,
   onOpenSettings,
+  getRaceCheckState,
 }: HeaderProps) {
   return (
     <DSHeader variant="compact">
@@ -46,6 +49,7 @@ export function Header({
           onSelectRace={onSelectRace}
           onlyRunning={onlyRunning}
           onToggleOnlyRunning={onToggleOnlyRunning}
+          getRaceCheckState={getRaceCheckState}
         />
       </div>
 

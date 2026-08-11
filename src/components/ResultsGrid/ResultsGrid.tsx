@@ -23,7 +23,7 @@ import {
 import type { C123ResultRow, C123RaceConfigData } from '../../types/c123server'
 import type { GateGroup, ResultsSortOption } from '../../types/ui'
 import type { PenaltyValue } from '../../types/scoring'
-import type { GateCheckStatus } from '../../types/checks'
+import type { FlagEntry, GateCheckStatus } from '../../types/checks'
 import { useFocusNavigation, useKeyboardInput, useMultiTap } from '../../hooks'
 import { parseResultsGatesString, sectionGatesFor } from '../../utils'
 import { PenaltyContextMenu } from './PenaltyContextMenu'
@@ -205,6 +205,12 @@ interface ResultsGridProps {
   onToggleCheck?: (bib: string, gate: number) => void
   /** Verify every gate in a section at once (Shift+Space, or the boundary click target) */
   onVerifySection?: (bib: string, gates: number[]) => void
+  /** This gate's open (unresolved) flag, if any - feeds the context menu's "Resolve flag..." entry */
+  getOpenFlag?: (bib: string, gate: number) => FlagEntry | null
+  /** Open the create-flag dialog for a gate */
+  onAddFlag?: (bib: string, gate: number) => void
+  /** Open the resolve-flag dialog for an existing flag */
+  onResolveFlag?: (flag: FlagEntry) => void
 }
 
 // Scroll constants for auto-scrolling focused cell into view
@@ -246,6 +252,9 @@ export function ResultsGrid({
   getGateStatus,
   onToggleCheck,
   onVerifySection,
+  getOpenFlag,
+  onAddFlag,
+  onResolveFlag,
 }: ResultsGridProps) {
   // Refs for scroll sync
   const groupsHeaderRef = useRef<HTMLDivElement>(null)
@@ -944,11 +953,11 @@ export function ResultsGrid({
               : 'plain'
           }
           canVerify={contextMenuCanVerify}
-          // No flag data source exists in this component yet - wiring real
-          // flag state through here is task 11's job, once useChecks is
-          // connected to the app. Add flag.../Resolve flag... are reachable
-          // from the menu but inert until then.
-          openFlag={null}
+          openFlag={
+            contextMenuBib && contextMenuGate
+              ? (getOpenFlag?.(contextMenuBib, contextMenuGate) ?? null)
+              : null
+          }
           onToggleCheck={() => {
             if (contextMenuBib && contextMenuGate) {
               onToggleCheck?.(contextMenuBib, contextMenuGate)
@@ -962,8 +971,12 @@ export function ResultsGrid({
               )
             }
           }}
-          onAddFlag={() => {}}
-          onResolveFlag={() => {}}
+          onAddFlag={() => {
+            if (contextMenuBib && contextMenuGate) {
+              onAddFlag?.(contextMenuBib, contextMenuGate)
+            }
+          }}
+          onResolveFlag={(flag) => onResolveFlag?.(flag)}
         />
       )}
     </div>

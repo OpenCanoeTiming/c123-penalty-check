@@ -29,11 +29,6 @@ export {
   type UseGateGroupsReturn,
 } from './useGateGroups'
 export {
-  useCheckedState,
-  type UseCheckedStateOptions,
-  type UseCheckedStateReturn,
-} from './useCheckedState'
-export {
   useSettings,
   type Settings,
   type UseSettingsReturn,
