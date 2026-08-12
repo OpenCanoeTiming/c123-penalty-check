@@ -29,6 +29,16 @@ export interface ProgressRow {
 export interface RaceProgress {
   checked: number
   total: number
+  /**
+   * Open flags on gates that count toward progress (see getRaceProgress).
+   * `done` already folds this in (`openFlags === 0` is one of its
+   * conjuncts) - exposed separately anyway because RaceCheckState
+   * (src/components/RaceSelector/RaceSelector.tsx) needs the raw count to
+   * derive its own presentation from, the same way it already does for
+   * `checked`/`total`, rather than trusting a precomputed boolean it cannot
+   * verify.
+   */
+  openFlags: number
   done: boolean
 }
 
@@ -60,6 +70,16 @@ function reduceCheckEvent(prev: RacesState, event: CheckChangedEvent): RacesStat
   }
 
   return { ...prev, [event.raceId]: { checks, flags: race.flags ?? [] } }
+}
+
+/**
+ * Whether a gate has a flag open against it right now. Shared by getStatus
+ * and getRaceProgress so the two can never disagree about which gates are
+ * flagged - each calls this instead of keeping its own copy of "resolved
+ * === false" that could drift from the other's. See RaceProgress.openFlags.
+ */
+function hasOpenFlagFor(flags: FlagEntry[] | undefined, bib: string, gate: number): boolean {
+  return (flags ?? []).some((flag) => !flag.resolved && flag.bib === bib && flag.gate === gate)
 }
 
 /** Pure reducer for one FlagChangedEvent - see reduceCheckEvent's comment. */
@@ -270,12 +290,7 @@ export function useChecks(options: { enabled?: boolean } = {}) {
       const key = createGateKey(bib, gate)
       const race = races[raceId] ?? EMPTY_RACE_CHECKS
 
-      // The server stores flags as a flat array — each entry carries its own
-      // bib and gate, so there is no key to index by.
-      const hasOpenFlag = (race.flags ?? []).some(
-        (flag) => !flag.resolved && flag.bib === bib && flag.gate === gate
-      )
-      if (hasOpenFlag) return 'flagged'
+      if (hasOpenFlagFor(race.flags, bib, gate)) return 'flagged'
 
       const check = race.checks?.[key]
       if (!check) return 'plain'
@@ -293,6 +308,7 @@ export function useChecks(options: { enabled?: boolean } = {}) {
       const race = races[raceId] ?? EMPTY_RACE_CHECKS
       let checked = 0
       let total = 0
+      let openFlags = 0
 
       for (const row of rows) {
         if (row.status) continue // rule 7: finished runs without a status only
@@ -305,18 +321,30 @@ export function useChecks(options: { enabled?: boolean } = {}) {
         const values = parseResultsGatesString(row.gates)
         for (let index = 0; index < values.length; index++) {
           total++
+          const gate = index + 1
           // Mirror getStatus exactly: a check only counts while the value it
           // was taken against still matches the live value. A stale check
           // (drifted, e.g. from a correction made directly in Canoe123,
           // which never reaches the server's invalidation hook) is not a
           // verification - counting it by existence alone would let a race
           // read "done" with a gate the grid itself renders as stale.
-          const check = race.checks?.[createGateKey(row.bib, index + 1)]
+          const check = race.checks?.[createGateKey(row.bib, gate)]
           if (check && check.value === values[index]) checked++
+          // Same reasoning, for flags: getStatus returns 'flagged' - not
+          // 'verified' - for this exact (bib, gate), via the same
+          // hasOpenFlagFor call, so a gate under open dispute can never
+          // slip into `done` here either. Scanning only gates this loop
+          // already enumerates is what scopes "counts toward progress" to
+          // exactly the rows/gates the numerator above uses - a flag on a
+          // DNS/DNF/DSQ row (skipped by the `continue` above, so never
+          // reaches this line) or on a gate past this row's own count never
+          // gets asked about, so it can't block a race whose verification
+          // scope doesn't include it.
+          if (hasOpenFlagFor(race.flags, row.bib, gate)) openFlags++
         }
       }
 
-      return { checked, total, done: total > 0 && checked === total }
+      return { checked, total, openFlags, done: total > 0 && checked === total && openFlags === 0 }
     },
     [races]
   )

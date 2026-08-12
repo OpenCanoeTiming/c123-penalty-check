@@ -130,7 +130,7 @@ function setupChecks(overrides: Record<string, unknown> = {}) {
     reload: vi.fn(),
     getStatus: vi.fn(() => 'plain'),
     getFlags: vi.fn(() => []),
-    getRaceProgress: vi.fn(() => ({ checked: 0, total: 0, done: false })),
+    getRaceProgress: vi.fn(() => ({ checked: 0, total: 0, openFlags: 0, done: false })),
     applyCheckEvent: vi.fn(),
     applyFlagEvent: vi.fn(),
     verifyGate: vi.fn().mockResolvedValue(true),

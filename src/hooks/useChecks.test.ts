@@ -104,10 +104,13 @@ describe('useChecks', () => {
       { bib: '42', gates: '2 0' },
       { bib: '43', gates: '0 0', status: 'DNF' },
     ]
-    // bib 42 contributes 2 gates, one of them checked; bib 43 is excluded
+    // bib 42 contributes 2 gates, one of them checked; bib 43 is excluded.
+    // LOADED's open flag sits on bib 42 gate 3, past this row's 2 gates, so
+    // it never gets asked about - openFlags: 0.
     expect(result.current.getRaceProgress('K1M_BR1', rows)).toEqual({
       checked: 1,
       total: 2,
+      openFlags: 0,
       done: false,
     })
   })
@@ -126,6 +129,7 @@ describe('useChecks', () => {
     expect(result.current.getRaceProgress('K1M_BR1', [{ bib: '42', gates: '50' }])).toEqual({
       checked: 0,
       total: 1,
+      openFlags: 0,
       done: false,
     })
   })
@@ -161,6 +165,7 @@ describe('useChecks', () => {
     expect(result.current.getRaceProgress('K1M_BR1', rows)).toEqual({
       checked: 4,
       total: 6,
+      openFlags: 0,
       done: false,
     })
   })
@@ -170,6 +175,7 @@ describe('useChecks', () => {
     expect(result.current.getRaceProgress('K1M_BR1', [{ bib: '42', gates: '2' }])).toEqual({
       checked: 1,
       total: 1,
+      openFlags: 0,
       done: true,
     })
   })
@@ -177,6 +183,61 @@ describe('useChecks', () => {
   it('is not done when there is nothing to check yet', async () => {
     const { result } = await renderLoaded()
     expect(result.current.getRaceProgress('K1M_BR1', []).done).toBe(false)
+  })
+
+  it('does not read done while an open flag remains, even once every counted gate is checked', async () => {
+    // LOADED's checks cover only '42:1' (value 2); add matching checks for
+    // gates 2 and 3 so every gate this row exposes is checked - isolating
+    // the open flag (already on bib 42 gate 3, see LOADED) as the only
+    // thing that can still be keeping this race from reading done.
+    const { result } = await renderLoaded()
+    act(() => {
+      result.current.applyCheckEvent({
+        event: 'check-set', raceId: 'K1M_BR1', bib: '42', gate: 2,
+        check: { checkedAt: 't', value: 0 },
+      })
+      result.current.applyCheckEvent({
+        event: 'check-set', raceId: 'K1M_BR1', bib: '42', gate: 3,
+        check: { checkedAt: 't', value: 50 },
+      })
+    })
+    const rows = [{ bib: '42', gates: '2 0 50' }]
+
+    // Every gate matches its check - checked === total - yet the open flag
+    // on gate 3 must still block done, exactly as getStatus already renders
+    // gate 3 as 'flagged' rather than 'verified'.
+    expect(result.current.getStatus('K1M_BR1', '42', 3, 50)).toBe('flagged')
+    expect(result.current.getRaceProgress('K1M_BR1', rows)).toEqual({
+      checked: 3,
+      total: 3,
+      openFlags: 1,
+      done: false,
+    })
+  })
+
+  it('does not let an open flag on a DNS/DNF/DSQ row block a race that is otherwise fully checked', async () => {
+    // Rows with a status are outside progress entirely (rule 7) - a flag on
+    // one of them must not reach the aggregate at all, not even to block
+    // done. bib 43 here never appears in the checked/total loop, so its
+    // flag is never asked about - see hasOpenFlagFor's call site in
+    // getRaceProgress.
+    const { result } = await renderLoaded()
+    act(() => {
+      result.current.applyFlagEvent({
+        event: 'flag-created', raceId: 'K1M_BR1',
+        flag: { id: 'f-dns', bib: '43', gate: 1, createdAt: 't', comment: 'x', resolved: false },
+      })
+    })
+    const rows = [
+      { bib: '42', gates: '2' },
+      { bib: '43', gates: '0', status: 'DNS' },
+    ]
+    expect(result.current.getRaceProgress('K1M_BR1', rows)).toEqual({
+      checked: 1,
+      total: 1,
+      openFlags: 0,
+      done: true,
+    })
   })
 
   it('marks itself unavailable when the server has no checks API', async () => {

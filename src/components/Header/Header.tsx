@@ -23,7 +23,7 @@ interface HeaderProps {
   // Actions
   onOpenSettings: () => void
   /** Per-race verification progress, keyed by raceId. Omit to show no indicator. */
-  getRaceCheckState?: (raceId: string) => { checked: number; total: number }
+  getRaceCheckState?: (raceId: string) => { checked: number; total: number; openFlags: number }
 }
 
 export function Header({

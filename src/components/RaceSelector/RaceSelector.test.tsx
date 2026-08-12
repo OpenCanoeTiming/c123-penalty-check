@@ -39,17 +39,17 @@ const base = {
 // or a query against a nested node, which would only ever hold in jsdom.
 describe('RaceSelector verification indicator', () => {
   it('marks a fully verified race as done', () => {
-    render(<RaceSelector {...base} getRaceCheckState={() => ({ checked: 8, total: 8 })} />)
+    render(<RaceSelector {...base} getRaceCheckState={() => ({ checked: 8, total: 8, openFlags: 0 })} />)
     expect(screen.getByRole('option', { name: /✓/ })).toBeInTheDocument()
   })
 
   it('shows progress while a race is partly verified', () => {
-    render(<RaceSelector {...base} getRaceCheckState={() => ({ checked: 3, total: 8 })} />)
+    render(<RaceSelector {...base} getRaceCheckState={() => ({ checked: 3, total: 8, openFlags: 0 })} />)
     expect(screen.getByRole('option', { name: /3\/8/ })).toBeInTheDocument()
   })
 
   it('shows nothing when there is nothing to verify yet', () => {
-    render(<RaceSelector {...base} getRaceCheckState={() => ({ checked: 0, total: 0 })} />)
+    render(<RaceSelector {...base} getRaceCheckState={() => ({ checked: 0, total: 0, openFlags: 0 })} />)
     expect(screen.queryByRole('option', { name: /\d\/\d/ })).not.toBeInTheDocument()
     // checked === total holds here too (0 === 0) - this also confirms the
     // "done" branch requires total > 0 as its own guard, not just equal
@@ -68,9 +68,19 @@ describe('RaceSelector verification indicator', () => {
   // exceeding total should never happen from a correct getRaceProgress, but
   // this guards the derivation itself: exact equality, not `checked >= total`.
   it('does not mark a race done when checked exceeds total', () => {
-    render(<RaceSelector {...base} getRaceCheckState={() => ({ checked: 9, total: 8 })} />)
+    render(<RaceSelector {...base} getRaceCheckState={() => ({ checked: 9, total: 8, openFlags: 0 })} />)
     expect(screen.queryByRole('option', { name: /✓/ })).not.toBeInTheDocument()
     expect(screen.getByRole('option', { name: /9\/8/ })).toBeInTheDocument()
+  })
+
+  // Pins the new rule: an unresolved flag must keep a fully-checked race
+  // from reading done, same as getRaceProgress (src/hooks/useChecks.ts).
+  // Falls through to the ratio branch, same as the "checked exceeds total"
+  // case above - the tick is reserved for "nothing left to look at".
+  it('does not mark a race done while an open flag remains, even with every gate checked', () => {
+    render(<RaceSelector {...base} getRaceCheckState={() => ({ checked: 8, total: 8, openFlags: 1 })} />)
+    expect(screen.queryByRole('option', { name: /✓/ })).not.toBeInTheDocument()
+    expect(screen.getByRole('option', { name: /8\/8/ })).toBeInTheDocument()
   })
 
   it('looks up check state per race rather than sharing one state across the list', () => {
@@ -79,7 +89,7 @@ describe('RaceSelector verification indicator', () => {
       buildRace({ raceId: 'race-002', displayTitle: 'C1w - 1. jízda' }),
     ]
     const getRaceCheckState = vi.fn((raceId: string) =>
-      raceId === 'race-001' ? { checked: 8, total: 8 } : { checked: 2, total: 5 }
+      raceId === 'race-001' ? { checked: 8, total: 8, openFlags: 0 } : { checked: 2, total: 5, openFlags: 0 }
     )
 
     render(<RaceSelector {...base} races={races} getRaceCheckState={getRaceCheckState} />)

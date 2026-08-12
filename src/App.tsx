@@ -409,9 +409,9 @@ export function AppContent({ settings, updateSettings, openSettingsOnMount }: Ap
   const getRaceCheckState = useCallback(
     (raceId: string) => {
       const raceResults = results.get(raceId) ?? restResults.get(raceId)
-      if (!raceResults) return { checked: 0, total: 0 }
-      const { checked, total } = checks.getRaceProgress(raceId, raceResults.rows)
-      return { checked, total }
+      if (!raceResults) return { checked: 0, total: 0, openFlags: 0 }
+      const { checked, total, openFlags } = checks.getRaceProgress(raceId, raceResults.rows)
+      return { checked, total, openFlags }
     },
     [results, restResults, checks]
   )

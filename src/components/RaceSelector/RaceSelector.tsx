@@ -3,10 +3,12 @@ import { Select, Button } from '@opencanoetiming/timing-design-system'
 import type { ProcessedRace } from '../../hooks/useSchedule'
 import styles from './RaceSelector.module.css'
 
-/** Verification progress for one race: how many gates are checked, out of how many. */
+/** Verification progress for one race: how many gates are checked, out of how many, and how many are under open dispute. */
 interface RaceCheckState {
   checked: number
   total: number
+  /** Open flags on gates that count toward progress - see RaceProgress.openFlags (src/hooks/useChecks.ts). */
+  openFlags: number
 }
 
 interface RaceSelectorProps {
@@ -38,15 +40,18 @@ interface RaceSelectorProps {
  * a false "done" is the worst possible failure mode this feature can
  * produce, and a boolean handed in from elsewhere is one more place that
  * could get it wrong (or drift from getRaceProgress's definition without
- * this component ever noticing). Exact equality (not `>=`) and the
- * `total > 0` guard both matter, same as in getRaceProgress
- * (src/hooks/useChecks.ts), which this intentionally mirrors rather than
- * imports - if "done" ever needs a new condition there, it needs one here
- * too, on purpose, not by accident.
+ * this component ever noticing). Exact equality (not `>=`), the
+ * `total > 0` guard, and the `openFlags === 0` guard all matter, same as
+ * in getRaceProgress (src/hooks/useChecks.ts), which this intentionally
+ * mirrors rather than imports - if "done" ever needs a new condition
+ * there, it needs one here too, on purpose, not by accident. A race that
+ * is fully checked but still has an open flag falls through to the ratio
+ * branch rather than the tick - it is not done, and the ratio at least
+ * doesn't claim otherwise.
  */
 function raceCheckIndicator(state: RaceCheckState | undefined): string {
   if (!state) return ''
-  if (state.total > 0 && state.checked === state.total) return ' ✓'
+  if (state.total > 0 && state.checked === state.total && state.openFlags === 0) return ' ✓'
   if (state.total > 0) return ` ${state.checked}/${state.total}`
   return ''
 }
