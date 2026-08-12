@@ -112,13 +112,34 @@ describe('useChecks', () => {
     })
   })
 
-  it('does not misnumber gates across a deleted-penalty gap, and never reports a false "done"', async () => {
+  it('does not count a stale check as verified progress - getRaceProgress and getStatus must agree', async () => {
+    // LOADED's only check is '42:1' at value 2 (see fixture above). Feeding
+    // getRaceProgress a live value of 50 for that same gate - as if it had
+    // been corrected directly in Canoe123, bypassing the server's
+    // invalidation hook - makes the check stale, not verified. getStatus
+    // already treats this as `stale` (see the "reports stale" test above);
+    // getRaceProgress must reach the same verdict by construction, or a
+    // race with a drifted gate the grid renders as stale would still read
+    // "done" in the footer and the race switcher.
+    const { result } = await renderLoaded()
+    expect(result.current.getStatus('K1M_BR1', '42', 1, 50)).toBe('stale')
+    expect(result.current.getRaceProgress('K1M_BR1', [{ bib: '42', gates: '50' }])).toEqual({
+      checked: 0,
+      total: 1,
+      done: false,
+    })
+  })
+
+  it('does not misnumber gates across a deleted-penalty gap', async () => {
     // 6 real gates: 1=0, 2=2, 3 & 4 deleted (blank block in the fixed-width
     // string), 5=50, 6=0. Checks are recorded at real gates 1-4. A parser
     // that collapses whitespace instead of reading fixed 3-char blocks sees
-    // only 4 positions here and numbers them 1-4 regardless of the gap — it
-    // would report {checked: 4, total: 4, done: true}, a false "done" while
-    // the real gates 5 and 6 were never touched.
+    // only 4 positions here and numbers them 1-4 regardless of the gap -
+    // this test only pins that numbering. It does NOT pin "never reports a
+    // false done": both checks on the deleted gates (3, 4) are recorded with
+    // value `null`, which matches those gates' own `null` live value, so
+    // this fixture cannot distinguish counting-by-existence from
+    // counting-by-value-match - see the stale-progress test above for that.
     vi.mocked(api.fetchAllChecks).mockResolvedValue({
       ...LOADED,
       races: {

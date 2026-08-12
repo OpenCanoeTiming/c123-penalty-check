@@ -305,7 +305,14 @@ export function useChecks(options: { enabled?: boolean } = {}) {
         const values = parseResultsGatesString(row.gates)
         for (let index = 0; index < values.length; index++) {
           total++
-          if (race.checks?.[createGateKey(row.bib, index + 1)]) checked++
+          // Mirror getStatus exactly: a check only counts while the value it
+          // was taken against still matches the live value. A stale check
+          // (drifted, e.g. from a correction made directly in Canoe123,
+          // which never reaches the server's invalidation hook) is not a
+          // verification - counting it by existence alone would let a race
+          // read "done" with a gate the grid itself renders as stale.
+          const check = race.checks?.[createGateKey(row.bib, index + 1)]
+          if (check && check.value === values[index]) checked++
         }
       }
 
