@@ -280,14 +280,18 @@ describe('useChecks', () => {
     expect(result.current.loading).toBe(false)
   })
 
-  it('discards a reload response that predates a check-set event from another tablet that arrived while it was in flight', async () => {
+  it('reconciles a reload response that predates a check-set event from another tablet that arrived while it was in flight', async () => {
     // Same shape as the checks-reset test above, but for an ordinary
     // single-gate event: it must invalidate an in-flight load's snapshot
     // too, not just a full reset/clear - otherwise the newer check-set gets
     // silently overwritten a moment later by the older snapshot, and nothing
-    // re-fetches to recover it (task 11 review, Minor-5).
+    // re-fetches to recover it (task 11 review, Minor-5). Unlike
+    // checks-reset, this must *reconcile* rather than discard the whole
+    // response (task 11 re-review, Important-A) - asserted here by checking
+    // that gate 1, untouched by the event, also survives the reload.
     const { result } = await renderLoaded()
     expect(result.current.getStatus('K1M_BR1', '42', 5, 50)).toBe('plain')
+    expect(result.current.getStatus('K1M_BR1', '42', 1, 2)).toBe('verified')
 
     let resolveReload!: (value: typeof LOADED) => void
     const pending = new Promise<typeof LOADED>((resolve) => {
@@ -311,21 +315,24 @@ describe('useChecks', () => {
     expect(result.current.getStatus('K1M_BR1', '42', 5, 50)).toBe('verified')
 
     // The reload's response, snapshotted before the check-set, must not
-    // resurrect the pre-event (unverified) state.
+    // resurrect the pre-event (unverified) state on gate 5 - but it must
+    // still supply gate 1, which the event never touched.
     await act(async () => {
       resolveReload(LOADED as never)
       await pending
     })
 
     expect(result.current.getStatus('K1M_BR1', '42', 5, 50)).toBe('verified')
+    expect(result.current.getStatus('K1M_BR1', '42', 1, 2)).toBe('verified')
     expect(result.current.loading).toBe(false)
   })
 
-  it('discards a reload response that predates a flag event that arrived while it was in flight', async () => {
+  it('reconciles a reload response that predates a flag event that arrived while it was in flight', async () => {
     // Same fix, exercised via applyFlagEvent instead of applyCheckEvent.
     const { result } = await renderLoaded()
     const flag = { id: 'f9', bib: '42', gate: 8, createdAt: 't', comment: 'x', resolved: false }
     expect(result.current.getStatus('K1M_BR1', '42', 8, 0)).toBe('plain')
+    expect(result.current.getStatus('K1M_BR1', '42', 1, 2)).toBe('verified')
 
     let resolveReload!: (value: typeof LOADED) => void
     const pending = new Promise<typeof LOADED>((resolve) => {
@@ -348,6 +355,57 @@ describe('useChecks', () => {
     })
 
     expect(result.current.getStatus('K1M_BR1', '42', 8, 0)).toBe('flagged')
+    expect(result.current.getStatus('K1M_BR1', '42', 1, 2)).toBe('verified')
+    expect(result.current.loading).toBe(false)
+  })
+
+  it('reconciles rather than discards when an unrelated event lands during the initial load, on a different race entirely (task 11 re-review, Important-A)', async () => {
+    // The earlier fix (discard the whole response whenever eventToken
+    // moved) traded Minor-5's one-gate loss for a bigger one: on the
+    // *initial* load, `races` starts empty, so discarding meant losing every
+    // race's verification state whenever an unrelated event raced in -
+    // silently, since available/unavailableReason are gated by loadAttempt,
+    // which no event touches.
+    const snapshot = {
+      xmlFilename: 'e.xml',
+      fingerprint: 'f',
+      races: {
+        K1M_BR1: { checks: { '42:1': { checkedAt: 't', value: 2 } }, flags: [] },
+        C1W_BR1: { checks: { '7:4': { checkedAt: 't', value: 50 } }, flags: [] },
+      },
+    }
+
+    let resolveLoad!: (value: typeof snapshot) => void
+    const pending = new Promise<typeof snapshot>((resolve) => {
+      resolveLoad = resolve
+    })
+    vi.mocked(api.fetchAllChecks).mockReturnValue(pending as never)
+
+    const { result } = renderHook(() => useChecks({ enabled: true }))
+    expect(result.current.loading).toBe(true)
+
+    // A third tablet verifies a gate on a *third* race - one the in-flight
+    // fetch's eventual response will not even mention as "changed by this",
+    // since the fetch was already on the wire.
+    act(() => {
+      result.current.applyCheckEvent({
+        event: 'check-set', raceId: 'K1W_BR1', bib: '99', gate: 1,
+        check: { checkedAt: 't2', value: 0 },
+      })
+    })
+    expect(result.current.getStatus('K1W_BR1', '99', 1, 0)).toBe('verified')
+
+    await act(async () => {
+      resolveLoad(snapshot as never)
+      await pending
+    })
+
+    // The fetched snapshot's own two races survived - not discarded.
+    expect(result.current.getStatus('K1M_BR1', '42', 1, 2)).toBe('verified')
+    expect(result.current.getStatus('C1W_BR1', '7', 4, 50)).toBe('verified')
+    // The unrelated event's own effect also survived - reconciled on top.
+    expect(result.current.getStatus('K1W_BR1', '99', 1, 0)).toBe('verified')
+    expect(result.current.available).toBe(true)
     expect(result.current.loading).toBe(false)
   })
 

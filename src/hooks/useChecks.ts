@@ -34,6 +34,59 @@ export interface RaceProgress {
 
 type RacesState = Record<string, RaceChecksData>
 
+/**
+ * Pure reducer for one CheckChangedEvent, factored out of applyCheckEvent so
+ * load() can replay buffered events on top of a freshly fetched snapshot
+ * (see `pendingEvents`) using the exact same rules the live path uses -
+ * two copies of this logic drifting apart would be worse than one.
+ */
+function reduceCheckEvent(prev: RacesState, event: CheckChangedEvent): RacesState {
+  if (event.event === 'checks-reset') return {}
+
+  const race = prev[event.raceId] ?? EMPTY_RACE_CHECKS
+
+  if (event.event === 'checks-cleared') {
+    return { ...prev, [event.raceId]: { checks: {}, flags: [] } }
+  }
+
+  if (event.bib === undefined || event.gate === undefined) return prev
+  const key = createGateKey(event.bib, event.gate)
+  const checks = { ...race.checks }
+
+  if (event.event === 'check-set' && event.check) {
+    checks[key] = event.check
+  } else {
+    delete checks[key]
+  }
+
+  return { ...prev, [event.raceId]: { checks, flags: race.flags ?? [] } }
+}
+
+/** Pure reducer for one FlagChangedEvent - see reduceCheckEvent's comment. */
+function reduceFlagEvent(prev: RacesState, event: FlagChangedEvent): RacesState {
+  const race = prev[event.raceId] ?? EMPTY_RACE_CHECKS
+  const existing = race.flags ?? []
+
+  let flags: FlagEntry[]
+  if (event.event === 'flag-deleted') {
+    flags = existing.filter((flag) => flag.id !== event.flag.id)
+  } else if (existing.some((flag) => flag.id === event.flag.id)) {
+    flags = existing.map((flag) => (flag.id === event.flag.id ? event.flag : flag))
+  } else {
+    flags = [...existing, event.flag]
+  }
+
+  const checks = { ...race.checks }
+  if (event.check) checks[createGateKey(event.flag.bib, event.flag.gate)] = event.check
+
+  return { ...prev, [event.raceId]: { checks, flags } }
+}
+
+/** One buffered event, tagged so load() knows which reducer replays it. */
+type PendingEvent =
+  | { kind: 'check'; event: CheckChangedEvent }
+  | { kind: 'flag'; event: FlagChangedEvent }
+
 export function useChecks(options: { enabled?: boolean } = {}) {
   const { enabled = true } = options
 
@@ -70,26 +123,45 @@ export function useChecks(options: { enabled?: boolean } = {}) {
   // Answers a narrower question than loadToken: "has *any* check/flag event
   // been applied since this load started?" Bumped by every applied event,
   // check or flag, reset/cleared included - unlike loadToken, an ordinary
-  // single-gate event counts too. load() snapshots this alongside loadToken
-  // and refuses to apply its response if either moved: a check-set that
-  // arrives while a load's fetch is in flight is strictly newer than that
-  // fetch's snapshot, so applying the snapshot afterwards would silently
-  // overwrite the event's own update - and nothing would re-fetch to
-  // recover it. Not reused by applyMutationResult/rollbackMutation - see
-  // loadToken's comment for why those two must stay unaffected by an
-  // unrelated single-gate event.
+  // single-gate event counts too. load() snapshots this alongside loadToken:
+  // if only this moved (not loadToken), the fetch's snapshot is stale on
+  // exactly the keys those events touched, and load() reconciles rather than
+  // discarding - see `pendingEvents` below. Not reused by
+  // applyMutationResult/rollbackMutation - see loadToken's comment for why
+  // those two must stay unaffected by an unrelated single-gate event.
   const eventToken = useRef(0)
   // Counts requests actually in flight, independent of either token above. A
   // load whose response gets discarded still completed a real network
   // round-trip, and `loading` must reflect that — otherwise discarding a
   // load right before it resolves leaves `loading` stuck true.
   const inFlightCount = useRef(0)
+  // Every check/flag event applied while a load is in flight, in arrival
+  // order - cleared at the start of each load() so it only ever holds
+  // *this* attempt's window. When a load's response arrives with eventToken
+  // moved but loadToken unchanged (no reset/cleared/newer load - just
+  // ordinary events), the fetched snapshot is not worthless, only stale on
+  // the keys those events touched: load() applies the snapshot, then replays
+  // this buffer through the same reducers the live path uses, so the events
+  // win on their own keys and the snapshot supplies everything else. Without
+  // this, the earlier fix (discard the whole response whenever eventToken
+  // moved) traded a one-gate loss for losing every race's verification state
+  // whenever an unrelated event raced the *initial* load - silently, since
+  // `available`/`unavailableReason` are gated by loadAttempt, which no event
+  // touches. Only pushed to while a load is actually in flight
+  // (inFlightCount > 0): outside that window every event already applies
+  // directly to `races`, so buffering it too would just grow unbounded for
+  // the rest of the session.
+  const pendingEvents = useRef<PendingEvent[]>([])
 
   const load = useCallback(async () => {
     if (!enabled) return
     const attempt = ++loadAttempt.current
     const token = ++loadToken.current
     const eventsSeen = eventToken.current
+    // Fresh window: whatever the *previous* load's flight left behind is not
+    // this attempt's concern (either it was already reconciled/consumed, or
+    // it belonged to a window a reset/newer load has since superseded).
+    pendingEvents.current = []
     inFlightCount.current++
     setLoading(true)
     try {
@@ -102,12 +174,35 @@ export function useChecks(options: { enabled?: boolean } = {}) {
         setAvailable(true)
         setUnavailableReason(null)
       }
-      if (token !== loadToken.current) return // stale snapshot: verdict kept above, data dropped here
-      // Same idea, narrower trigger: an ordinary single-gate event (not just
-      // reset/cleared) landed while this fetch was in flight, so the fetch's
-      // snapshot predates it and must not overwrite it.
-      if (eventsSeen !== eventToken.current) return
-      setRaces(data.races ?? {})
+      // A reset/cleared (or a newer load already having started) means this
+      // race's whole context is gone or superseded - the fetched snapshot
+      // cannot be reconciled with anything, only discarded. Verdict kept
+      // above; data dropped here. Whatever this window's pendingEvents holds
+      // is moot: a reset/cleared already wiped `races` directly via its own
+      // reducer, and a newer load will consult its own (already-cleared)
+      // window instead.
+      if (token !== loadToken.current) return
+      const events = pendingEvents.current
+      pendingEvents.current = []
+      if (eventsSeen === eventToken.current) {
+        // Nothing happened during the flight - the snapshot is exactly current.
+        setRaces(data.races ?? {})
+      } else {
+        // One or more ordinary events landed during the flight. The snapshot
+        // predates them but is not worthless - only the keys they touched
+        // are stale. Apply it as the base, then replay exactly the events
+        // buffered since this load started, in arrival order, through the
+        // same reducers the live path uses: they win on their own keys, the
+        // snapshot supplies everything else. See `pendingEvents`'s comment.
+        let reconciled: RacesState = data.races ?? {}
+        for (const pending of events) {
+          reconciled =
+            pending.kind === 'check'
+              ? reduceCheckEvent(reconciled, pending.event)
+              : reduceFlagEvent(reconciled, pending.event)
+        }
+        setRaces(reconciled)
+      }
     } catch (error) {
       // A server without the checks API is a supported configuration, not a
       // crash: the feature switches off and says so. Only fetchAllChecks can
@@ -221,8 +316,8 @@ export function useChecks(options: { enabled?: boolean } = {}) {
 
   const applyCheckEvent = useCallback((event: CheckChangedEvent) => {
     // Every applied event bumps eventToken, so a load() already in flight
-    // (its snapshot necessarily predates this event) discards its response
-    // rather than overwriting what this event is about to write - see the
+    // (its snapshot necessarily predates this event) reconciles rather than
+    // blindly overwriting what this event is about to write - see the
     // comment above `eventToken`'s declaration. checks-reset/checks-cleared
     // additionally bump loadToken, which also invalidates
     // applyMutationResult/rollbackMutation's in-flight mutations for this
@@ -235,28 +330,16 @@ export function useChecks(options: { enabled?: boolean } = {}) {
     if (event.event === 'checks-reset' || event.event === 'checks-cleared') {
       loadToken.current++
     }
+    // Buffered only while a load is actually in flight - see the comment
+    // above `pendingEvents`'s declaration for why that guard matters. A
+    // reset/cleared ending up here is harmless: it always forces a loadToken
+    // mismatch too, so load() takes the full-discard branch and never reads
+    // this buffer for it.
+    if (inFlightCount.current > 0) {
+      pendingEvents.current.push({ kind: 'check', event })
+    }
 
-    setRaces((prev) => {
-      if (event.event === 'checks-reset') return {}
-
-      const race = prev[event.raceId] ?? EMPTY_RACE_CHECKS
-
-      if (event.event === 'checks-cleared') {
-        return { ...prev, [event.raceId]: { checks: {}, flags: [] } }
-      }
-
-      if (event.bib === undefined || event.gate === undefined) return prev
-      const key = createGateKey(event.bib, event.gate)
-      const checks = { ...race.checks }
-
-      if (event.event === 'check-set' && event.check) {
-        checks[key] = event.check
-      } else {
-        delete checks[key]
-      }
-
-      return { ...prev, [event.raceId]: { checks, flags: race.flags ?? [] } }
-    })
+    setRaces((prev) => reduceCheckEvent(prev, event))
   }, [])
 
   const applyFlagEvent = useCallback((event: FlagChangedEvent) => {
@@ -267,25 +350,11 @@ export function useChecks(options: { enabled?: boolean } = {}) {
     // never wipe a whole race the way checks-reset/-cleared do, so loadToken
     // itself is untouched here - see loadToken's comment.
     eventToken.current++
+    if (inFlightCount.current > 0) {
+      pendingEvents.current.push({ kind: 'flag', event })
+    }
 
-    setRaces((prev) => {
-      const race = prev[event.raceId] ?? EMPTY_RACE_CHECKS
-      const existing = race.flags ?? []
-
-      let flags: FlagEntry[]
-      if (event.event === 'flag-deleted') {
-        flags = existing.filter((flag) => flag.id !== event.flag.id)
-      } else if (existing.some((flag) => flag.id === event.flag.id)) {
-        flags = existing.map((flag) => (flag.id === event.flag.id ? event.flag : flag))
-      } else {
-        flags = [...existing, event.flag]
-      }
-
-      const checks = { ...race.checks }
-      if (event.check) checks[createGateKey(event.flag.bib, event.flag.gate)] = event.check
-
-      return { ...prev, [event.raceId]: { checks, flags } }
-    })
+    setRaces((prev) => reduceFlagEvent(prev, event))
   }, [])
 
   const writeCheckLocally = useCallback(
