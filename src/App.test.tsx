@@ -20,7 +20,18 @@ import type { Settings } from './hooks/useSettings'
 import type { C123ResultsData, C123RaceConfigData } from './types/c123server'
 
 vi.mock('./hooks/useC123WebSocket')
-vi.mock('./hooks/useChecks')
+// Mocks only the `useChecks` hook itself, not the whole module: `isProgressDone`
+// (also exported from this file) is a pure function CheckProgress.tsx calls
+// directly (via the hooks barrel), and the footer-wiring test below needs the
+// *real* implementation running to prove App.tsx feeds it real data - a bare
+// `vi.mock('./hooks/useChecks')` auto-mocks every export, including this one,
+// which would make that test pass unconditionally (isProgressDone -> undefined
+// -> isComplete always false) regardless of what openFlags value actually
+// reaches it.
+vi.mock('./hooks/useChecks', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('./hooks/useChecks')>()
+  return { ...actual, useChecks: vi.fn() }
+})
 vi.mock('./hooks/useScoring')
 vi.mock('./hooks/useSchedule')
 vi.mock('./hooks/useGateGroups')
@@ -282,5 +293,49 @@ describe('AppContent verification wiring (task 11 review, Important-1)', () => {
     // (1-based) must read index 1 (value 2, [gate - 1]), not index 2
     // (value 50, the neighbouring gate's value at [gate]).
     expect(toggleGate).toHaveBeenCalledWith(RACE_ID, '42', 2, 2)
+  })
+
+  // flag-blocks-done review, Important-1: getRaceCheckState (fed to the race
+  // switcher) and footerProgress (fed to the footer bar) are the only path
+  // by which the real openFlags reaches either "done" indicator. Nothing
+  // above exercised that wiring with a non-zero openFlags - a hardcoded
+  // `openFlags: 0` in either site would pass every other test here, and
+  // tsc, and still silently reintroduce the false "done" this feature
+  // exists to remove.
+  it('hands the race switcher the open-flag count getRaceProgress reported', async () => {
+    setupChecks({
+      available: true,
+      getRaceProgress: vi.fn(() => ({ checked: 3, total: 3, openFlags: 1, done: false })),
+    })
+    await act(async () => {
+      render(<AppContent settings={testSettings} updateSettings={vi.fn()} />)
+    })
+
+    expect(headerProps).not.toBeNull()
+    expect((headerProps!.getRaceCheckState as (id: string) => unknown)(RACE_ID)).toEqual({
+      checked: 3,
+      total: 3,
+      openFlags: 1,
+    })
+  })
+
+  it('feeds the real openFlags count into the footer progress bar, not a hardcoded value', async () => {
+    // Every gate checked (checked === total) but with an open flag - the
+    // fully-checked case is exactly where a hardcoded openFlags: 0 would
+    // slip through unnoticed and render the bar green.
+    setupChecks({
+      available: true,
+      getRaceProgress: vi.fn(() => ({ checked: 3, total: 3, openFlags: 1, done: false })),
+    })
+    let view!: ReturnType<typeof render>
+    await act(async () => {
+      view = render(<AppContent settings={testSettings} updateSettings={vi.fn()} />)
+    })
+
+    // CheckProgress is not mocked in this file (unlike ResultsGrid/Header
+    // above), so this exercises the real component against whatever
+    // footerProgress actually computed.
+    expect(view.getByRole('progressbar')).not.toHaveClass('progress-success')
+    expect(view.getByText('3/3')).not.toHaveClass('check-progress__text--complete')
   })
 })
