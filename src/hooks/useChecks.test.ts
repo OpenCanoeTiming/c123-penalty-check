@@ -280,15 +280,17 @@ describe('useChecks', () => {
     expect(result.current.loading).toBe(false)
   })
 
-  it('reconciles a reload response that predates a check-set event from another tablet that arrived while it was in flight', async () => {
+  it('keeps a check-set event from another tablet after a reload response that predates it resolves (task 11 fix round 1, Minor-5)', async () => {
     // Same shape as the checks-reset test above, but for an ordinary
     // single-gate event: it must invalidate an in-flight load's snapshot
     // too, not just a full reset/clear - otherwise the newer check-set gets
     // silently overwritten a moment later by the older snapshot, and nothing
-    // re-fetches to recover it (task 11 review, Minor-5). Unlike
-    // checks-reset, this must *reconcile* rather than discard the whole
-    // response (task 11 re-review, Important-A) - asserted here by checking
-    // that gate 1, untouched by the event, also survives the reload.
+    // re-fetches to recover it (task 11 review, Minor-5). This pins Minor-5
+    // only, not reconciliation-vs-discard in general: the fixture has a
+    // single race, so a post-reload check on gate 1 (untouched by the event)
+    // cannot distinguish "properly reconciled" from "response discarded but
+    // gate 1 was already correct beforehand" - that distinction needs a
+    // second race, which the test below this one provides.
     const { result } = await renderLoaded()
     expect(result.current.getStatus('K1M_BR1', '42', 5, 50)).toBe('plain')
     expect(result.current.getStatus('K1M_BR1', '42', 1, 2)).toBe('verified')
@@ -315,20 +317,20 @@ describe('useChecks', () => {
     expect(result.current.getStatus('K1M_BR1', '42', 5, 50)).toBe('verified')
 
     // The reload's response, snapshotted before the check-set, must not
-    // resurrect the pre-event (unverified) state on gate 5 - but it must
-    // still supply gate 1, which the event never touched.
+    // resurrect the pre-event (unverified) state on gate 5.
     await act(async () => {
       resolveReload(LOADED as never)
       await pending
     })
 
     expect(result.current.getStatus('K1M_BR1', '42', 5, 50)).toBe('verified')
-    expect(result.current.getStatus('K1M_BR1', '42', 1, 2)).toBe('verified')
     expect(result.current.loading).toBe(false)
   })
 
-  it('reconciles a reload response that predates a flag event that arrived while it was in flight', async () => {
-    // Same fix, exercised via applyFlagEvent instead of applyCheckEvent.
+  it('keeps a flag-created event from another tablet after a reload response that predates it resolves (task 11 fix round 1, Minor-5)', async () => {
+    // Same fix as above, exercised via applyFlagEvent instead of
+    // applyCheckEvent. Also pins Minor-5 only, for the same single-race
+    // reason given there.
     const { result } = await renderLoaded()
     const flag = { id: 'f9', bib: '42', gate: 8, createdAt: 't', comment: 'x', resolved: false }
     expect(result.current.getStatus('K1M_BR1', '42', 8, 0)).toBe('plain')
@@ -355,7 +357,6 @@ describe('useChecks', () => {
     })
 
     expect(result.current.getStatus('K1M_BR1', '42', 8, 0)).toBe('flagged')
-    expect(result.current.getStatus('K1M_BR1', '42', 1, 2)).toBe('verified')
     expect(result.current.loading).toBe(false)
   })
 
