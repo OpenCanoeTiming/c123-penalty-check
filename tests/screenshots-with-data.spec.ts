@@ -249,7 +249,7 @@ test.describe('Screenshot Tests - With Data', () => {
     const raceSelector = page.locator('select[aria-label="Select race"]');
     await raceSelector.waitFor({ state: 'visible', timeout: 20000 }).catch(() => {});
     if (!(await raceSelector.isVisible().catch(() => false))) {
-      console.log('[23/24/25] Race selector never appeared - skipping (no server connection)');
+      test.skip(true, 'Race selector never appeared - no server connection');
       return;
     }
 
@@ -282,7 +282,7 @@ test.describe('Screenshot Tests - With Data', () => {
       }
     }
     if (!raceId) {
-      console.log('[23/24/25] No race with judged gate data found - skipping');
+      test.skip(true, 'No race with judged gate data found');
       return;
     }
 
@@ -359,7 +359,7 @@ test.describe('Screenshot Tests - With Data', () => {
 
     const withValue = gridInfo.cells.filter((c) => c.hasValue);
     if (withValue.length === 0) {
-      console.log('[23/24/25] No judged gates in this race - skipping');
+      test.skip(true, 'No judged gates in this race');
       return;
     }
 

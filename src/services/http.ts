@@ -28,11 +28,6 @@ export class ApiRequestError extends Error {
   get isValidationError(): boolean {
     return this.status === 400
   }
-
-  /** Server does not implement this endpoint — an older c123-server */
-  get isUnsupported(): boolean {
-    return this.status === 404 || this.status === 503
-  }
 }
 
 const DEFAULT_TIMEOUT = 5000

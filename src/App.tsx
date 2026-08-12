@@ -482,12 +482,15 @@ export function AppContent({ settings, updateSettings, openSettingsOnMount }: Ap
               </span>
             )}
             {connectionState === 'connected' && !checks.loading && !checks.available && (
-              <Badge
-                variant="warning"
-                title={checks.unavailableReason?.message ?? 'This server does not support penalty verification.'}
-              >
-                Verification unavailable
-              </Badge>
+              <span className="verification-unavailable">
+                <Badge variant="warning">Verification unavailable</Badge>
+                {/* The reason is rendered as text, not just a title attribute -
+                    a title tooltip never appears on a touch device, and this
+                    app is built for a tablet. */}
+                <span className="verification-unavailable-reason">
+                  {checks.unavailableReason?.message ?? 'This server does not support penalty verification.'}
+                </span>
+              </span>
             )}
           </span>
 

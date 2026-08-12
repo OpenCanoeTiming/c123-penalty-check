@@ -249,6 +249,23 @@ describe('AppContent verification wiring (task 11 review, Important-1)', () => {
     expect('getRaceCheckState' in headerProps!).toBe(false)
   })
 
+  it('shows why verification is unavailable as visible text, not just a title attribute', async () => {
+    // A `title` tooltip never appears on a touch device, and this app is
+    // built for a tablet - the explanation useChecks goes to real trouble to
+    // produce (404 vs 503 mean different things to the operator) must be
+    // readable on screen.
+    setupChecks({
+      available: false,
+      unavailableReason: { status: 503, message: 'Load an XML file into the server first.' },
+    })
+    let view!: ReturnType<typeof render>
+    await act(async () => {
+      view = render(<AppContent settings={testSettings} updateSettings={vi.fn()} />)
+    })
+
+    expect(view.getByText('Load an XML file into the server first.')).toBeInTheDocument()
+  })
+
   it('reads the live gate value at gate-1, not gate, when toggling a check', async () => {
     const toggleGate = vi.fn().mockResolvedValue(true)
     setupChecks({ available: true, toggleGate })
