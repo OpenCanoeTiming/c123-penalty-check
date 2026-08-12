@@ -28,7 +28,13 @@ export {
   type UseGateGroupsOptions,
   type UseGateGroupsReturn,
 } from './useGateGroups'
-export { useChecks, type UseChecksReturn, type ProgressRow, type RaceProgress } from './useChecks'
+export {
+  useChecks,
+  isProgressDone,
+  type UseChecksReturn,
+  type ProgressRow,
+  type RaceProgress,
+} from './useChecks'
 export {
   useSettings,
   type Settings,

@@ -31,15 +31,30 @@ export interface RaceProgress {
   total: number
   /**
    * Open flags on gates that count toward progress (see getRaceProgress).
-   * `done` already folds this in (`openFlags === 0` is one of its
-   * conjuncts) - exposed separately anyway because RaceCheckState
-   * (src/components/RaceSelector/RaceSelector.tsx) needs the raw count to
-   * derive its own presentation from, the same way it already does for
-   * `checked`/`total`, rather than trusting a precomputed boolean it cannot
-   * verify.
+   * `done` already folds this in (`isProgressDone`'s `openFlags === 0`
+   * conjunct) - exposed separately anyway because every presentation-side
+   * consumer (RaceSelector's race-switcher tick, CheckProgress's footer
+   * bar) derives its own "done"/"complete" via `isProgressDone` from these
+   * raw counts rather than trusting a precomputed boolean passed in from
+   * elsewhere - see that function's comment for why.
    */
   openFlags: number
   done: boolean
+}
+
+/**
+ * The one place "is this progress complete" is decided. getRaceProgress's
+ * own `done` is `isProgressDone(this same result)`; RaceSelector's
+ * race-switcher tick and CheckProgress's footer bar call it too, each from
+ * the raw `{ checked, total, openFlags }` it already has - so there is
+ * exactly one formula for "done" in the codebase, not three copies that
+ * could individually drift (or, worse, agree today and silently diverge the
+ * next time this condition grows a fourth conjunct). Every gate an open
+ * flag blocks is one getStatus already renders 'flagged', never 'verified'
+ * - see hasOpenFlagFor and its callers.
+ */
+export function isProgressDone(progress: { checked: number; total: number; openFlags: number }): boolean {
+  return progress.total > 0 && progress.checked === progress.total && progress.openFlags === 0
 }
 
 type RacesState = Record<string, RaceChecksData>
@@ -344,7 +359,7 @@ export function useChecks(options: { enabled?: boolean } = {}) {
         }
       }
 
-      return { checked, total, openFlags, done: total > 0 && checked === total && openFlags === 0 }
+      return { checked, total, openFlags, done: isProgressDone({ checked, total, openFlags }) }
     },
     [races]
   )

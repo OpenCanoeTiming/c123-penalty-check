@@ -1,4 +1,5 @@
 import { ProgressBar } from '@opencanoetiming/timing-design-system'
+import { isProgressDone } from '../../hooks'
 import type { CheckProgress as CheckProgressType } from '../../types/scoring'
 import './CheckProgress.css'
 
@@ -23,7 +24,12 @@ export function CheckProgress({
     return null
   }
 
-  const isComplete = checked === total
+  // Same verdict as the race-switcher tick (RaceSelector.tsx) - both call
+  // isProgressDone (src/hooks/useChecks.ts) instead of each keeping their
+  // own "checked === total" copy, so a race with an unresolved flag can't
+  // render green here while the switcher withholds its own tick right next
+  // to it.
+  const isComplete = isProgressDone(progress)
 
   return (
     <div className={`check-progress ${compact ? 'check-progress--compact' : ''}`}>

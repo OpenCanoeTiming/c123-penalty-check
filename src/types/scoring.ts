@@ -78,4 +78,6 @@ export interface CheckProgress {
   total: number
   /** Percentage complete (0-100) */
   percentage: number
+  /** Open flags on gates that count toward progress - see RaceProgress.openFlags (src/hooks/useChecks.ts). */
+  openFlags: number
 }

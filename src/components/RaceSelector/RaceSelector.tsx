@@ -1,5 +1,6 @@
 import { useMemo } from 'react'
 import { Select, Button } from '@opencanoetiming/timing-design-system'
+import { isProgressDone } from '../../hooks'
 import type { ProcessedRace } from '../../hooks/useSchedule'
 import styles from './RaceSelector.module.css'
 
@@ -34,24 +35,21 @@ interface RaceSelectorProps {
  * "checked/total" reach the user (and assistive tech, via the option's own
  * accessible name) exactly the way they would anyway.
  *
- * "Done" is a presentation decision (tick vs. ratio) and is made right
- * here from the raw counts, not accepted as a precomputed flag: this
- * indicator is the operator's signal that a race is safe to finalize, so
- * a false "done" is the worst possible failure mode this feature can
- * produce, and a boolean handed in from elsewhere is one more place that
- * could get it wrong (or drift from getRaceProgress's definition without
- * this component ever noticing). Exact equality (not `>=`), the
- * `total > 0` guard, and the `openFlags === 0` guard all matter, same as
- * in getRaceProgress (src/hooks/useChecks.ts), which this intentionally
- * mirrors rather than imports - if "done" ever needs a new condition
- * there, it needs one here too, on purpose, not by accident. A race that
- * is fully checked but still has an open flag falls through to the ratio
- * branch rather than the tick - it is not done, and the ratio at least
- * doesn't claim otherwise.
+ * "Done" is a presentation decision (tick vs. ratio), made from the raw
+ * counts via the shared `isProgressDone` (src/hooks/useChecks.ts) rather
+ * than a precomputed flag accepted as given: this indicator is the
+ * operator's signal that a race is safe to finalize, so a false "done" is
+ * the worst possible failure mode this feature can produce. `isProgressDone`
+ * is the one place that verdict is decided - getRaceProgress's own `done`
+ * and CheckProgress's footer-bar "complete" both call the same function on
+ * the same shape of counts, so there is exactly one formula to get right,
+ * not three that could individually drift. A race that is fully checked but
+ * still has an open flag falls through to the ratio branch rather than the
+ * tick - it is not done, and the ratio at least doesn't claim otherwise.
  */
 function raceCheckIndicator(state: RaceCheckState | undefined): string {
   if (!state) return ''
-  if (state.total > 0 && state.checked === state.total && state.openFlags === 0) return ' ✓'
+  if (isProgressDone(state)) return ' ✓'
   if (state.total > 0) return ` ${state.checked}/${state.total}`
   return ''
 }

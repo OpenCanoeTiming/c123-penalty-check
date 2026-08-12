@@ -418,13 +418,15 @@ export function AppContent({ settings, updateSettings, openSettingsOnMount }: Ap
 
   // Footer verification progress for the selected race
   const raceProgress = useMemo(() => {
-    if (!effectiveSelectedRaceId || !selectedRaceResults) return { checked: 0, total: 0, done: false }
+    if (!effectiveSelectedRaceId || !selectedRaceResults) {
+      return { checked: 0, total: 0, openFlags: 0, done: false }
+    }
     return checks.getRaceProgress(effectiveSelectedRaceId, selectedRaceResults.rows)
   }, [checks, effectiveSelectedRaceId, selectedRaceResults])
 
   const footerProgress = useMemo(() => {
-    const { checked, total } = raceProgress
-    return { checked, total, percentage: total > 0 ? Math.round((checked / total) * 100) : 0 }
+    const { checked, total, openFlags } = raceProgress
+    return { checked, total, openFlags, percentage: total > 0 ? Math.round((checked / total) * 100) : 0 }
   }, [raceProgress])
 
   // Apply theme to document element
