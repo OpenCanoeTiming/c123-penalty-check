@@ -30,13 +30,18 @@ export interface RaceProgress {
   checked: number
   total: number
   /**
-   * Open flags on gates that count toward progress (see getRaceProgress).
-   * `done` already folds this in (`isProgressDone`'s `openFlags === 0`
-   * conjunct) - exposed separately anyway because every presentation-side
-   * consumer (RaceSelector's race-switcher tick, CheckProgress's footer
-   * bar) derives its own "done"/"complete" via `isProgressDone` from these
-   * raw counts rather than trusting a precomputed boolean passed in from
-   * elsewhere - see that function's comment for why.
+   * Open flags belonging to a bib that counts toward progress (see
+   * getRaceProgress) - scoped to the *row*, not to a specific gate within
+   * it: a flag can legitimately sit on a gate this row's own results string
+   * hasn't caught up to yet (adding a flag is never disabled the way
+   * verifying an empty gate is), and the grid still renders that gate as
+   * 'flagged' regardless. `done` already folds this in (`isProgressDone`'s
+   * `openFlags === 0` conjunct) - exposed separately anyway because every
+   * presentation-side consumer (RaceSelector's race-switcher tick,
+   * CheckProgress's footer bar) derives its own "done"/"complete" via
+   * `isProgressDone` from these raw counts rather than trusting a
+   * precomputed boolean passed in from elsewhere - see that function's
+   * comment for why.
    */
   openFlags: number
   done: boolean
@@ -49,9 +54,10 @@ export interface RaceProgress {
  * the raw `{ checked, total, openFlags }` it already has - so there is
  * exactly one formula for "done" in the codebase, not three copies that
  * could individually drift (or, worse, agree today and silently diverge the
- * next time this condition grows a fourth conjunct). Every gate an open
- * flag blocks is one getStatus already renders 'flagged', never 'verified'
- * - see hasOpenFlagFor and its callers.
+ * next time this condition grows a fourth conjunct). Every flag counted in
+ * `openFlags` carries a (bib, gate) getStatus's hasOpenFlagFor would also
+ * match, so every gate this blocks on is one getStatus already renders
+ * 'flagged', never 'verified' - see hasOpenFlagFor.
  */
 export function isProgressDone(progress: { checked: number; total: number; openFlags: number }): boolean {
   return progress.total > 0 && progress.checked === progress.total && progress.openFlags === 0
@@ -88,10 +94,13 @@ function reduceCheckEvent(prev: RacesState, event: CheckChangedEvent): RacesStat
 }
 
 /**
- * Whether a gate has a flag open against it right now. Shared by getStatus
- * and getRaceProgress so the two can never disagree about which gates are
- * flagged - each calls this instead of keeping its own copy of "resolved
- * === false" that could drift from the other's. See RaceProgress.openFlags.
+ * Whether a gate has a flag open against it right now. Used by getStatus for
+ * its per-cell 'flagged' verdict. getRaceProgress does not call this - it
+ * blocks on any open flag for a bib that counts toward progress, regardless
+ * of gate (see RaceProgress.openFlags), which is a strictly wider condition:
+ * every gate this would return true for is also a gate whose bib is in
+ * getRaceProgress's countedBibs, so the two still cannot disagree in the
+ * direction that matters (getStatus says 'flagged' ⇒ getRaceProgress blocks).
  */
 function hasOpenFlagFor(flags: FlagEntry[] | undefined, bib: string, gate: number): boolean {
   return (flags ?? []).some((flag) => !flag.resolved && flag.bib === bib && flag.gate === gate)
@@ -323,10 +332,14 @@ export function useChecks(options: { enabled?: boolean } = {}) {
       const race = races[raceId] ?? EMPTY_RACE_CHECKS
       let checked = 0
       let total = 0
-      let openFlags = 0
+      // Bibs whose row counts toward progress (rule 7) - collected in the
+      // same pass as checked/total so this is one filter, applied twice,
+      // not two filters that could drift.
+      const countedBibs = new Set<string>()
 
       for (const row of rows) {
         if (row.status) continue // rule 7: finished runs without a status only
+        countedBibs.add(row.bib)
         // Fixed-width C123 gates strings leave a blank block for a deleted
         // penalty — parseResultsGatesString preserves that position as null
         // rather than collapsing it, so gate numbering here stays aligned
@@ -336,28 +349,33 @@ export function useChecks(options: { enabled?: boolean } = {}) {
         const values = parseResultsGatesString(row.gates)
         for (let index = 0; index < values.length; index++) {
           total++
-          const gate = index + 1
           // Mirror getStatus exactly: a check only counts while the value it
           // was taken against still matches the live value. A stale check
           // (drifted, e.g. from a correction made directly in Canoe123,
           // which never reaches the server's invalidation hook) is not a
           // verification - counting it by existence alone would let a race
           // read "done" with a gate the grid itself renders as stale.
-          const check = race.checks?.[createGateKey(row.bib, gate)]
+          const check = race.checks?.[createGateKey(row.bib, index + 1)]
           if (check && check.value === values[index]) checked++
-          // Same reasoning, for flags: getStatus returns 'flagged' - not
-          // 'verified' - for this exact (bib, gate), via the same
-          // hasOpenFlagFor call, so a gate under open dispute can never
-          // slip into `done` here either. Scanning only gates this loop
-          // already enumerates is what scopes "counts toward progress" to
-          // exactly the rows/gates the numerator above uses - a flag on a
-          // DNS/DNF/DSQ row (skipped by the `continue` above, so never
-          // reaches this line) or on a gate past this row's own count never
-          // gets asked about, so it can't block a race whose verification
-          // scope doesn't include it.
-          if (hasOpenFlagFor(race.flags, row.bib, gate)) openFlags++
         }
       }
+
+      // A flag blocks as long as it belongs to a bib that counts toward
+      // progress at all - not scoped to gates this row's own `gates` string
+      // happens to reach. "Add flag" is never disabled the way "Verify gate"
+      // is on an empty gate (rule 3), so a flag can legitimately sit on a
+      // gate this row hasn't been judged for yet (paper says something, the
+      // system has nothing) - and the grid renders that gate as 'flagged'
+      // via getStatus regardless, since it walks every gate the race
+      // config defines for every row, not just the ones this row's own
+      // gates string covers. Scoping by bib membership in `countedBibs`
+      // (the same set the numerator above populates) rather than by gate
+      // index is what keeps this in agreement with what the grid actually
+      // paints - a narrower, gate-indexed scope would leave a gate the grid
+      // shows as the loudest possible signal unable to block "done" here.
+      const openFlags = (race.flags ?? []).filter(
+        (flag) => !flag.resolved && countedBibs.has(flag.bib)
+      ).length
 
       return { checked, total, openFlags, done: isProgressDone({ checked, total, openFlags }) }
     },

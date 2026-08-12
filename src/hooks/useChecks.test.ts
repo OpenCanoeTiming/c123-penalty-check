@@ -105,12 +105,14 @@ describe('useChecks', () => {
       { bib: '43', gates: '0 0', status: 'DNF' },
     ]
     // bib 42 contributes 2 gates, one of them checked; bib 43 is excluded.
-    // LOADED's open flag sits on bib 42 gate 3, past this row's 2 gates, so
-    // it never gets asked about - openFlags: 0.
+    // LOADED's open flag is on bib 42 (gate 3, past this row's 2 gates) -
+    // openFlags is scoped by bib, not by gate index (Important-2), so it
+    // still blocks even though this row's own gates string never reaches
+    // gate 3.
     expect(result.current.getRaceProgress('K1M_BR1', rows)).toEqual({
       checked: 1,
       total: 2,
-      openFlags: 0,
+      openFlags: 1,
       done: false,
     })
   })
@@ -126,10 +128,14 @@ describe('useChecks', () => {
     // "done" in the footer and the race switcher.
     const { result } = await renderLoaded()
     expect(result.current.getStatus('K1M_BR1', '42', 1, 50)).toBe('stale')
+    // LOADED's open flag (bib 42, gate 3) also blocks here now - bib 42 is
+    // the only counted row, and openFlags is scoped by bib (Important-2) -
+    // but checked/total alone already prove the stale check isn't counted,
+    // which is what this test pins.
     expect(result.current.getRaceProgress('K1M_BR1', [{ bib: '42', gates: '50' }])).toEqual({
       checked: 0,
       total: 1,
-      openFlags: 0,
+      openFlags: 1,
       done: false,
     })
   })
@@ -172,6 +178,15 @@ describe('useChecks', () => {
 
   it('is done when every gate of every finished row is checked', async () => {
     const { result } = await renderLoaded()
+    // LOADED carries an open flag on bib 42 (gate 3) - resolve it first so
+    // this test isolates the checked/total condition on its own, not the
+    // flag rule (that has its own dedicated tests below).
+    act(() => {
+      result.current.applyFlagEvent({
+        event: 'flag-resolved', raceId: 'K1M_BR1',
+        flag: { id: 'f1', bib: '42', gate: 3, createdAt: 't', comment: 'c', resolved: true, resolvedAt: 't' },
+      })
+    })
     expect(result.current.getRaceProgress('K1M_BR1', [{ bib: '42', gates: '2' }])).toEqual({
       checked: 1,
       total: 1,
@@ -215,14 +230,61 @@ describe('useChecks', () => {
     })
   })
 
+  it('blocks done from a flag on a gate this row\'s own results string has not reached yet (review Important-2)', async () => {
+    // Reviewer's reproduction: "Add flag" is never disabled the way "Verify
+    // gate" is on an empty gate (rule 3), so a flag can legitimately sit on
+    // a gate this row hasn't been judged for at all - the paper protocol
+    // says something, the system has nothing yet. The grid still renders
+    // that gate as 'flagged' (it walks every gate the race config defines
+    // for every row, not just the ones this row's own results string
+    // covers), so openFlags must be scoped by bib, not by an index bounded
+    // by parseResultsGatesString(row.gates).length - otherwise this case
+    // would slip through as done: true while the grid shows a red cell.
+    const { result } = await renderLoaded()
+    act(() => {
+      // Neutralise LOADED's own default flag (bib 42, gate 3) so the flag
+      // this test adds is the only one responsible for the block.
+      result.current.applyFlagEvent({
+        event: 'flag-resolved', raceId: 'K1M_BR1',
+        flag: { id: 'f1', bib: '42', gate: 3, createdAt: 't', comment: 'c', resolved: true, resolvedAt: 't' },
+      })
+      result.current.applyFlagEvent({
+        event: 'flag-created', raceId: 'K1M_BR1',
+        flag: { id: 'f-unjudged', bib: '43', gate: 5, createdAt: 't', comment: 'x', resolved: false },
+      })
+    })
+    const rows = [
+      { bib: '42', gates: '2' },
+      { bib: '43', gates: '' }, // no status, not yet judged at all - counts toward progress regardless
+    ]
+
+    // The grid paints bib 43 gate 5 as flagged...
+    expect(result.current.getStatus('K1M_BR1', '43', 5, null)).toBe('flagged')
+    // ...and the aggregate must agree, even though bib 43's own (empty)
+    // gates string never reaches gate 5 - parseResultsGatesString('') is
+    // length 0, so a gate-index-scoped openFlags would never even ask.
+    expect(result.current.getRaceProgress('K1M_BR1', rows)).toEqual({
+      checked: 1,
+      total: 1,
+      openFlags: 1,
+      done: false,
+    })
+  })
+
   it('does not let an open flag on a DNS/DNF/DSQ row block a race that is otherwise fully checked', async () => {
     // Rows with a status are outside progress entirely (rule 7) - a flag on
     // one of them must not reach the aggregate at all, not even to block
-    // done. bib 43 here never appears in the checked/total loop, so its
-    // flag is never asked about - see hasOpenFlagFor's call site in
-    // getRaceProgress.
+    // done. bib 43 never enters countedBibs, so its flag is filtered out -
+    // see the countedBibs.has(flag.bib) check in getRaceProgress.
     const { result } = await renderLoaded()
     act(() => {
+      // LOADED carries its own open flag on bib 42 (gate 3) - resolve it
+      // first so the only open flag left is the one this test adds on the
+      // DNS row, isolating exactly the thing being pinned.
+      result.current.applyFlagEvent({
+        event: 'flag-resolved', raceId: 'K1M_BR1',
+        flag: { id: 'f1', bib: '42', gate: 3, createdAt: 't', comment: 'c', resolved: true, resolvedAt: 't' },
+      })
       result.current.applyFlagEvent({
         event: 'flag-created', raceId: 'K1M_BR1',
         flag: { id: 'f-dns', bib: '43', gate: 1, createdAt: 't', comment: 'x', resolved: false },
