@@ -287,6 +287,14 @@ export function useChecks(options: { enabled?: boolean } = {}) {
   }, [enabled])
 
   useEffect(() => {
+    // `load()` sets `loading` synchronously before it awaits, which is what
+    // trips this rule. That is the legitimate half of what the rule's own
+    // guidance allows — kicking off a fetch against an external system and
+    // flagging it in progress — not a cascading render. The alternative,
+    // deferring `setLoading` past the first await, would move timing that the
+    // in-flight/reset/reorder handling below is built around, so the flag
+    // stays synchronous deliberately.
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     void load()
     return () => {
       // Discard whatever load is still in flight when `enabled` flips (this
