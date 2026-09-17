@@ -29,10 +29,12 @@ export {
   type UseGateGroupsReturn,
 } from './useGateGroups'
 export {
-  useCheckedState,
-  type UseCheckedStateOptions,
-  type UseCheckedStateReturn,
-} from './useCheckedState'
+  useChecks,
+  isProgressDone,
+  type UseChecksReturn,
+  type ProgressRow,
+  type RaceProgress,
+} from './useChecks'
 export {
   useSettings,
   type Settings,

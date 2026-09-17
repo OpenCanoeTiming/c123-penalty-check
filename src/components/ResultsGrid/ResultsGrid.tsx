@@ -11,12 +11,21 @@
  * +------------------------+------------------------+
  */
 
-import { useRef, useEffect, useCallback, useMemo, useState, memo, type UIEvent } from 'react'
+import {
+  useRef,
+  useEffect,
+  useCallback,
+  useMemo,
+  useState,
+  memo,
+  type UIEvent,
+} from 'react'
 import type { C123ResultRow, C123RaceConfigData } from '../../types/c123server'
 import type { GateGroup, ResultsSortOption } from '../../types/ui'
 import type { PenaltyValue } from '../../types/scoring'
+import type { FlagEntry, GateCheckStatus } from '../../types/checks'
 import { useFocusNavigation, useKeyboardInput, useMultiTap } from '../../hooks'
-import { parseResultsGatesString } from '../../utils'
+import { parseResultsGatesString, sectionGatesFor } from '../../utils'
 import { PenaltyContextMenu } from './PenaltyContextMenu'
 import styles from './ResultsGrid.module.css'
 
@@ -36,13 +45,26 @@ interface PenaltyCellProps {
   isColFocus: boolean
   isRowFocus: boolean
   isBoundary: boolean
+  /** This gate is the last gate of a section (independent of isBoundary - see sectionEndGates) */
+  isSectionEnd: boolean
+  getGateStatus?: (bib: string, gate: number) => GateCheckStatus
   onCellClick: (e: React.MouseEvent, rowIndex: number, colIndex: number) => void
   onMouseDown: (e: React.MouseEvent, rowIndex: number, colIndex: number) => void
   onMouseUp: () => void
   onMouseLeave: () => void
-  onTouchStart: (e: React.TouchEvent, rowIndex: number, colIndex: number) => void
+  onTouchStart: (
+    e: React.TouchEvent,
+    rowIndex: number,
+    colIndex: number
+  ) => void
   onTouchEnd: () => void
-  onContextMenu: (e: React.MouseEvent, rowIndex: number, colIndex: number) => void
+  onContextMenu: (
+    e: React.MouseEvent,
+    rowIndex: number,
+    colIndex: number
+  ) => void
+  /** Verify the whole section ending at this gate - the click counterpart to Shift+Space */
+  onSectionVerify: (bib: string, gate: number) => void
 }
 
 /** Memoized penalty cell - only re-renders when its specific props change */
@@ -58,6 +80,8 @@ const PenaltyCell = memo(function PenaltyCell({
   isColFocus,
   isRowFocus,
   isBoundary,
+  isSectionEnd,
+  getGateStatus,
   onCellClick,
   onMouseDown,
   onMouseUp,
@@ -65,6 +89,7 @@ const PenaltyCell = memo(function PenaltyCell({
   onTouchStart,
   onTouchEnd,
   onContextMenu,
+  onSectionVerify,
 }: PenaltyCellProps) {
   const pen = penalties[gateIndex]
 
@@ -106,6 +131,10 @@ const PenaltyCell = memo(function PenaltyCell({
     className += ` ${styles.penaltyBoundary}`
   }
 
+  // Verification state - flagged > stale > verified > plain (loudest first)
+  const status = getGateStatus?.(competitorBib, gateNumber) ?? 'plain'
+  if (status !== 'plain') className += ` ${styles[status]}`
+
   // Build aria-label: "Gate 5, Bib 10, clear" or "Gate 5, Bib 10, empty"
   const ariaLabel = `Gate ${gateNumber}, Bib ${competitorBib}, ${penaltyLabel}`
 
@@ -124,6 +153,35 @@ const PenaltyCell = memo(function PenaltyCell({
       onContextMenu={(e) => onContextMenu(e, rowIndex, colIndex)}
     >
       {value}
+      {isSectionEnd && (
+        <span
+          className={styles.sectionHandle}
+          // Not a real button: not focusable, no keyboard activation - the
+          // section-verify action is fully reachable via Shift+Space, so
+          // this is a redundant mouse/touch shortcut, not its own a11y
+          // affordance. Hidden from assistive tech rather than announced as
+          // an unusable button; the title tooltip still serves sighted
+          // mouse users.
+          aria-hidden="true"
+          title={`Verify section ending at gate ${gateNumber}`}
+          // Stop every pointer-interaction event the cell itself listens
+          // for, not just click: mousedown/touchstart bubbling up would
+          // otherwise start the cell's long-press timer, which fires the
+          // penalty context menu out from under a tap meant to verify a
+          // section, and leaves longPressTriggered stuck true (the cell's
+          // own onClick guard that clears it never runs, because this
+          // handle's click never reaches it - see task-8 review C-2).
+          onMouseDown={(e) => e.stopPropagation()}
+          onMouseUp={(e) => e.stopPropagation()}
+          onTouchStart={(e) => e.stopPropagation()}
+          onTouchEnd={(e) => e.stopPropagation()}
+          onContextMenu={(e) => e.stopPropagation()}
+          onClick={(e) => {
+            e.stopPropagation()
+            onSectionVerify(competitorBib, gateNumber)
+          }}
+        />
+      )}
     </td>
   )
 })
@@ -136,7 +194,23 @@ interface ResultsGridProps {
   allGateGroups: GateGroup[]
   sortBy: ResultsSortOption
   onGroupSelect?: (groupId: string | null) => void
-  onPenaltySubmit: (bib: string, gate: number, value: PenaltyValue, raceId?: string) => void
+  onPenaltySubmit: (
+    bib: string,
+    gate: number,
+    value: PenaltyValue,
+    raceId?: string
+  ) => void
+  getGateStatus?: (bib: string, gate: number) => GateCheckStatus
+  /** Toggle verification of a single gate (Space) */
+  onToggleCheck?: (bib: string, gate: number) => void
+  /** Verify every gate in a section at once (Shift+Space, or the boundary click target) */
+  onVerifySection?: (bib: string, gates: number[]) => void
+  /** This gate's open (unresolved) flag, if any - feeds the context menu's "Resolve flag..." entry */
+  getOpenFlag?: (bib: string, gate: number) => FlagEntry | null
+  /** Open the create-flag dialog for a gate */
+  onAddFlag?: (bib: string, gate: number) => void
+  /** Open the resolve-flag dialog for an existing flag */
+  onResolveFlag?: (flag: FlagEntry) => void
 }
 
 // Scroll constants for auto-scrolling focused cell into view
@@ -146,6 +220,12 @@ const SCROLL_BUFFER = 18 // Extra buffer to ensure visibility
 
 // Long press duration for context menu (ms)
 const LONG_PRESS_DURATION = 500
+
+// Invisible marker toggled onto repeat identical live-region announcements
+// so the text actually changes and gets re-announced (see handleVerifyKeyDown).
+// Built from a char code, not a literal, so the source has no invisible
+// characters in it.
+const ZERO_WIDTH_SPACE = String.fromCharCode(8203)
 
 // Format time - display in seconds only
 function formatTime(seconds: number | null | undefined): string {
@@ -169,6 +249,12 @@ export function ResultsGrid({
   sortBy,
   onGroupSelect,
   onPenaltySubmit,
+  getGateStatus,
+  onToggleCheck,
+  onVerifySection,
+  getOpenFlag,
+  onAddFlag,
+  onResolveFlag,
 }: ResultsGridProps) {
   // Refs for scroll sync
   const groupsHeaderRef = useRef<HTMLDivElement>(null)
@@ -184,13 +270,18 @@ export function ResultsGrid({
     col: number
   } | null>(null)
 
+  // Announcement for keyboard actions that intentionally do nothing (e.g.
+  // Space on an empty gate) - screen-reader-only, so silence doesn't read as
+  // a dropped keystroke
+  const [announcement, setAnnouncement] = useState('')
+
   // Long press timer ref
   const longPressTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
   const longPressTriggered = useRef(false)
 
   // Filter gate groups (exclude 'all' group)
-  const customGroups = useMemo(() =>
-    allGateGroups.filter((g) => g.id !== 'all' && g.gates.length > 0),
+  const customGroups = useMemo(
+    () => allGateGroups.filter((g) => g.id !== 'all' && g.gates.length > 0),
     [allGateGroups]
   )
 
@@ -203,7 +294,9 @@ export function ResultsGrid({
     if (!activeGateGroup || activeGateGroup.gates.length === 0) {
       return Array.from({ length: nrGates }, (_, i) => i)
     }
-    return activeGateGroup.gates.map((g) => g - 1).filter((i) => i >= 0 && i < nrGates)
+    return activeGateGroup.gates
+      .map((g) => g - 1)
+      .filter((i) => i >= 0 && i < nrGates)
   }, [activeGateGroup, nrGates])
 
   // Detect group boundaries for visual separators
@@ -226,6 +319,30 @@ export function ResultsGrid({
     }
 
     return boundaries
+  }, [visibleGateIndices, customGroups])
+
+  // Gates that end a section (the highest gate number in a group), among the
+  // currently visible gates - independent of groupBoundaries. groupBoundaries
+  // only marks a *separator line* between two differently-grouped adjacent
+  // columns, so it never includes the last visible column and is empty
+  // whenever a single group is the active filter (nothing differs to the
+  // "next" gate because there is no next visible gate at all, or only one
+  // group is shown). A section-verify handle has to exist for those cases
+  // too - the last group in an unfiltered view, and every gate in a filtered
+  // single-group view - or the click route to that section vanishes.
+  const sectionEndGates = useMemo(() => {
+    const ends = new Set<number>()
+    if (customGroups.length === 0) return ends
+
+    const visibleGateSet = new Set(visibleGateIndices.map((i) => i + 1))
+    for (const group of customGroups) {
+      if (group.gates.length === 0) continue
+      const lastGate = Math.max(...group.gates)
+      if (visibleGateSet.has(lastGate)) {
+        ends.add(lastGate)
+      }
+    }
+    return ends
   }, [visibleGateIndices, customGroups])
 
   // Sort rows
@@ -289,15 +406,73 @@ export function ResultsGrid({
     },
   })
 
+  // Space verifies the focused gate; Shift+Space verifies its whole section.
+  // Checked ahead of the digit/nav handlers so it can't be shadowed by them.
+  const handleVerifyKeyDown = useCallback(
+    (e: React.KeyboardEvent): boolean => {
+      if (e.key !== ' ') return false
+      e.preventDefault()
+
+      const row = sortedRows[position.row]
+      if (!row) return true
+
+      const gateIndex = visibleGateIndices[position.column]
+      const gate = gateIndex + 1
+
+      if (e.shiftKey) {
+        // Shift+Space only ever verifies - it must never be able to toggle a
+        // gate (and so a whole section) back to unverified on a stray press.
+        // customGroups, not allGateGroups: allGateGroups can carry the
+        // synthetic "all gates" pseudo-group (id 'all'), which today has an
+        // empty gates array but isn't guaranteed to stay that way - were it
+        // ever populated, it sits first in allGroups and .find() would match
+        // it before any real section, verifying the entire course on one
+        // press. customGroups already excludes it.
+        onVerifySection?.(row.bib, sectionGatesFor(gate, customGroups))
+        return true
+      }
+
+      const penalties = parsedPenaltiesMap.get(row.bib) ?? []
+      if (penalties[gateIndex] == null) {
+        // An empty gate has nothing to verify against the paper protocol -
+        // report why instead of silently eating the keystroke. Toggle a
+        // trailing zero-width space (invisible, inaudible) so back-to-back
+        // presses on the same empty gate still change the announced text -
+        // React (and so the aria-live region) treats an unchanged string as
+        // a no-op, and a screen reader only re-announces on an actual change.
+        setAnnouncement((prev) => {
+          const message = `Gate ${gate} is empty - nothing to verify.`
+          return prev.endsWith(ZERO_WIDTH_SPACE)
+            ? message
+            : message + ZERO_WIDTH_SPACE
+        })
+        return true
+      }
+
+      onToggleCheck?.(row.bib, gate)
+      return true
+    },
+    [
+      sortedRows,
+      position,
+      visibleGateIndices,
+      parsedPenaltiesMap,
+      customGroups,
+      onVerifySection,
+      onToggleCheck,
+    ]
+  )
+
   // Combined keyboard handler
   const handleKeyDown = useCallback(
     (e: React.KeyboardEvent) => {
+      if (handleVerifyKeyDown(e)) return
       const inputHandled = handleInputKeyDown(e)
       if (!inputHandled) {
         handleNavKeyDown(e)
       }
     },
-    [handleInputKeyDown, handleNavKeyDown]
+    [handleVerifyKeyDown, handleInputKeyDown, handleNavKeyDown]
   )
 
   // Scroll sync
@@ -319,7 +494,9 @@ export function ResultsGrid({
     const content = contentRef.current
     if (!content) return
 
-    const cell = content.querySelector(`.${styles.penaltyCellFocused}`) as HTMLElement
+    const cell = content.querySelector(
+      `.${styles.penaltyCellFocused}`
+    ) as HTMLElement
     if (!cell) return
 
     const cellRect = cell.getBoundingClientRect()
@@ -352,6 +529,17 @@ export function ResultsGrid({
       contentRef.current?.focus()
     }
   }, [hasRows])
+
+  // Verify the section a gate ends - the click counterpart to Shift+Space,
+  // bound to the section handle (see sectionEndGates / isSectionEnd).
+  // customGroups, not allGateGroups - see the matching comment in
+  // handleVerifyKeyDown.
+  const handleSectionVerify = useCallback(
+    (bib: string, gate: number) => {
+      onVerifySection?.(bib, sectionGatesFor(gate, customGroups))
+    },
+    [onVerifySection, customGroups]
+  )
 
   // Submit penalty for a specific cell
   const submitPenalty = useCallback(
@@ -490,14 +678,17 @@ export function ResultsGrid({
   }, [])
 
   // Handle group click
-  const handleGroupClick = useCallback((groupId: string) => {
-    if (!onGroupSelect) return
-    if (activeGateGroup?.id === groupId) {
-      onGroupSelect(null) // Deselect
-    } else {
-      onGroupSelect(groupId)
-    }
-  }, [onGroupSelect, activeGateGroup])
+  const handleGroupClick = useCallback(
+    (groupId: string) => {
+      if (!onGroupSelect) return
+      if (activeGateGroup?.id === groupId) {
+        onGroupSelect(null) // Deselect
+      } else {
+        onGroupSelect(groupId)
+      }
+    },
+    [onGroupSelect, activeGateGroup]
+  )
 
   // Get current cell value for context menu
   const getContextMenuValue = (): PenaltyValue => {
@@ -512,6 +703,29 @@ export function ResultsGrid({
     return null
   }
 
+  // Bib/gate under the context menu, if any - shared by the verify/flag
+  // wiring below so each doesn't re-derive them from contextMenu.row/col.
+  const contextMenuBib = contextMenu
+    ? (sortedRows[contextMenu.row]?.bib ?? null)
+    : null
+  const contextMenuGateIndex = contextMenu
+    ? visibleGateIndices[contextMenu.col]
+    : undefined
+  const contextMenuGate =
+    contextMenuGateIndex !== undefined ? contextMenuGateIndex + 1 : null
+
+  // Whether the context menu's gate can be verified - mirrors
+  // handleVerifyKeyDown's own check (raw parsed value, not narrowed to
+  // 0/2/50) so the menu and the keyboard agree on team-race gates, which
+  // carry cumulative values like 52/100/150 that getContextMenuValue()
+  // collapses to null. An empty gate is not verifiable; a 52 gate is not
+  // empty.
+  const contextMenuCanVerify =
+    contextMenuBib !== null && contextMenuGateIndex !== undefined
+      ? (parsedPenaltiesMap.get(contextMenuBib) ?? [])[contextMenuGateIndex] !=
+        null
+      : false
+
   if (sortedRows.length === 0 || nrGates === 0) {
     return <div className={styles.gridContainer}>No data</div>
   }
@@ -524,31 +738,44 @@ export function ResultsGrid({
       onKeyDown={handleKeyDown}
       tabIndex={0}
     >
+      {/* Screen-reader-only feedback for keyboard actions that intentionally
+          do nothing, e.g. Space on an empty gate */}
+      <div role="status" aria-live="polite" className="visually-hidden">
+        {announcement}
+      </div>
+
       {/* GATE GROUPS - Row 1 (always render for consistent grid) */}
       <div className={styles.groupsCorner} />
       <div className={styles.groupsHeader} ref={groupsHeaderRef}>
-        {customGroups.length > 0 && visibleGateIndices.map((gateIndex) => {
-          const gateNum = gateIndex + 1
-          const group = customGroups.find((g) => g.gates.includes(gateNum))
-          const isFirstInGroup = group && group.gates[0] === gateNum
-          const isActive = group && activeGateGroup?.id === group.id
+        {customGroups.length > 0 &&
+          visibleGateIndices.map((gateIndex) => {
+            const gateNum = gateIndex + 1
+            const group = customGroups.find((g) => g.gates.includes(gateNum))
+            const isFirstInGroup = group && group.gates[0] === gateNum
+            const isActive = group && activeGateGroup?.id === group.id
 
-          if (isFirstInGroup) {
+            if (isFirstInGroup) {
+              return (
+                <button
+                  key={gateIndex}
+                  className={`${styles.groupBtn} ${isActive ? styles.groupBtnActive : ''}`}
+                  onClick={() => handleGroupClick(group.id)}
+                  style={{ flex: `0 0 ${group.gates.length * 36}px` }}
+                  title={`${group.name}: Gates ${group.gates.join(', ')}`}
+                >
+                  {group.name}
+                </button>
+              )
+            }
+            if (group) return null
             return (
-              <button
+              <div
                 key={gateIndex}
-                className={`${styles.groupBtn} ${isActive ? styles.groupBtnActive : ''}`}
-                onClick={() => handleGroupClick(group.id)}
-                style={{ flex: `0 0 ${group.gates.length * 36}px` }}
-                title={`${group.name}: Gates ${group.gates.join(', ')}`}
-              >
-                {group.name}
-              </button>
+                className={styles.groupBtn}
+                style={{ visibility: 'hidden' }}
+              />
             )
-          }
-          if (group) return null
-          return <div key={gateIndex} className={styles.groupBtn} style={{ visibility: 'hidden' }} />
-        })}
+          })}
       </div>
 
       {/* CORNER - Fixed column headers */}
@@ -610,14 +837,30 @@ export function ResultsGrid({
               const rowClasses = [
                 isFocused && styles.focused,
                 isDisabled && styles.disabled,
-              ].filter(Boolean).join(' ')
+              ]
+                .filter(Boolean)
+                .join(' ')
 
               return (
-                <tr key={row.bib} className={rowClasses || undefined} role="row">
-                  <td className={styles.colBib} role="rowheader" aria-label={`Bib ${row.bib}`}>{row.bib}</td>
+                <tr
+                  key={row.bib}
+                  className={rowClasses || undefined}
+                  role="row"
+                >
+                  <td
+                    className={styles.colBib}
+                    role="rowheader"
+                    aria-label={`Bib ${row.bib}`}
+                  >
+                    {row.bib}
+                  </td>
                   <td className={styles.colName}>{row.name}</td>
-                  <td className={`${styles.colTime} ${isDisabled ? styles.colStatus : ''}`}>
-                    {isDisabled ? row.status : formatTime(row.time ? parseFloat(row.time) : null)}
+                  <td
+                    className={`${styles.colTime} ${isDisabled ? styles.colStatus : ''}`}
+                  >
+                    {isDisabled
+                      ? row.status
+                      : formatTime(row.time ? parseFloat(row.time) : null)}
                   </td>
                   <td className={styles.colPen}>
                     {isDisabled ? '' : calculatePenaltyTotal(penalties)}
@@ -646,41 +889,52 @@ export function ResultsGrid({
               const isDisabled = isRowDisabled(row)
               const penalties = parsedPenaltiesMap.get(row.bib) ?? []
               return (
-              <tr key={row.bib} className={isDisabled ? styles.disabled : undefined}>
-                {visibleGateIndices.map((gateIndex, colIndex) => {
-                  const gateNum = gateIndex + 1
-                  const isFocused = rowIndex === position.row && colIndex === position.column
-                  const isColFocus = colIndex === position.column && rowIndex !== position.row
-                  const isRowFocus = rowIndex === position.row && colIndex !== position.column
-                  const isBoundary = groupBoundaries.has(gateNum)
-                  const isReverse = gateConfig[gateIndex] === 'R'
+                <tr
+                  key={row.bib}
+                  className={isDisabled ? styles.disabled : undefined}
+                >
+                  {visibleGateIndices.map((gateIndex, colIndex) => {
+                    const gateNum = gateIndex + 1
+                    const isFocused =
+                      rowIndex === position.row && colIndex === position.column
+                    const isColFocus =
+                      colIndex === position.column && rowIndex !== position.row
+                    const isRowFocus =
+                      rowIndex === position.row && colIndex !== position.column
+                    const isBoundary = groupBoundaries.has(gateNum)
+                    const isSectionEnd = sectionEndGates.has(gateNum)
+                    const isReverse = gateConfig[gateIndex] === 'R'
 
-                  return (
-                    <PenaltyCell
-                      key={gateIndex}
-                      penalties={penalties}
-                      gateIndex={gateIndex}
-                      colIndex={colIndex}
-                      rowIndex={rowIndex}
-                      gateNumber={gateNum}
-                      competitorBib={row.bib}
-                      isReverse={isReverse}
-                      isFocused={isFocused}
-                      isColFocus={isColFocus}
-                      isRowFocus={isRowFocus}
-                      isBoundary={isBoundary}
-                      onCellClick={handleCellClick}
-                      onMouseDown={handleCellMouseDown}
-                      onMouseUp={handleCellMouseUp}
-                      onMouseLeave={handleCellMouseLeave}
-                      onTouchStart={handleCellTouchStart}
-                      onTouchEnd={handleCellTouchEnd}
-                      onContextMenu={handleCellContextMenu}
-                    />
-                  )
-                })}
-              </tr>
-            )})}
+                    return (
+                      <PenaltyCell
+                        key={gateIndex}
+                        penalties={penalties}
+                        gateIndex={gateIndex}
+                        colIndex={colIndex}
+                        rowIndex={rowIndex}
+                        gateNumber={gateNum}
+                        competitorBib={row.bib}
+                        isReverse={isReverse}
+                        isFocused={isFocused}
+                        isColFocus={isColFocus}
+                        isRowFocus={isRowFocus}
+                        isBoundary={isBoundary}
+                        isSectionEnd={isSectionEnd}
+                        getGateStatus={getGateStatus}
+                        onCellClick={handleCellClick}
+                        onMouseDown={handleCellMouseDown}
+                        onMouseUp={handleCellMouseUp}
+                        onMouseLeave={handleCellMouseLeave}
+                        onTouchStart={handleCellTouchStart}
+                        onTouchEnd={handleCellTouchEnd}
+                        onContextMenu={handleCellContextMenu}
+                        onSectionVerify={handleSectionVerify}
+                      />
+                    )
+                  })}
+                </tr>
+              )
+            })}
           </tbody>
         </table>
       </div>
@@ -693,6 +947,36 @@ export function ResultsGrid({
           currentValue={getContextMenuValue()}
           onSelect={handleContextMenuSelect}
           onClose={handleContextMenuClose}
+          checkStatus={
+            contextMenuBib && contextMenuGate
+              ? (getGateStatus?.(contextMenuBib, contextMenuGate) ?? 'plain')
+              : 'plain'
+          }
+          canVerify={contextMenuCanVerify}
+          openFlag={
+            contextMenuBib && contextMenuGate
+              ? (getOpenFlag?.(contextMenuBib, contextMenuGate) ?? null)
+              : null
+          }
+          onToggleCheck={() => {
+            if (contextMenuBib && contextMenuGate) {
+              onToggleCheck?.(contextMenuBib, contextMenuGate)
+            }
+          }}
+          onVerifySection={() => {
+            if (contextMenuBib && contextMenuGate) {
+              onVerifySection?.(
+                contextMenuBib,
+                sectionGatesFor(contextMenuGate, customGroups)
+              )
+            }
+          }}
+          onAddFlag={() => {
+            if (contextMenuBib && contextMenuGate) {
+              onAddFlag?.(contextMenuBib, contextMenuGate)
+            }
+          }}
+          onResolveFlag={(flag) => onResolveFlag?.(flag)}
         />
       )}
     </div>

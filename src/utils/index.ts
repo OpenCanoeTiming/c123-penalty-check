@@ -2,4 +2,5 @@
  * Utility exports
  */
 
-export { parseResultsGatesString } from './gates'
+export { parseResultsGatesString, sectionGatesFor } from './gates'
+export { submitPenaltyAndVerify, pickVerificationProps, type SubmitPenaltyDeps } from './verification'

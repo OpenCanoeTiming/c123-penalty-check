@@ -15,7 +15,10 @@ import {
   isScheduleMessage,
   isErrorMessage,
   isForceRefreshMessage,
+  isChecksChangedMessage,
+  isFlagChangedMessage,
 } from '../types/c123server'
+import type { CheckChangedEvent, FlagChangedEvent } from '../types/checks'
 
 // =============================================================================
 // Types
@@ -41,6 +44,16 @@ export interface UseC123WebSocketOptions {
   autoConnect?: boolean
   reconnectInterval?: number
   maxReconnectAttempts?: number
+  /**
+   * Called for each ChecksChanged event, in order. This is a stream, not a
+   * snapshot — the hook does not fold it into state.
+   */
+  onChecksChanged?: (event: CheckChangedEvent) => void
+  /**
+   * Called for each FlagChanged event, in order. This is a stream, not a
+   * snapshot — the hook does not fold it into state.
+   */
+  onFlagChanged?: (event: FlagChangedEvent) => void
 }
 
 export interface UseC123WebSocketReturn extends C123WebSocketState {
@@ -103,6 +116,15 @@ export function useC123WebSocket(options: UseC123WebSocketOptions): UseC123WebSo
   const shouldReconnect = useRef(true)
   const isConnecting = useRef(false)
 
+  // Refs for the check/flag callbacks, so handleMessage does not need to be
+  // re-created (and the socket handler torn down) whenever they change.
+  const onChecksChangedRef = useRef(options.onChecksChanged)
+  const onFlagChangedRef = useRef(options.onFlagChanged)
+  useEffect(() => {
+    onChecksChangedRef.current = options.onChecksChanged
+    onFlagChangedRef.current = options.onFlagChanged
+  }, [options.onChecksChanged, options.onFlagChanged])
+
   // Calculate reconnect delay with exponential backoff
   const getReconnectDelay = useCallback(() => {
     const delay = reconnectInterval * Math.pow(1.5, reconnectAttempts.current)
@@ -113,6 +135,17 @@ export function useC123WebSocket(options: UseC123WebSocketOptions): UseC123WebSo
   const handleMessage = useCallback((event: MessageEvent) => {
     try {
       const message: C123Message = JSON.parse(event.data)
+
+      // Check and flag events are a stream, not a snapshot: dispatch them to
+      // the caller once, in order, and skip the setState fold entirely.
+      if (isChecksChangedMessage(message)) {
+        onChecksChangedRef.current?.(message.data)
+        return
+      }
+      if (isFlagChangedMessage(message)) {
+        onFlagChangedRef.current?.(message.data)
+        return
+      }
 
       setState((prev) => {
         const newState = { ...prev, lastMessageTime: Date.now() }

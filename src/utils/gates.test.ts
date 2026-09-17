@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest'
-import { parseResultsGatesString } from './gates'
-import { sampleGatesStrings } from '../test/fixtures/sample-data'
+import { parseResultsGatesString, sectionGatesFor } from './gates'
+import { sampleGatesStrings, sampleGateGroups } from '../test/fixtures/sample-data'
 
 describe('gates utilities', () => {
   describe('parseResultsGatesString (Results format)', () => {
@@ -132,6 +132,20 @@ describe('gates utilities', () => {
       expect(result[19]).toBe(2)  // gate 20
       expect(result[0]).toBeNull()
       expect(result[23]).toBeNull()
+    })
+  })
+
+  describe('sectionGatesFor', () => {
+    it('returns the gates of the group containing the given gate', () => {
+      expect(sectionGatesFor(10, sampleGateGroups)).toEqual([9, 10, 11, 12, 13, 14, 15, 16])
+    })
+
+    it('falls back to a single-gate section when no group covers the gate (Rule 1)', () => {
+      expect(sectionGatesFor(30, sampleGateGroups)).toEqual([30])
+    })
+
+    it('falls back to a single-gate section when no groups are defined at all (Rule 1)', () => {
+      expect(sectionGatesFor(5, [])).toEqual([5])
     })
   })
 })

@@ -58,7 +58,14 @@ c123-penalty-check (this project)
 
 ### Protocol Verification
 
-- Marking verified protocols
+- Per-gate verification against the paper protocol - `Space` toggles a gate between plain and verified; `Shift+Space` (or tapping a section's boundary handle) verifies every gate in its group at once
+- Four cell states, most prominent signal first: **flagged** > **stale** > **verified** > **plain**
+  - **Stale** - a verified gate whose live value has since drifted from what was checked (e.g. corrected on the original C123 terminal instead of this app) - re-entering the correct value through this app re-verifies it automatically, no extra keystroke
+  - **Flagged** - an open review flag (a *podnět*) raised on a gate, with an optional suggested value and comment; stays visible even on a DNS/DNF/DSQ row, since a flag is often the dispute over the removal itself
+- Verification state is per-event, stored server-side (`c123-server`'s Penalty Checks API) and broadcast live over WebSocket - a gate verified on one tablet appears verified on every other tablet and survives a page reload
+- Right-click / long-press context menu mirrors the keyboard: verify gate, verify section, add or resolve a flag
+- Per-race progress indicator in the race switcher and a footer progress meter for the selected race
+- Gracefully disables itself (with a badge explaining why) against a `c123-server` older than the version that added the Penalty Checks API, rather than breaking penalty entry
 - Gate grouping capability:
   - Controller receives paper protocol for only a few gates
   - Default groups based on C123 course segment settings
