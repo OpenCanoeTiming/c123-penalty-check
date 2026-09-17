@@ -51,3 +51,17 @@
   font-size: var(--text-base);
   white-space: pre-wrap;
 }
+
+/* Submit failure. flex-shrink: 0 because this is a direct child of .modal
+   (a flex column) alongside the header/body/footer - without it a long
+   message would squeeze the footer, which is the one thing the task-9
+   review established must always stay reachable. */
+.error {
+  flex-shrink: 0;
+  margin: 0;
+  padding: var(--space-3) var(--space-4);
+  border-top: 1px solid var(--color-border);
+  background-color: var(--color-error-subtle);
+  color: var(--color-error);
+  font-size: var(--text-sm);
+}

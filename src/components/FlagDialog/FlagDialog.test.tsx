@@ -199,3 +199,97 @@ describe('FlagDialog close', () => {
     expect(onSubmit).not.toHaveBeenCalled()
   })
 })
+
+describe('FlagDialog submit failure', () => {
+  it('shows the failure reason as text, not a title attribute', () => {
+    // A title tooltip never appears on a touch device and this is a tablet
+    // app - same reason the footer's verification-unavailable notice is
+    // rendered as text.
+    render(
+      <FlagDialog
+        mode="resolve"
+        flag={flag}
+        error="Could not reach the server"
+        onSubmit={vi.fn()}
+        onClose={vi.fn()}
+      />
+    )
+
+    expect(screen.getByRole('alert')).toHaveTextContent('Could not reach the server')
+  })
+
+  it('renders no alert region while there is no error', () => {
+    render(<FlagDialog mode="resolve" flag={flag} onSubmit={vi.fn()} onClose={vi.fn()} />)
+    expect(screen.queryByRole('alert')).toBeNull()
+  })
+
+  it('keeps Cancel usable while showing an error, so a retry is never the only way out', () => {
+    const onClose = vi.fn()
+    render(
+      <FlagDialog
+        mode="resolve"
+        flag={flag}
+        error="Could not reach the server"
+        onSubmit={vi.fn()}
+        onClose={onClose}
+      />
+    )
+
+    fireEvent.click(screen.getByRole('button', { name: 'Cancel' }))
+
+    expect(onClose).toHaveBeenCalledTimes(1)
+  })
+
+  it('leaves the error visible so the operator can submit again', () => {
+    const onSubmit = vi.fn()
+    render(
+      <FlagDialog
+        mode="resolve"
+        flag={flag}
+        error="Could not reach the server"
+        onSubmit={onSubmit}
+        onClose={vi.fn()}
+      />
+    )
+
+    fireEvent.click(screen.getByRole('button', { name: 'Resolve' }))
+
+    expect(onSubmit).toHaveBeenCalledTimes(1)
+  })
+})
+
+describe('FlagDialog submitting', () => {
+  it('disables submit while a request is in flight, so it cannot be fired twice', () => {
+    const onSubmit = vi.fn()
+    render(
+      <FlagDialog
+        mode="resolve"
+        flag={flag}
+        submitting
+        onSubmit={onSubmit}
+        onClose={vi.fn()}
+      />
+    )
+
+    const button = screen.getByRole('button', { name: 'Resolving…' })
+    expect(button).toBeDisabled()
+
+    fireEvent.click(button)
+    expect(onSubmit).not.toHaveBeenCalled()
+  })
+
+  it('says what it is doing rather than leaving a dead-looking button', () => {
+    const { rerender } = render(
+      <FlagDialog mode="create" submitting onSubmit={vi.fn()} onClose={vi.fn()} />
+    )
+    expect(screen.getByRole('button', { name: 'Adding…' })).toBeInTheDocument()
+
+    rerender(<FlagDialog mode="resolve" flag={flag} submitting onSubmit={vi.fn()} onClose={vi.fn()} />)
+    expect(screen.getByRole('button', { name: 'Resolving…' })).toBeInTheDocument()
+  })
+
+  it('still disables create-mode submit on an empty comment even when not submitting', () => {
+    render(<FlagDialog mode="create" onSubmit={vi.fn()} onClose={vi.fn()} />)
+    expect(screen.getByRole('button', { name: 'Add flag' })).toBeDisabled()
+  })
+})

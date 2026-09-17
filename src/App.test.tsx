@@ -14,7 +14,7 @@
  */
 
 import { describe, it, expect, vi, beforeEach } from 'vitest'
-import { render, act } from '@testing-library/react'
+import { render, act, screen, fireEvent } from '@testing-library/react'
 import { AppContent } from './App'
 import type { Settings } from './hooks/useSettings'
 import type { C123ResultsData, C123RaceConfigData } from './types/c123server'
@@ -38,6 +38,14 @@ vi.mock('./hooks/useGateGroups')
 vi.mock('./services/scheduleApi')
 vi.mock('./services/coursesApi')
 vi.mock('./services/resultsApi')
+// Partial, not a bare auto-mock: the real useChecks module is loaded above
+// (for isProgressDone) and imports ChecksUnavailableError from here, so that
+// class has to stay real. Only the two functions App.tsx calls directly are
+// replaced.
+vi.mock('./services/checksApi', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('./services/checksApi')>()
+  return { ...actual, createFlag: vi.fn(), resolveFlag: vi.fn() }
+})
 
 import { useC123WebSocket } from './hooks/useC123WebSocket'
 import { useChecks } from './hooks/useChecks'
@@ -47,6 +55,8 @@ import { useGateGroups } from './hooks/useGateGroups'
 import { fetchScheduleEnrichment } from './services/scheduleApi'
 import { fetchCourses } from './services/coursesApi'
 import { fetchRaceResults } from './services/resultsApi'
+import { createFlag, resolveFlag } from './services/checksApi'
+import { ApiRequestError } from './services/http'
 
 // Captures the props App.tsx actually passes to ResultsGrid/Header, without
 // rendering their (unrelated, already-tested-elsewhere) internals. Every
@@ -211,6 +221,8 @@ beforeEach(() => {
   })
   vi.mocked(fetchCourses).mockResolvedValue(new Map())
   vi.mocked(fetchRaceResults).mockResolvedValue(null)
+  vi.mocked(createFlag).mockResolvedValue({} as never)
+  vi.mocked(resolveFlag).mockResolvedValue({} as never)
 
   setupChecks()
 })
@@ -337,5 +349,125 @@ describe('AppContent verification wiring (task 11 review, Important-1)', () => {
     // footerProgress actually computed.
     expect(view.getByRole('progressbar')).not.toHaveClass('progress-success')
     expect(view.getByText('3/3')).not.toHaveClass('check-progress__text--complete')
+  })
+})
+
+describe('AppContent flag submit failure', () => {
+  // The bug this pins: a failed submit used to go to console.error while the
+  // dialog closed anyway, which on a tablet is indistinguishable from
+  // success - the flag stays put and nothing says why. That is how a
+  // server-side CORS gap (no PATCH in Access-Control-Allow-Methods,
+  // OpenCanoeTiming/c123-server#162) read to an operator as "Resolve does
+  // nothing at all".
+  const openFlag = {
+      "id": "f1",
+      "bib": "42",
+      "gate": 2,
+      "createdAt": "t",
+      "comment": "Paper says otherwise",
+      "suggestedValue": 2,
+      "resolved": false
+  }
+
+  async function renderAndOpenResolveDialog() {
+    await act(async () => {
+      render(<AppContent settings={testSettings} updateSettings={vi.fn()} />)
+    })
+    await act(async () => {
+      ;(gridProps!.onResolveFlag as (flag: typeof openFlag) => void)(openFlag)
+    })
+  }
+
+  it('keeps the dialog open and names the reason when the request fails', async () => {
+    vi.mocked(resolveFlag).mockRejectedValue(new TypeError('Failed to fetch'))
+
+    await renderAndOpenResolveDialog()
+    expect(screen.getByRole('heading', { name: 'Resolve flag' })).toBeInTheDocument()
+
+    await act(async () => {
+      fireEvent.click(screen.getByRole('button', { name: 'Resolve' }))
+    })
+
+    // Still open ...
+    expect(screen.getByRole('heading', { name: 'Resolve flag' })).toBeInTheDocument()
+    // ... and saying why, without leaking the raw fetch TypeError.
+    const alert = screen.getByRole('alert')
+    expect(alert).toHaveTextContent(/Could not reach the server/)
+    expect(alert).not.toHaveTextContent(/Failed to fetch/)
+  })
+
+  it("surfaces the server's own explanation when it sends one", async () => {
+    vi.mocked(resolveFlag).mockRejectedValue(
+      new ApiRequestError('Flag not found', 404, 'No flag f1 in race R1')
+    )
+
+    await renderAndOpenResolveDialog()
+    await act(async () => {
+      fireEvent.click(screen.getByRole('button', { name: 'Resolve' }))
+    })
+
+    expect(screen.getByRole('alert')).toHaveTextContent('No flag f1 in race R1')
+  })
+
+  it('closes the dialog on success and shows no error', async () => {
+    await renderAndOpenResolveDialog()
+    await act(async () => {
+      fireEvent.click(screen.getByRole('button', { name: 'Resolve' }))
+    })
+
+    expect(screen.queryByRole('heading', { name: 'Resolve flag' })).toBeNull()
+    expect(screen.queryByRole('alert')).toBeNull()
+    expect(vi.mocked(resolveFlag)).toHaveBeenCalledWith(RACE_ID, 'f1', undefined)
+  })
+
+  it('does not carry a stale error onto the next flag opened', async () => {
+    vi.mocked(resolveFlag).mockRejectedValue(new TypeError('Failed to fetch'))
+
+    await renderAndOpenResolveDialog()
+    await act(async () => {
+      fireEvent.click(screen.getByRole('button', { name: 'Resolve' }))
+    })
+    expect(screen.getByRole('alert')).toBeInTheDocument()
+
+    // Operator gives up on this one and opens a different gate's dialog.
+    await act(async () => {
+      ;(gridProps!.onAddFlag as (bib: string, gate: number) => void)('42', 3)
+    })
+
+    expect(screen.getByRole('heading', { name: 'Add flag' })).toBeInTheDocument()
+    expect(screen.queryByRole('alert')).toBeNull()
+  })
+
+  it('does not paint a late failure onto a dialog the operator already moved on from', async () => {
+    // The request is not cancelled when the dialog closes - fetchWithRetry
+    // can still be mid-retry for seconds - so its rejection must prove it is
+    // still about what is on screen before it paints anything.
+    let rejectResolve: (error: Error) => void = () => {}
+    vi.mocked(resolveFlag).mockReturnValue(
+      new Promise((_, reject) => {
+        rejectResolve = reject
+      }) as never
+    )
+
+    await renderAndOpenResolveDialog()
+    await act(async () => {
+      fireEvent.click(screen.getByRole('button', { name: 'Resolve' }))
+    })
+
+    // Operator cancels, then opens a flag on another gate.
+    await act(async () => {
+      fireEvent.click(screen.getByRole('button', { name: 'Cancel' }))
+    })
+    await act(async () => {
+      ;(gridProps!.onAddFlag as (bib: string, gate: number) => void)('42', 3)
+    })
+
+    // Only now does the abandoned request give up.
+    await act(async () => {
+      rejectResolve(new TypeError('Failed to fetch'))
+    })
+
+    expect(screen.getByRole('heading', { name: 'Add flag' })).toBeInTheDocument()
+    expect(screen.queryByRole('alert')).toBeNull()
   })
 })

@@ -1307,6 +1307,28 @@ Worse, the drift is *silent*: every pre-existing test in `screenshots-with-data.
 
 ---
 
+## 2026-09-17 - "Resolve flag does nothing": a CORS allow-list gap, hidden by a swallowed error
+
+**Problem:** On a real deployment (penalty-check on IIS :80, c123-server on :27123 - different origin, so CORS applies) an operator could raise a flag on a gate but never resolve it. Tapping **Resolve** closed the dialog and changed nothing. No error, no toast, nothing in the UI at all.
+
+**Attempted:** The whole client path looked correct on inspection and every unit test passed, so the bug was chased server-side instead. `GET /api/checks` returned the flag as unresolved; `PATCH /api/checks/:raceId/flag/:id` reached the handler perfectly well when called with curl (a bogus flag id produced a proper `404 {"error":"Flag ... not found ..."}`). So the endpoint worked, the data was intact, and the client code read fine - three dead ends in a row.
+
+**Solution:** The preflight told the real story:
+
+```
+OPTIONS /api/checks/<race>/flag/<id>   Access-Control-Request-Method: PATCH
+-> 204, Access-Control-Allow-Methods: GET, POST, PUT, DELETE, OPTIONS
+```
+
+No **PATCH**. The header is static in `c123-server/src/unified/UnifiedServer.ts`, so it comes back identical whatever method is asked for. `resolveFlag()` is the only PATCH request in this entire app - everything else in the checks API is GET/PUT/POST/DELETE - so it was the only operation a browser refused, while flag *creation* (POST) worked fine right next to it. That asymmetry is exactly what made it look like a UI bug. Filed as OpenCanoeTiming/c123-server#162; fixed here is the half that is ours.
+
+**Lesson:** Two separate lessons, and the second one is the expensive one.
+
+1. curl is not a browser. It does not enforce CORS, so "the endpoint works when I curl it" says nothing about whether the app can call it. For a cross-origin app, reach for `OPTIONS` with `Access-Control-Request-Method` *before* concluding the server is fine.
+2. `catch { console.error(...) } finally { close() }` is not error handling - it is a hidden failure. The operator holds a tablet with no devtools; a dialog that closes on failure is indistinguishable from one that closes on success. This single swallowed error turned a one-line server config bug into a debugging session. Every REST call this app makes from a dialog now has to surface its failure *in that dialog* and leave it open, which is what `FlagDialog`'s `error`/`submitting` props and `describeApiError` exist for. Note also what `describeApiError` is for specifically: a browser-refused request arrives as `TypeError: Failed to fetch`, which names nothing an operator standing at a river can act on.
+
+---
+
 ## Template for Further Entries
 
 ```markdown

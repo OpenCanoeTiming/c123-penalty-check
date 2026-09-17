@@ -36,6 +36,16 @@ export interface FlagDialogProps {
   onSubmit: (input: FlagDialogSubmitInput) => void
   /** Callback to close the dialog without submitting */
   onClose: () => void
+  /**
+   * Why the last submit failed, or null. The dialog stays open showing this
+   * so the operator can retry instead of guessing - and it is rendered as
+   * text, not a title/tooltip, for the same reason the footer's
+   * verification-unavailable notice is: a tooltip never appears on a touch
+   * device, and this app is built for a tablet.
+   */
+  error?: string | null
+  /** True while a submit is in flight - blocks a second one. */
+  submitting?: boolean
 }
 
 const SUGGESTED_VALUE_OPTIONS: { value: number | null; label: string }[] = [
@@ -53,7 +63,14 @@ function formatSuggestedValue(value: number | null | undefined): string {
   return match ? match.label : String(value)
 }
 
-export function FlagDialog({ mode, flag, onSubmit, onClose }: FlagDialogProps) {
+export function FlagDialog({
+  mode,
+  flag,
+  onSubmit,
+  onClose,
+  error = null,
+  submitting = false,
+}: FlagDialogProps) {
   const [comment, setComment] = useState('')
   const [suggestedValue, setSuggestedValue] = useState<number | null>(null)
   const [resolution, setResolution] = useState('')
@@ -64,8 +81,9 @@ export function FlagDialog({ mode, flag, onSubmit, onClose }: FlagDialogProps) {
 
   const isCreate = mode === 'create'
   // A comment is only required to create a flag - resolving one only ever
-  // adds an optional note to a comment that already exists.
-  const isSubmitDisabled = isCreate && comment.trim().length === 0
+  // adds an optional note to a comment that already exists. A submit already
+  // in flight disables it too, so a slow request cannot be fired twice.
+  const isSubmitDisabled = (isCreate && comment.trim().length === 0) || submitting
 
   const handleSubmit = () => {
     if (isSubmitDisabled) return
@@ -160,6 +178,21 @@ export function FlagDialog({ mode, flag, onSubmit, onClose }: FlagDialogProps) {
         )}
       </ModalBody>
 
+      {/* A direct child of .modal, deliberately not inside ModalBody. The
+          body is the one element that scrolls (flex-grow: 1; overflow-y:
+          auto), so an error placed inside it can sit below the fold on a
+          long comment - exactly when the operator most needs to see it.
+          Sitting between body and footer, it is always on screen. This does
+          not break the layout contract the comment on <Modal> describes:
+          that one is about not *wrapping* header/body/footer, which would
+          cost the body its definite height; another flex-shrink: 0 sibling
+          alongside them costs it nothing. */}
+      {error && (
+        <div className={styles.error} role="alert">
+          {error}
+        </div>
+      )}
+
       <ModalFooter>
         <Button variant="secondary" onClick={onClose}>
           Cancel
@@ -169,7 +202,13 @@ export function FlagDialog({ mode, flag, onSubmit, onClose }: FlagDialogProps) {
           onClick={handleSubmit}
           disabled={isSubmitDisabled}
         >
-          {isCreate ? 'Add flag' : 'Resolve'}
+          {submitting
+            ? isCreate
+              ? 'Adding…'
+              : 'Resolving…'
+            : isCreate
+              ? 'Add flag'
+              : 'Resolve'}
         </Button>
       </ModalFooter>
     </Modal>

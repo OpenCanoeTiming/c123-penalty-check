@@ -16,8 +16,33 @@ import { fetchScheduleEnrichment } from './services/scheduleApi'
 import { fetchCourses, type CourseConfig } from './services/coursesApi'
 import { fetchRaceResults } from './services/resultsApi'
 import { createFlag, resolveFlag } from './services/checksApi'
+import { describeApiError } from './services/http'
 import { parseResultsGatesString, pickVerificationProps, submitPenaltyAndVerify } from './utils'
 import type { CheckChangedEvent, FlagChangedEvent, FlagEntry, GateCheckStatus } from './types/checks'
+
+/** What the flag dialog is open for: a new flag on a gate, or an existing one to close out. */
+type FlagDialogTarget =
+  | { mode: 'create'; raceId: string; bib: string; gate: number }
+  | { mode: 'resolve'; raceId: string; flag: FlagEntry }
+
+/**
+ * The open flag dialog, or null when there is none.
+ *
+ * Target, in-flight marker and last failure are one state object rather than
+ * three separate ones on purpose. A submit is not cancelled when the operator
+ * closes the dialog out from under it - fetchWithRetry can still be mid-retry
+ * for seconds - so when the request finally settles it has to prove it is
+ * still about the dialog on screen before touching anything, or a failure
+ * from a flag already dismissed lands on whichever flag was opened next.
+ * `target`'s own object identity answers that (a fresh object per open),
+ * checked inside the state updater, which needs no generation counter kept in
+ * sync alongside - and, unlike a ref, is readable during render.
+ */
+interface FlagDialogState {
+  target: FlagDialogTarget
+  error: string | null
+  submitting: boolean
+}
 
 const STORAGE_KEY_SELECTED_RACE = 'c123-penalty-check-selected-race'
 
@@ -361,46 +386,76 @@ export function AppContent({ settings, updateSettings, openSettingsOnMount }: Ap
   // does: the server broadcasts FlagChanged to every client (including the
   // one that made the request), and applyFlagEvent folds it in from there -
   // no optimistic update needed here.
-  const [flagTarget, setFlagTarget] = useState<
-    | { mode: 'create'; raceId: string; bib: string; gate: number }
-    | { mode: 'resolve'; raceId: string; flag: FlagEntry }
-    | null
-  >(null)
+  const [flagDialog, setFlagDialog] = useState<FlagDialogState | null>(null)
+
+  const openFlagDialog = useCallback((target: FlagDialogTarget) => {
+    setFlagDialog({ target, error: null, submitting: false })
+  }, [])
 
   const handleAddFlag = useCallback(
     (bib: string, gate: number) => {
       if (!effectiveSelectedRaceId) return
-      setFlagTarget({ mode: 'create', raceId: effectiveSelectedRaceId, bib, gate })
+      openFlagDialog({ mode: 'create', raceId: effectiveSelectedRaceId, bib, gate })
     },
-    [effectiveSelectedRaceId]
+    [effectiveSelectedRaceId, openFlagDialog]
   )
 
   const handleResolveFlag = useCallback(
     (flag: FlagEntry) => {
       if (!effectiveSelectedRaceId) return
-      setFlagTarget({ mode: 'resolve', raceId: effectiveSelectedRaceId, flag })
+      openFlagDialog({ mode: 'resolve', raceId: effectiveSelectedRaceId, flag })
     },
-    [effectiveSelectedRaceId]
+    [effectiveSelectedRaceId, openFlagDialog]
   )
 
-  const handleFlagDialogClose = useCallback(() => setFlagTarget(null), [])
+  const handleFlagDialogClose = useCallback(() => setFlagDialog(null), [])
 
   const handleFlagDialogSubmit = useCallback(
     async (input: FlagDialogSubmitInput) => {
-      if (!flagTarget) return
+      if (!flagDialog || flagDialog.submitting) return
+      const { target } = flagDialog
+
+      setFlagDialog((current) =>
+        current?.target === target ? { ...current, submitting: true, error: null } : current
+      )
+
+      // The outcome is decided here and applied in a single update below,
+      // rather than from inside try/catch/finally: the success and failure
+      // paths differ only in what they do to the same piece of state, and
+      // both have to make the same "is this still the dialog on screen"
+      // check first.
+      let failure: string | null = null
       try {
-        if (flagTarget.mode === 'create') {
-          await createFlag(flagTarget.raceId, flagTarget.bib, flagTarget.gate, input.comment ?? '', input.suggestedValue)
+        if (target.mode === 'create') {
+          await createFlag(target.raceId, target.bib, target.gate, input.comment ?? '', input.suggestedValue)
         } else {
-          await resolveFlag(flagTarget.raceId, flagTarget.flag.id, input.resolution)
+          await resolveFlag(target.raceId, target.flag.id, input.resolution)
         }
       } catch (error) {
+        // Kept for the devtools trail; what the operator sees is set below.
         console.error('Failed to submit flag:', error)
-      } finally {
-        setFlagTarget(null)
+        failure = describeApiError(error)
       }
+
+      setFlagDialog((current) => {
+        // A different dialog (or none) is on screen: this request lost the
+        // race and has nothing left to say. Whatever opened in the meantime
+        // owns this state now.
+        if (current?.target !== target) return current
+
+        // Stay open and say why. Closing on failure - which is what this
+        // used to do, with the reason going only to console.error - is
+        // indistinguishable from success to anyone not holding a devtools
+        // window: the flag sits exactly where it was and nothing explains
+        // it. That is how a server-side CORS gap (no PATCH in
+        // Access-Control-Allow-Methods, OpenCanoeTiming/c123-server#162)
+        // read on a tablet as "Resolve just does nothing".
+        if (failure) return { ...current, submitting: false, error: failure }
+
+        return null
+      })
     },
-    [flagTarget]
+    [flagDialog]
   )
 
   // Per-race verification progress for the race switcher - only for races
@@ -535,10 +590,12 @@ export function AppContent({ settings, updateSettings, openSettingsOnMount }: Ap
       )}
 
       {/* Flag Dialog (create/resolve) */}
-      {flagTarget && (
+      {flagDialog && (
         <FlagDialog
-          mode={flagTarget.mode}
-          flag={flagTarget.mode === 'resolve' ? flagTarget.flag : undefined}
+          mode={flagDialog.target.mode}
+          flag={flagDialog.target.mode === 'resolve' ? flagDialog.target.flag : undefined}
+          error={flagDialog.error}
+          submitting={flagDialog.submitting}
           onSubmit={handleFlagDialogSubmit}
           onClose={handleFlagDialogClose}
         />

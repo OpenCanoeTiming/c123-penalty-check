@@ -97,3 +97,33 @@ export async function fetchWithRetry<T>(
 
   throw lastError ?? new Error('Unknown error')
 }
+
+/**
+ * An operator-readable one-liner for an error out of any of the REST clients.
+ *
+ * The raw error is not fit to put in front of an operator on a tablet. A
+ * request the browser refuses outright - blocked by CORS, or the server
+ * simply unreachable - surfaces from `fetch` as `TypeError: Failed to
+ * fetch`, which names nothing the operator can act on; and
+ * `ApiRequestError`'s synthesized `HTTP 404` fallback (used when the
+ * response carried no JSON body of its own) is barely better. So: prefer
+ * the server's own `detail`, then its `error` text, and fall back to a
+ * description of the *class* of failure rather than passing the raw string
+ * through.
+ */
+export function describeApiError(error: unknown): string {
+  if (error instanceof ApiRequestError) {
+    // Set by fetchWithTimeout's AbortError branch, not by any server.
+    if (error.status === 408) return 'The server did not respond in time. Try again.'
+
+    const text = error.detail ?? error.message
+    // `HTTP <status>` is fetchWithRetry's own placeholder for a response
+    // with no parseable body - on its own it reads like a bug, not an
+    // outcome, so say what it means.
+    return text.startsWith('HTTP ')
+      ? `The server rejected the request (${text}).`
+      : text
+  }
+
+  return 'Could not reach the server - it may be offline or blocking the request.'
+}
