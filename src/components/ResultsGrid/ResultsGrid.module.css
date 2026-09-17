@@ -516,14 +516,65 @@
    Precedence: flagged > stale > verified > plain.
    ========================================================================== */
 
+/*
+ * Verified reads as a frame around the cell's edges, not a wash over its
+ * center. The previous treatment (a diagonal hatch of --color-success-subtle)
+ * painted its lightest layer directly under the digit - and on .penaltyClear,
+ * the overwhelming majority of cells in any grid, that hatch and the cell's
+ * own background are the *same* --color-success-subtle: roughly 19% alpha on
+ * the stripes against 10% in the gaps, over a third of the cell. Measured
+ * (see visibility-report.md), that is a 1.12:1 stripe-vs-gap contrast - at
+ * the resolution "region done or not" needs to read at, indistinguishable
+ * from noise.
+ *
+ * A frame sidesteps the fix's own hard constraint (digit stays legible)
+ * instead of fighting it: the band never overlaps the glyph, so there's
+ * nothing to measure text-vs-background contrast against, and the band
+ * itself can be as strong as it needs to be. Measured against the real
+ * JetBrains Mono glyphs in the harness (see visibility-report.md), "50" -
+ * the widest value rendered - clears a 5px band by 5.2px horizontally and
+ * 2.5px vertically at the 36x32 fine-pointer cell, the tightest of the two
+ * sizes this CSS supports; the 48x44 coarse-pointer cell has more room, not
+ * less, so the same band works there too.
+ *
+ * --color-success, not --color-info: --color-accent already means "focus"
+ * throughout this file (the box-shadow rules below) and is a close enough
+ * blue to --color-info to blur that meaning if verified used it too. Success
+ * keeps "verified" and "clear" in the same hue family - fine now that the
+ * frame never sits under text, so it can't repeat the green-on-green
+ * collision this replaces. The 75% mix is chosen for band-vs-gap contrast
+ * (~2.3-2.8:1 light, ~4.4-6.2:1 dark, per class - see visibility-report.md)
+ * well above the ~1.1-1.4:1 the old hatch measured at, on top of covering
+ * roughly 58% of the cell's area instead of ~33%.
+ *
+ * Two orthogonal gradients (color -> transparent -> color along each axis)
+ * form the ring: the left/right bands come from the horizontal-axis layer,
+ * the top/bottom bands from the vertical-axis layer, and the corners (where
+ * both layers are opaque) end up very slightly deeper - a harmless side
+ * effect of composing two flat layers, not a fifth thing to reason about.
+ */
 .verified {
-  background-image: repeating-linear-gradient(
-    45deg,
-    var(--color-success-subtle) 0,
-    var(--color-success-subtle) 2px,
-    transparent 2px,
-    transparent 6px
-  );
+  --verified-frame: color-mix(in srgb, var(--color-success) 75%, transparent);
+  --verified-band: 5px;
+  background-image:
+    linear-gradient(
+      to right,
+      var(--verified-frame) 0,
+      var(--verified-frame) var(--verified-band),
+      transparent var(--verified-band),
+      transparent calc(100% - var(--verified-band)),
+      var(--verified-frame) calc(100% - var(--verified-band)),
+      var(--verified-frame) 100%
+    ),
+    linear-gradient(
+      to bottom,
+      var(--verified-frame) 0,
+      var(--verified-frame) var(--verified-band),
+      transparent var(--verified-band),
+      transparent calc(100% - var(--verified-band)),
+      var(--verified-frame) calc(100% - var(--verified-band)),
+      var(--verified-frame) 100%
+    );
 }
 
 /*
