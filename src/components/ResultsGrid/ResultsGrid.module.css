@@ -516,13 +516,21 @@
    Precedence: flagged > stale > verified > plain.
    ========================================================================== */
 
+/*
+ * The stripes use --color-success, not --color-success-subtle: a clean `0` is
+ * the most common cell in any grid and .penaltyClear already paints its
+ * background with the subtle token, so hatching in that same token put a 10%
+ * green over a 10% green and was all but invisible. Thin stripes of the solid
+ * token at partial alpha read across a full grid; the 3px gap in every 5px
+ * keeps the digit clear.
+ */
 .verified {
   background-image: repeating-linear-gradient(
     45deg,
-    var(--color-success-subtle) 0,
-    var(--color-success-subtle) 2px,
+    color-mix(in srgb, var(--color-success) 45%, transparent) 0,
+    color-mix(in srgb, var(--color-success) 45%, transparent) 2px,
     transparent 2px,
-    transparent 6px
+    transparent 5px
   );
 }
 
