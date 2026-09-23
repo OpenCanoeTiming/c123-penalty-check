@@ -306,6 +306,12 @@
    ========================================================================== */
 
 .penaltyCell {
+  /* Containing block for .sectionHandle (see below). Set here, not only on
+     .penaltyBoundary, because a section-end handle can appear on a cell that
+     isn't a visual .penaltyBoundary (the last gate of the last group, or any
+     gate in a single-group filtered view - see sectionEndGates in
+     ResultsGrid.tsx) and still needs a positioning ancestor. */
+  position: relative;
   width: 36px;
   min-width: 36px;
   height: 32px;
@@ -350,9 +356,48 @@
   border-bottom: 2px solid var(--color-warning);
 }
 
-/* Group boundary separator - subtle but visible */
+/* Group boundary separator - subtle but visible. Purely a visual grid line;
+   the section-verify click/touch target is the separate .sectionHandle
+   below, not this border - a widened border cannot itself be a hit target
+   (an absolutely positioned overlay sized to "match" it lands over the
+   padding/content box, not the border box, and border-collapse then centers
+   the painted border on the shared cell edge on top of that: measured in
+   Chromium, an overlay built that way sits entirely over the digit with a
+   dead gap between it and the border. See task-8 review, finding C-1.) */
 .penaltyBoundary {
   border-right: 2px solid var(--color-border);
+}
+
+/* Section-verify click/touch target: a real, visible element docked to the
+   cell's right edge, not an invisible strip trying to align with a border.
+   What looks clickable IS clickable, by construction - there's no separate
+   "visual" position to fall out of sync with. Rendered on every gate that
+   ends a section (isSectionEnd, driven by sectionEndGates), independent of
+   whether this cell also happens to be a .penaltyBoundary - see the comment
+   on sectionEndGates in ResultsGrid.tsx for why those two are not the same
+   set (last section in the row, and a filtered single-group view, have no
+   .penaltyBoundary but must still get a handle).
+
+   Width is a fine/coarse-pointer split, not one constant (see the
+   @media (pointer: coarse) override below): measured against the real
+   JetBrains Mono glyphs, 12px clips the trailing 0 of "50" by ~2.75px in
+   the 36px fine-pointer cell - the highest-stakes value on the sheet,
+   clipped on every row that has a missed gate. 8px is the widest value
+   that clears "50" at that cell size, and a mouse has the precision for an
+   8px target. The 48px coarse-pointer cell has room to keep 12px clear of
+   every glyph and give a finger the bigger target it needs. */
+.sectionHandle {
+  position: absolute;
+  top: 0;
+  right: 0;
+  bottom: 0;
+  width: 8px;
+  background: var(--color-border);
+  cursor: pointer;
+}
+
+.sectionHandle:hover {
+  background: var(--color-accent);
 }
 
 /* Focus states - active cell */
@@ -443,6 +488,12 @@
     min-width: 48px;
     width: 48px;
   }
+
+  /* Wider touch target where the 48px cell has room to keep it clear of
+     every glyph (0/2/50) - see the comment on the base .sectionHandle rule. */
+  .sectionHandle {
+    width: 12px;
+  }
 }
 
 @media (max-width: 1024px) {
@@ -457,4 +508,93 @@
     animation: none;
     box-shadow: inset 0 0 4px var(--color-accent);
   }
+}
+
+/* ==========================================================================
+   VERIFICATION STATE
+   Value stays legible through every state — that is the binding constraint.
+   Precedence: flagged > stale > verified > plain.
+   ========================================================================== */
+
+/*
+ * The stripes use --color-success, not --color-success-subtle: a clean `0` is
+ * the most common cell in any grid and .penaltyClear already paints its
+ * background with the subtle token, so hatching in that same token put a 10%
+ * green over a 10% green and was all but invisible. Thin stripes of the solid
+ * token at partial alpha read across a full grid; the 3px gap in every 5px
+ * keeps the digit clear.
+ */
+.verified {
+  background-image: repeating-linear-gradient(
+    45deg,
+    color-mix(in srgb, var(--color-success) 45%, transparent) 0,
+    color-mix(in srgb, var(--color-success) 45%, transparent) 2px,
+    transparent 2px,
+    transparent 5px
+  );
+}
+
+/*
+ * Stale and flagged express their marker bar as a background-image layer,
+ * not box-shadow: .penaltyCellColFocus / .penaltyCellRowFocus (below, but
+ * earlier in source and therefore losing the cascade on a shared property)
+ * are pure box-shadow. A status class that also set box-shadow would win
+ * outright and silently erase the column/row focus guide on exactly the
+ * cells the checking workflow is about. background-image doesn't compete.
+ */
+.stale {
+  background-image:
+    linear-gradient(to top, var(--color-warning) 2px, transparent 2px),
+    repeating-linear-gradient(
+      45deg,
+      var(--color-warning-subtle) 0,
+      var(--color-warning-subtle) 2px,
+      transparent 2px,
+      transparent 10px
+    );
+}
+
+/*
+ * Flagged must stay unmistakable from an ordinary 50-penalty cell
+ * (.penaltyMiss below is already error-subtle + semibold) - a hairline ring
+ * is not enough once a race has several misses on the sheet, and a flag
+ * will often sit on a miss (a missed gate is the most disputed call).
+ *
+ * The marker bar is a ::after overlay, not a background layer:
+ * .content tr.disabled td (below) sets `background: … !important`, which
+ * resets background-image on every layer regardless of specificity - a flag
+ * on a DNS/DNF/DSQ row is not decoration the checking model can skip (unlike
+ * verified/stale there), it is frequently the dispute over the removal
+ * itself, and needs a channel that survives. A pseudo-element is a separate
+ * paint layer nothing else in this file touches, kept out of flow so it
+ * cannot affect the cell's box size, and doesn't set box-shadow so it can't
+ * re-open the focus-guide collision above.
+ */
+.flagged {
+  position: relative;
+  background-color: var(--color-error-subtle);
+  font-weight: var(--font-semibold);
+}
+
+.flagged::after {
+  content: '';
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  height: 4px;
+  background: var(--color-error);
+  /* Purely decorative overlay - must not steal clicks from the section
+     boundary click target (or anything else) painted underneath it. */
+  pointer-events: none;
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .flagged {
+    animation: flagPulse 2s ease-in-out 3;
+  }
+}
+
+@keyframes flagPulse {
+  50% { box-shadow: inset 0 0 0 2px var(--color-error), 0 0 0 1px var(--color-error); }
 }

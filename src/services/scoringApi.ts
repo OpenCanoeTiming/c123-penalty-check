@@ -14,15 +14,15 @@ import type {
   ChannelPosition,
 } from '../types/scoring'
 import { getApiBaseUrl } from './serverConfig'
+import { fetchWithRetry } from './http'
+
+/** @deprecated Use ApiRequestError. Kept so existing call sites keep working. */
+export { ApiRequestError as ScoringApiError } from './http'
+export type { ApiErrorBody as ApiError } from './http'
 
 // =============================================================================
 // Types
 // =============================================================================
-
-export interface ApiError {
-  error: string
-  detail?: string
-}
 
 export interface ScoringResponse {
   success: boolean
@@ -42,115 +42,6 @@ export interface TimingResponse {
   success: boolean
   bib: string
   channelPosition: ChannelPosition
-}
-
-// =============================================================================
-// Configuration
-// =============================================================================
-
-const DEFAULT_TIMEOUT = 5000
-const MAX_RETRIES = 2
-const RETRY_DELAY = 500
-
-// =============================================================================
-// Helper Functions
-// =============================================================================
-
-async function delay(ms: number): Promise<void> {
-  return new Promise((resolve) => setTimeout(resolve, ms))
-}
-
-async function fetchWithTimeout(
-  url: string,
-  options: RequestInit,
-  timeout: number = DEFAULT_TIMEOUT
-): Promise<Response> {
-  const controller = new AbortController()
-  const timeoutId = setTimeout(() => controller.abort(), timeout)
-
-  try {
-    const response = await fetch(url, {
-      ...options,
-      signal: controller.signal,
-    })
-    return response
-  } finally {
-    clearTimeout(timeoutId)
-  }
-}
-
-async function fetchWithRetry<T>(
-  url: string,
-  options: RequestInit,
-  retries: number = MAX_RETRIES
-): Promise<T> {
-  let lastError: Error | null = null
-
-  for (let attempt = 0; attempt <= retries; attempt++) {
-    try {
-      const response = await fetchWithTimeout(url, options)
-
-      if (!response.ok) {
-        const errorData: Partial<ApiError> = await response.json().catch(() => ({}))
-        throw new ScoringApiError(
-          errorData.error || `HTTP ${response.status}`,
-          response.status,
-          errorData.detail
-        )
-      }
-
-      return (await response.json()) as T
-    } catch (error) {
-      lastError = error instanceof Error ? error : new Error(String(error))
-
-      // Don't retry on client errors (4xx)
-      if (error instanceof ScoringApiError && error.status >= 400 && error.status < 500) {
-        throw error
-      }
-
-      // Don't retry on abort
-      if (error instanceof Error && error.name === 'AbortError') {
-        throw new ScoringApiError('Request timeout', 408)
-      }
-
-      // Retry on network errors and 5xx
-      if (attempt < retries) {
-        await delay(RETRY_DELAY * (attempt + 1))
-      }
-    }
-  }
-
-  throw lastError ?? new Error('Unknown error')
-}
-
-// =============================================================================
-// Error Class
-// =============================================================================
-
-export class ScoringApiError extends Error {
-  readonly status: number
-  readonly detail?: string
-
-  constructor(message: string, status: number, detail?: string) {
-    super(message)
-    this.name = 'ScoringApiError'
-    this.status = status
-    this.detail = detail
-  }
-
-  /**
-   * Check if error is due to C123 not being connected
-   */
-  get isC123Disconnected(): boolean {
-    return this.status === 503
-  }
-
-  /**
-   * Check if error is a validation error
-   */
-  get isValidationError(): boolean {
-    return this.status === 400
-  }
 }
 
 // =============================================================================

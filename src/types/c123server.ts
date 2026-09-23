@@ -5,6 +5,8 @@
  * Adapted from c123-scoreboard for scoring application needs.
  */
 
+import type { CheckChangedEvent, FlagChangedEvent } from './checks'
+
 // =============================================================================
 // Message Envelope
 // =============================================================================
@@ -32,6 +34,8 @@ export type C123MessageType =
   | 'XmlChange'
   | 'Error'
   | 'ForceRefresh'
+  | 'ChecksChanged'
+  | 'FlagChanged'
 
 // =============================================================================
 // Connected Message (sent on WebSocket connect)
@@ -206,6 +210,26 @@ export interface C123ForceRefreshMessage extends C123ServerMessage<C123ForceRefr
 }
 
 // =============================================================================
+// ChecksChanged Message
+// =============================================================================
+
+export interface C123ChecksChangedMessage {
+  type: 'ChecksChanged'
+  timestamp: string
+  data: CheckChangedEvent
+}
+
+// =============================================================================
+// FlagChanged Message
+// =============================================================================
+
+export interface C123FlagChangedMessage {
+  type: 'FlagChanged'
+  timestamp: string
+  data: FlagChangedEvent
+}
+
+// =============================================================================
 // Union Type for All Messages
 // =============================================================================
 
@@ -219,6 +243,8 @@ export type C123Message =
   | C123XmlChangeMessage
   | C123ErrorMessage
   | C123ForceRefreshMessage
+  | C123ChecksChangedMessage
+  | C123FlagChangedMessage
 
 // =============================================================================
 // Type Guards
@@ -258,4 +284,12 @@ export function isErrorMessage(msg: C123ServerMessage): msg is C123ErrorMessage 
 
 export function isForceRefreshMessage(msg: C123ServerMessage): msg is C123ForceRefreshMessage {
   return msg.type === 'ForceRefresh'
+}
+
+export function isChecksChangedMessage(msg: C123Message): msg is C123ChecksChangedMessage {
+  return msg.type === 'ChecksChanged'
+}
+
+export function isFlagChangedMessage(msg: C123Message): msg is C123FlagChangedMessage {
+  return msg.type === 'FlagChanged'
 }

@@ -69,27 +69,6 @@ export interface TimingRequest {
 // =============================================================================
 
 /**
- * Checked state for a competitor within a specific gate group
- */
-export interface CheckedState {
-  /** Competitor bib number */
-  bib: string
-  /** Gate group ID (null = all gates) */
-  groupId: string | null
-  /** Whether the protocol has been checked */
-  checked: boolean
-  /** Timestamp when checked (ISO string) */
-  checkedAt: string | null
-}
-
-/**
- * Create a unique key for the checked state map
- */
-export function createCheckedKey(bib: string, groupId: string | null): string {
-  return `${bib}:${groupId ?? 'all'}`
-}
-
-/**
  * Progress statistics for protocol checking
  */
 export interface CheckProgress {
@@ -99,4 +78,6 @@ export interface CheckProgress {
   total: number
   /** Percentage complete (0-100) */
   percentage: number
+  /** Open flags on gates that count toward progress - see RaceProgress.openFlags (src/hooks/useChecks.ts). */
+  openFlags: number
 }

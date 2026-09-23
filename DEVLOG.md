@@ -1277,6 +1277,58 @@ Attach the built application bundle to GitHub Releases. Until now releases only 
 
 ---
 
+## 2026-08-12 - Penalty checks workflow: most fix rounds traced back to the plan, not the implementation
+
+**Problem:** Across the ~11 implementation tasks that built the penalty checks workflow (#4), the large majority of controller-dispatched fix rounds turned out to be defects in the *written task briefs*, not in the code implementers wrote from them. Of roughly 8 fix rounds across the run, 7 originated in a brief rather than in an implementation choice.
+
+**Attempted:** Each brief was written and reviewed before dispatch, implementers followed it, and reviewers checked the implementation against both the brief and the running code (plus mutation testing on every task's tests, adopted partway through the run after it caught real gaps).
+
+**Solution:** Retrospectively, the fix rounds cluster into three recurring classes:
+
+1. **Invented identifiers** - a brief referenced names that don't exist in the codebase: `renderWebSocketHook`, `focusedCell` (real: `position.column`), `.cellBoundary` (real: `.penaltyBoundary`), `--color-danger*` (real: `--color-error*`), and a duplicate gates parser proposed next to the already-existing `parseResultsGatesString`. These are mechanically checkable before dispatch - auditing the remaining briefs after the pattern was noticed found 2 more tasks' worth of the same mistake before any implementer hit them.
+2. **Wrong server shapes** - a brief typed flags as a `bib:gate` map when the server actually returns a flat `FlagEntry[]`, and a carried fix was built on the premise that `GET /api/checks` answers 503 for "no XML loaded" when it actually answers 200. Root cause both times: reading the *local* `c123-server` checkout, which sat on a stale `main`. Three separate agents hit this before the rule "only `git show origin/main:<path>` is authoritative" was adopted.
+3. **Vacuous tests** - tests asserting a negative ("state stays empty", "not called") that pass identically whether the implementation has the property they claim to pin or lacks it entirely. Only mutation testing (deliberately breaking the code under test and confirming the test then fails) caught these; reading the test alone could not. Five tests across the run turned out not to assert what they appeared to.
+
+**Lesson:** A plan written without opening the files it describes will be wrong in ways that read as plausible - the invented identifiers were never absurd, just wrong. And a test nobody has watched fail is not evidence it tests anything. Two structural fixes came out of this mid-run: mechanically checking every identifier a brief references against the actual codebase before dispatch, and treating "did this test fail against a mutation of the code it claims to cover" as a standing requirement rather than an occasional spot check.
+
+---
+
+## 2026-08-12 - Task 12 verification: the screenshot pipeline had silently drifted
+
+**Problem:** `scripts/take-screenshots.sh` and most of `tests/screenshots-with-data.spec.ts` were written against `../c123-protocol-docs/recordings/rec-2025-12-28T09-34-10.jsonl` replayed via `tools/replay-server.js`, and against a pre-CSS-Modules `ResultsGrid` (`.results-grid`, `.penalty-cell`, `.gate-group-indicator-btn`, `.check-btn` selectors). Neither still matches reality: `c123-protocol-docs` moved to a chunk-based v3 recording format (`player.js` + `recordings-cli.js`, fetched from GitHub Releases) at some point after this script was last touched - the old recording file and `replay-server.js`'s intended input no longer exist - and `ResultsGrid` now renders through CSS Modules, so none of those literal class names exist anywhere in `src/` (confirmed by grepping the whole tree). `c123-scoreboard`'s CLAUDE.md already documents the new player.js recipe; this project's CLAUDE.md and `take-screenshots.sh` were never updated to match.
+
+Worse, the drift is *silent*: every pre-existing test in `screenshots-with-data.spec.ts` that doesn't call the file's own `setupDirectConnection` helper (tests 07-19, `dark`, `tablet-light` - 11 of the file's 14 tests before this task) relies on `useServerDiscovery`'s default network scan to find the server. That hook never resolves under `npm run dev`: React StrictMode's mount-cleanup-remount cycle sets the hook's own `cancelled` flag on the *only* real discovery attempt before its fetch batch resolves, and the `hasRun` ref (which survives the double-invoke) blocks a second attempt, so the app is stuck on "Finding server" forever in dev mode. Each affected test's `waitForSelector(..., {timeout}).catch(() => {})` swallows the resulting timeout and takes a screenshot anyway - so the whole file reports green (confirmed by running it: `14 passed (4.4m)`) while 11 of its screenshots are actually just the "Finding server" empty state. `docs/screenshots/08-grid-finished.png` and its siblings carry a `4. bře` (March 4) timestamp from the last time this coincidentally worked, or was captured by hand.
+
+**Attempted:** Ran `player.js` against a cached recording (`2026-04-18-jarni-so-do`, already fetched under `recordings/.cache/`) with `--xml-out`, pointed `c123-server` (updated to `0.12.0` - this project's local checkout was also behind `origin/main` by the exact commit that adds the Penalty Checks API, `git pull --ff-only`'d to catch up) at the emitted XML plus the player's TCP feed, and drove the real app with Playwright against real, judged race data instead of trying to repair the dead recording path.
+
+**Solution:** The new verification screenshot scenario (`23/24/25 - verification states`) runs against this real chain, uses `setupDirectConnection`'s existing localStorage-seeding pattern to route around the discovery bug, and selects on `role="grid"`/`role="gridcell"` - which match the actual current markup - rather than the dead `.results-grid`/`.penalty-cell` classes. It also picks its race and gate targets dynamically at runtime instead of hardcoding bib/gate numbers from this one recording, since whatever recording eventually replaces the dead default will have different data. The 9 other broken tests were left alone - diagnosing and fixing them (a new default recording, a `take-screenshots.sh` rewrite around `player.js`, and either fixing `useServerDiscovery` or converting every test to `setupDirectConnection`) is a real but separate piece of work, out of scope here.
+
+**Lesson:** A green Playwright run is not evidence the screenshots are right when timeouts are swallowed with `.catch(() => {})` - the same "a test nobody has watched fail is not evidence" lesson from the plan-vs-implementation entry above, just against test *infrastructure* instead of test *code*. `take-screenshots.sh` and this project's own CLAUDE.md are stale relative to a tooling migration that already landed in a sibling project - worth its own follow-up issue. The `useServerDiscovery` StrictMode bug is unrelated to the penalty-checks feature itself but affects every future dev-mode Playwright run against this app; not fixed here since it's outside this task's scope (the file predates this branch entirely - `git log` shows it was never touched by any of this branch's 43 commits), but it cost real time to diagnose and is worth its own fix.
+
+---
+
+## 2026-09-17 - "Resolve flag does nothing": a CORS allow-list gap, hidden by a swallowed error
+
+**Problem:** On a real deployment (penalty-check on IIS :80, c123-server on :27123 - different origin, so CORS applies) an operator could raise a flag on a gate but never resolve it. Tapping **Resolve** closed the dialog and changed nothing. No error, no toast, nothing in the UI at all.
+
+**Attempted:** The whole client path looked correct on inspection and every unit test passed, so the bug was chased server-side instead. `GET /api/checks` returned the flag as unresolved; `PATCH /api/checks/:raceId/flag/:id` reached the handler perfectly well when called with curl (a bogus flag id produced a proper `404 {"error":"Flag ... not found ..."}`). So the endpoint worked, the data was intact, and the client code read fine - three dead ends in a row.
+
+**Solution:** The preflight told the real story:
+
+```
+OPTIONS /api/checks/<race>/flag/<id>   Access-Control-Request-Method: PATCH
+-> 204, Access-Control-Allow-Methods: GET, POST, PUT, DELETE, OPTIONS
+```
+
+No **PATCH**. The header is static in `c123-server/src/unified/UnifiedServer.ts`, so it comes back identical whatever method is asked for. `resolveFlag()` is the only PATCH request in this entire app - everything else in the checks API is GET/PUT/POST/DELETE - so it was the only operation a browser refused, while flag *creation* (POST) worked fine right next to it. That asymmetry is exactly what made it look like a UI bug. Filed as OpenCanoeTiming/c123-server#162; fixed here is the half that is ours.
+
+**Lesson:** Two separate lessons, and the second one is the expensive one.
+
+1. curl is not a browser. It does not enforce CORS, so "the endpoint works when I curl it" says nothing about whether the app can call it. For a cross-origin app, reach for `OPTIONS` with `Access-Control-Request-Method` *before* concluding the server is fine.
+2. `catch { console.error(...) } finally { close() }` is not error handling - it is a hidden failure. The operator holds a tablet with no devtools; a dialog that closes on failure is indistinguishable from one that closes on success. This single swallowed error turned a one-line server config bug into a debugging session. Every REST call this app makes from a dialog now has to surface its failure *in that dialog* and leave it open, which is what `FlagDialog`'s `error`/`submitting` props and `describeApiError` exist for. Note also what `describeApiError` is for specifically: a browser-refused request arrives as `TypeError: Failed to fetch`, which names nothing an operator standing at a river can act on.
+
+---
+
 ## Template for Further Entries
 
 ```markdown

@@ -1,0 +1,19 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <title>ResultsGrid test harness</title>
+  </head>
+  <body>
+    <!--
+      Renders the real ResultsGrid component with the real compiled CSS
+      module, for Playwright specs that need actual browser layout (glyph
+      metrics, hit-testing) that jsdom cannot provide. Not part of the
+      production build - vite build only bundles index.html by default, so
+      this page and its entry are dev-server-only. See
+      tests/section-handle-glyph.spec.ts.
+    -->
+    <div id="root" style="width: 1024px; height: 700px; display: flex;"></div>
+    <script type="module" src="/src/test/grid-harness-entry.tsx"></script>
+  </body>
+</html>
