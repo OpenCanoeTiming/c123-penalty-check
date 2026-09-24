@@ -16,6 +16,21 @@ async function takeDocScreenshot(page: Page, name: string) {
   console.log(`[Screenshot] Saved: ${name}.png`);
 }
 
+// Gate cells of the penalty grid - the stable, CSS-Modules-independent hook
+// into today's ResultsGrid markup.
+const GRID_CELLS = '[role="grid"] td[role="gridcell"]';
+
+// Waits for the grid to render real rows. Skips the test visibly when it
+// never does, rather than letting it screenshot an empty state and pass (#130).
+async function waitForGrid(page: Page) {
+  const appeared = await page
+    .locator(GRID_CELLS)
+    .first()
+    .waitFor({ timeout: 15000 })
+    .then(() => true, () => false);
+  test.skip(!appeared, 'Penalty grid never rendered - no server connection or no race data');
+}
+
 // Helper to wait for Results data and select K1m race
 async function waitForDataAndSelectRace(page: Page) {
   await page.goto('/');
@@ -49,8 +64,7 @@ async function waitForDataAndSelectRace(page: Page) {
     }
   }
 
-  // Wait for grid to appear (with longer timeout) - uses .results-grid table tbody tr
-  await page.waitForSelector('.results-grid tbody tr', { timeout: 15000 }).catch(() => {});
+  await waitForGrid(page);
   await page.waitForTimeout(500);
 }
 
@@ -71,12 +85,9 @@ test.describe('Screenshot Tests - With Data', () => {
   test('09 - grid with focus on cell', async ({ page }) => {
     await waitForDataAndSelectRace(page);
 
-    // Use .penalty-cell for gate cells
-    const cells = page.locator('.penalty-cell');
-    const cellCount = await cells.count();
-    if (cellCount > 5) {
-      await cells.nth(5).click();
-    }
+    const cells = page.locator(GRID_CELLS);
+    test.skip((await cells.count()) <= 5, 'Grid has too few gate cells to focus the sixth');
+    await cells.nth(5).click();
     await page.waitForTimeout(300);
     await takeDocScreenshot(page, '09-grid-cell-focus');
   });
@@ -84,42 +95,38 @@ test.describe('Screenshot Tests - With Data', () => {
   test('10 - grid with gate group indicator active', async ({ page }) => {
     await waitForDataAndSelectRace(page);
 
-    // Click on a gate group indicator button to show dimming effect
-    const groupButtons = page.locator('.gate-group-indicator-btn');
-    if (await groupButtons.count() > 0) {
-      await groupButtons.first().click();
-      await page.waitForTimeout(300);
-    }
+    // Click on a gate group button in the grid header to show dimming effect.
+    // These only render when the race has custom gate groups configured.
+    const groupButtons = page.locator('[role="grid"] button[title*=": Gates "]');
+    test.skip((await groupButtons.count()) === 0, 'No custom gate groups configured for this race');
+    await groupButtons.first().click();
+    await page.waitForTimeout(300);
     await takeDocScreenshot(page, '10-gate-group-active');
   });
 
   test('13 - competitor actions menu', async ({ page }) => {
     await waitForDataAndSelectRace(page);
 
-    // Use table row for right-click context menu
-    const competitorRow = page.locator('.results-grid tbody tr').first();
-    if (await competitorRow.isVisible()) {
-      await competitorRow.click({ button: 'right' });
-      await page.waitForTimeout(300);
-    }
+    // Right-click a gate cell to open the penalty context menu
+    await page.locator(GRID_CELLS).first().click({ button: 'right' });
+    await page.getByRole('menu', { name: 'Penalty options' }).waitFor({ timeout: 5000 });
     await takeDocScreenshot(page, '13-competitor-actions');
   });
 
   test('14 - check progress in footer', async ({ page }) => {
     await waitForDataAndSelectRace(page);
 
-    // Click check buttons for some finished competitors
-    const checkButtons = page.locator('.check-btn:not([disabled])');
-    const count = await checkButtons.count();
+    // Verify a few judged gates (Space) so the footer shows real progress.
+    // A click commits focus only after useMultiTap's 300ms window.
+    const judged = page.locator(`${GRID_CELLS}:not([aria-label$=", empty"])`);
+    const count = await judged.count();
+    test.skip(count === 0, 'No judged gates in this race');
     for (let i = 0; i < Math.min(3, count); i++) {
-      try {
-        await checkButtons.nth(i).click({ timeout: 1000 });
-        await page.waitForTimeout(100);
-      } catch {
-        // Button might be disabled or detached, continue
-      }
+      await judged.nth(i).click();
+      await page.waitForTimeout(400);
+      await page.keyboard.press(' ');
+      await page.waitForTimeout(300);
     }
-    await page.waitForTimeout(300);
     await takeDocScreenshot(page, '14-check-progress');
   });
 
@@ -192,8 +199,7 @@ test.describe('Screenshot Tests - With Data', () => {
       }
     }
 
-    // Wait for grid data
-    await page.waitForSelector('.results-grid tbody tr', { timeout: 15000 }).catch(() => {});
+    await waitForGrid(page);
     await page.waitForTimeout(1000);
     await takeDocScreenshot(page, '21-multi-day-sunday-grid');
   });
@@ -219,7 +225,7 @@ test.describe('Screenshot Tests - With Data', () => {
     }
 
     // Wait for REST-fetched grid data
-    await page.waitForSelector('.results-grid tbody tr', { timeout: 15000 }).catch(() => {});
+    await waitForGrid(page);
     await page.waitForTimeout(1000);
     await takeDocScreenshot(page, '22-preloaded-saturday-race');
   });
@@ -232,14 +238,6 @@ test.describe('Screenshot Tests - With Data', () => {
   // Space/Shift+Space, the checks REST API, and the flag dialog - so the
   // states shown are exactly what getStatus() computes from real server
   // data, not a hand-picked class list.
-  //
-  // NOTE: unlike the rest of this file, cell/grid selectors here do NOT use
-  // `.results-grid` / `.penalty-cell` - neither class exists anywhere in the
-  // current CSS-module-based ResultsGrid markup (grep across src/ confirms
-  // it). That mismatch predates this change and affects every other test in
-  // this file; fixing it is out of scope here, so this pass uses the
-  // selectors that actually match today's DOM: `[role="grid"]` and
-  // `td[role="gridcell"]` with its stable `aria-label`.
   test('23/24/25 - verification states: plain, verified, stale, flagged', async ({ page }) => {
     test.setTimeout(60000);
     await setupDirectConnection(page);
@@ -322,7 +320,7 @@ test.describe('Screenshot Tests - With Data', () => {
       await page.waitForTimeout(300);
     }
     await raceSelector.selectOption(raceId);
-    await page.waitForSelector('[role="grid"] td[role="gridcell"]', { timeout: 15000 }).catch(() => {});
+    await waitForGrid(page);
     await page.waitForTimeout(500);
 
     // A click resolves through useMultiTap's 300ms disambiguation window
