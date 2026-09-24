@@ -43,27 +43,20 @@ export function useServerDiscovery({ serverUrl }: UseServerDiscoveryOptions): Di
     return { status: 'discovering', httpBaseUrl: null, wsUrl: null }
   })
 
-  const hasRun = useRef(false)
+  // One discovery per component instance, shared across effect runs. A
+  // StrictMode remount keeps refs but cancels the first effect's closure, so
+  // the remount must re-subscribe to the in-flight attempt rather than skip
+  // it (#130) - and must not start a second subnet scan either.
+  const discoveryRef = useRef<Promise<string | null> | null>(null)
 
   useEffect(() => {
-    // Skip if not default URL or already completed
     if (serverUrl !== DEFAULT_SERVER_URL) return
-    if (hasRun.current) return
-    hasRun.current = true
 
     let cancelled = false
 
-    async function discover() {
-      // Race discovery against overall timeout
-      const timeoutPromise = new Promise<null>((resolve) =>
-        setTimeout(() => resolve(null), DISCOVERY_TIMEOUT_MS)
-      )
+    discoveryRef.current ??= discoverWithTimeout()
 
-      const result = await Promise.race([
-        discoverC123Server(),
-        timeoutPromise,
-      ])
-
+    discoveryRef.current.then((result) => {
       if (cancelled) return
 
       if (result) {
@@ -80,9 +73,7 @@ export function useServerDiscovery({ serverUrl }: UseServerDiscoveryOptions): Di
           wsUrl: null,
         })
       }
-    }
-
-    discover()
+    })
 
     return () => {
       cancelled = true
@@ -90,4 +81,18 @@ export function useServerDiscovery({ serverUrl }: UseServerDiscoveryOptions): Di
   }, [serverUrl])
 
   return state
+}
+
+/** Races discovery against the overall timeout, clearing the timer once settled. */
+async function discoverWithTimeout(): Promise<string | null> {
+  let timer: ReturnType<typeof setTimeout> | undefined
+  const timeoutPromise = new Promise<null>((resolve) => {
+    timer = setTimeout(() => resolve(null), DISCOVERY_TIMEOUT_MS)
+  })
+
+  try {
+    return await Promise.race([discoverC123Server(), timeoutPromise])
+  } finally {
+    clearTimeout(timer)
+  }
 }
