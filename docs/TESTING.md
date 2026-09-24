@@ -53,7 +53,7 @@ npx playwright test e2e.spec.ts
 |------|-------------|
 | `tests/e2e.spec.ts` | Core functionality (connection, settings, layout, accessibility) |
 | `tests/screenshots-static.spec.ts` | Static UI states (no server required) |
-| `tests/screenshots-with-data.spec.ts` | Screenshots with real data (requires replay-server) |
+| `tests/screenshots-with-data.spec.ts` | Screenshots with real data (requires player + c123-server) |
 
 ## Test Data
 
@@ -80,42 +80,35 @@ npm run dev
 
 **Limitations:** Static XML shows final race state only, no live updates.
 
-### Live Recordings (JSONL)
+### Live Recordings
 
-Recorded WebSocket sessions with timestamps. Simulates live race with competitors starting, on course, and finishing.
+Recorded race days (chunked JSONL, format v3), fetched from GitHub Releases on demand. Simulates a live race with competitors starting, on course, and finishing.
 
-**Location:** `../c123-protocol-docs/recordings/`
+**List available recordings:** `node tools/recordings-cli.js list` (in `../c123-protocol-docs`). Format and player documentation: `../c123-protocol-docs/recordings/README.md`.
 
-**Files:**
-- `rec-2025-12-28T09-34-10.jsonl` - 4 minutes of K1m race (~1000 messages)
+The screenshot pipeline uses `2026-04-19-jarni-ne-odp` (a two-day event, Saturday + Sunday).
 
-**Format:**
-
-```jsonl
-{"_meta": {"version": 2, "recorded": "2025-12-28T09:34:10", "host": "192.168.1.100"}}
-{"ts": 0, "src": "tcp", "type": "RaceConfig", "data": "<xml>...</xml>"}
-{"ts": 5000, "src": "tcp", "type": "OnCourse", "data": "<xml>...</xml>"}
-```
-
-**Usage with replay-server:**
+**Usage with player:**
 
 ```bash
-# Terminal 1: Start replay-server (emulates C123 on TCP:27333)
-cd ../c123-protocol-docs/tools
-node replay-server.js ../recordings/rec-2025-12-28T09-34-10.jsonl
+# Terminal 1: Start player (emulates C123 on TCP:27333, writes the XML file)
+cd ../c123-protocol-docs
+node tools/recordings-cli.js fetch 2026-04-19-jarni-ne-odp
+node tools/player.js "$(node tools/recordings-cli.js path 2026-04-19-jarni-ne-odp)" \
+  --autoplay --xml-out /tmp/c123-replay.xml
 
-# Terminal 2: Start c123-server (connects to replay-server)
+# Terminal 2: Start c123-server (connects to the player)
 cd ../c123-server
-npm start -- --host localhost
+npm start -- --host 127.0.0.1 --xml /tmp/c123-replay.xml --no-discovery --no-tray
 
-# Terminal 3: Start c123-scoring
+# Terminal 3: Start c123-penalty-check
 npm run dev
 ```
 
-**Replay options:**
+**Player options:**
 - `--speed 2` - 2x playback speed
+- `--start-at-race K1W_BR1_19` - Start at the beginning of a race
 - `--loop` - Continuous replay
-- `--port 27334` - Different port
 
 ### Test Fixtures
 
@@ -153,12 +146,14 @@ Screenshots are used for documentation and visual regression.
 **Generating screenshots:**
 
 ```bash
-# With live data (requires replay-server + c123-server running)
-npx playwright test screenshots-with-data.spec.ts
+# Full pipeline: static screenshots, then player + c123-server + data screenshots
+./scripts/take-screenshots.sh
 
-# Static states only
-npx playwright test screenshots-static.spec.ts
+# Static states only (no server)
+./scripts/take-screenshots.sh --static-only
 ```
+
+Both need ports 27123 and 27333 free - static screenshots capture the disconnected state. Data tests whose preconditions aren't met (no server, no race data, no gate groups) are skipped and print a `[Skip]` line with the reason, rather than passing on an empty app. Override the replay with `RECORDING`, `START_RACE` and `SPEED` environment variables.
 
 **Current screenshots:**
 

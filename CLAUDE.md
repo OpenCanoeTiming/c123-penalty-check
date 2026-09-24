@@ -154,7 +154,8 @@ cd ../c123-server && npm start
 **After every visual UI change, update screenshots!**
 
 ```bash
-# Full pipeline: replay + c123-server + dev server + Playwright
+# Full pipeline: static tests, then player.js replay + c123-server + Playwright
+# (ports 27123/27333 must be free)
 ./scripts/take-screenshots.sh
 
 # Static screenshots only (no server)

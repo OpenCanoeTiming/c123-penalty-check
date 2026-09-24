@@ -1334,6 +1334,13 @@ No **PATCH**. The header is static in `c123-server/src/unified/UnifiedServer.ts`
 **Solution:** Pass `renderHook(..., { reactStrictMode: true })` (Testing Library option) instead of a StrictMode wrapper. With it the test fails on the old hook for the right reason (`'discovering'` instead of `'found'`).
 **Lesson:** For StrictMode-specific hook bugs, watch the test fail before trusting it - the obvious wrapper silently tests non-StrictMode behaviour. Separately: `fuser` is not installed in this container, so `take-screenshots.sh`'s port cleanup is a no-op here, and the script still targets the removed `replay-server.js` recording; verification used `player.js` + `c123-server --no-tray` by hand.
 
+## 2026-09-24 - Rebuilding take-screenshots.sh: four hidden dependencies on luck
+
+**Problem:** After #130's discovery fix, `take-screenshots.sh` was rewritten around `player.js`, and the data suite then passed or failed from run to run on the same code. The old static screenshot `01-disconnected.png` turned out to show a *connected* app (still branded "C123-SCORING") - it had been captured with the server running, and only "worked" before because discovery never resolved.
+**Attempted:** Starting the replay from the beginning at 10x (grid either empty or changing under the test), probing races in the UI one by one (5s each, outran the timeout), waiting for the race selector's `x/y` progress labels (arrive asynchronously, sometimes after 20s).
+**Solution:** Four independent fixes, each needed: (1) static tests run *before* any server starts, and the script refuses to run if 27123/27333 are taken; (2) the replay starts at a race boundary (`--start-at-race K1W_BR1_19`) at 1x, and readiness is "a WebSocket client has received Schedule + Results" (`scripts/wait-for-server-data.cjs`), not "XML has races"; (3) the spec asks the server REST API which finished race has the most judged runs, instead of probing the UI; (4) that race's checks are cleared first - c123-server persists checks per XML *filename*, so the constant `replay.xml` carried flags across runs, and adding a flag where one was open hung the test (the menu offers "Resolve flag..." instead).
+**Lesson:** A screenshot pipeline has state in places nobody thinks of as state: which services are up during which test, how far a replay has progressed, and server-side persistence keyed by a filename. `pkill -f`/`pgrep -f` with a plain pattern also matches the calling shell - use `[p]attern`.
+
 ---
 
 ## Template for Further Entries
