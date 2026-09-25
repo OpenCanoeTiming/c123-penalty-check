@@ -331,6 +331,19 @@ describe('AppContent verification wiring (task 11 review, Important-1)', () => {
     })
   })
 
+  // #131: a race whose rows are not in memory has no progress to report -
+  // it must read as "not loaded" (null), not as zero counts that the race
+  // switcher cannot tell apart from "nothing verified yet".
+  it('reports a race without loaded results as not loaded rather than as zero progress', async () => {
+    setupChecks({ available: true })
+    await act(async () => {
+      render(<AppContent settings={testSettings} updateSettings={vi.fn()} />)
+    })
+
+    expect(headerProps).not.toBeNull()
+    expect((headerProps!.getRaceCheckState as (id: string) => unknown)('race-never-opened')).toBeNull()
+  })
+
   it('feeds the real openFlags count into the footer progress bar, not a hardcoded value', async () => {
     // Every gate checked (checked === total) but with an open flag - the
     // fully-checked case is exactly where a hardcoded openFlags: 0 would

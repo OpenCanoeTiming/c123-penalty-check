@@ -460,11 +460,12 @@ export function AppContent({ settings, updateSettings, openSettingsOnMount }: Ap
 
   // Per-race verification progress for the race switcher - only for races
   // whose rows are already in memory (WebSocket or lazily-fetched REST);
-  // an unloaded race simply shows no indicator, same as "nothing to verify yet".
+  // an unloaded race reports null so the switcher can tell "not loaded"
+  // apart from "nothing verified yet" (#131).
   const getRaceCheckState = useCallback(
     (raceId: string) => {
       const raceResults = results.get(raceId) ?? restResults.get(raceId)
-      if (!raceResults) return { checked: 0, total: 0, openFlags: 0 }
+      if (!raceResults) return null
       const { checked, total, openFlags } = checks.getRaceProgress(raceId, raceResults.rows)
       return { checked, total, openFlags }
     },
