@@ -226,23 +226,24 @@ Chief judge sees everything, controllers see sections.
 
 ### Scenario 4: Testing/Demo
 
-Using replay server for testing without live C123.
+Using a recorded race replay for testing without live C123.
 
-Terminal 1 (replay-server):
+Terminal 1 (player - emulates C123):
 ```bash
-cd c123-protocol-docs/tools
-node replay-server.js ../recordings/rec-2025-12-28T09-34-10.jsonl --loop
+cd ../c123-protocol-docs
+node tools/recordings-cli.js fetch 2026-04-19-jarni-ne-odp
+node tools/player.js "$(node tools/recordings-cli.js path 2026-04-19-jarni-ne-odp)" \
+  --autoplay --xml-out /tmp/c123-replay.xml
 ```
 
 Terminal 2 (c123-server):
 ```bash
-cd c123-server
-npm start -- --host localhost
+cd ../c123-server
+npm start -- --host 127.0.0.1 --xml /tmp/c123-replay.xml --no-discovery --no-tray
 ```
 
-Terminal 3 (c123-scoring):
+Terminal 3 (c123-penalty-check):
 ```bash
-cd c123-scoring
 npm run dev
 ```
 

@@ -72,12 +72,14 @@ cd ../c123-server
 npm start -- --xml ../c123-protocol-docs/captures/xboardtest02_jarni_v1.xml
 
 # Option B: Replay recording (simulates live race)
-cd ../c123-protocol-docs/tools
-node replay-server.js ../recordings/rec-2025-12-28T09-34-10.jsonl
+cd ../c123-protocol-docs
+node tools/recordings-cli.js fetch 2026-04-19-jarni-ne-odp
+node tools/player.js "$(node tools/recordings-cli.js path 2026-04-19-jarni-ne-odp)" \
+  --autoplay --xml-out /tmp/c123-replay.xml
 
 # Then in another terminal:
 cd ../c123-server
-npm start -- --host localhost
+npm start -- --host 127.0.0.1 --xml /tmp/c123-replay.xml --no-discovery --no-tray
 ```
 
 ## Build

@@ -1327,6 +1327,20 @@ No **PATCH**. The header is static in `c123-server/src/unified/UnifiedServer.ts`
 1. curl is not a browser. It does not enforce CORS, so "the endpoint works when I curl it" says nothing about whether the app can call it. For a cross-origin app, reach for `OPTIONS` with `Access-Control-Request-Method` *before* concluding the server is fine.
 2. `catch { console.error(...) } finally { close() }` is not error handling - it is a hidden failure. The operator holds a tablet with no devtools; a dialog that closes on failure is indistinguishable from one that closes on success. This single swallowed error turned a one-line server config bug into a debugging session. Every REST call this app makes from a dialog now has to surface its failure *in that dialog* and leave it open, which is what `FlagDialog`'s `error`/`submitting` props and `describeApiError` exist for. Note also what `describeApiError` is for specifically: a browser-refused request arrives as `TypeError: Failed to fetch`, which names nothing an operator standing at a river can act on.
 
+## 2026-09-24 - StrictMode regression test that could not fail
+
+**Problem:** The first regression test for #130 wrapped `renderHook` in `wrapper: ({ children }) => <StrictMode>{children}</StrictMode>` and passed against the unfixed hook. Probing showed the effect ran once (`["effect ref=0"]`) - no mount/cleanup/remount cycle at all - even though `render(<StrictMode>...)` in the same file did double-invoke.
+**Attempted:** Checked `NODE_ENV` (was `development`) and the Vite config for anything forcing a production React build - nothing.
+**Solution:** Pass `renderHook(..., { reactStrictMode: true })` (Testing Library option) instead of a StrictMode wrapper. With it the test fails on the old hook for the right reason (`'discovering'` instead of `'found'`).
+**Lesson:** For StrictMode-specific hook bugs, watch the test fail before trusting it - the obvious wrapper silently tests non-StrictMode behaviour. Separately: `fuser` is not installed in this container, so `take-screenshots.sh`'s port cleanup is a no-op here, and the script still targets the removed `replay-server.js` recording; verification used `player.js` + `c123-server --no-tray` by hand.
+
+## 2026-09-24 - Rebuilding take-screenshots.sh: four hidden dependencies on luck
+
+**Problem:** After #130's discovery fix, `take-screenshots.sh` was rewritten around `player.js`, and the data suite then passed or failed from run to run on the same code. The old static screenshot `01-disconnected.png` turned out to show a *connected* app (still branded "C123-SCORING") - it had been captured with the server running, and only "worked" before because discovery never resolved.
+**Attempted:** Starting the replay from the beginning at 10x (grid either empty or changing under the test), probing races in the UI one by one (5s each, outran the timeout), waiting for the race selector's `x/y` progress labels (arrive asynchronously, sometimes after 20s).
+**Solution:** Four independent fixes, each needed: (1) static tests run *before* any server starts, and the script refuses to run if 27123/27333 are taken; (2) the replay starts at a race boundary (`--start-at-race K1W_BR1_19`) at 1x, and readiness is "a WebSocket client has received Schedule + Results" (`scripts/wait-for-server-data.cjs`), not "XML has races"; (3) the spec asks the server REST API which finished race has the most judged runs, instead of probing the UI; (4) that race's checks are cleared first - c123-server persists checks per XML *filename*, so the constant `replay.xml` carried flags across runs, and adding a flag where one was open hung the test (the menu offers "Resolve flag..." instead).
+**Lesson:** A screenshot pipeline has state in places nobody thinks of as state: which services are up during which test, how far a replay has progressed, and server-side persistence keyed by a filename. `pkill -f`/`pgrep -f` with a plain pattern also matches the calling shell - use `[p]attern`.
+
 ---
 
 ## Template for Further Entries
