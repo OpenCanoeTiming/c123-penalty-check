@@ -5,6 +5,13 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.5.2](https://github.com/OpenCanoeTiming/c123-penalty-check/compare/v1.5.1...v1.5.2) (2026-09-25)
+
+
+### Bug Fixes
+
+* distinguish unloaded races in the race switcher indicator ([#146](https://github.com/OpenCanoeTiming/c123-penalty-check/issues/146)) ([dd6812a](https://github.com/OpenCanoeTiming/c123-penalty-check/commit/dd6812a6b92fc7663f9b8c28f69cb6cf064936a7)), closes [#131](https://github.com/OpenCanoeTiming/c123-penalty-check/issues/131)
+
 ## [1.5.1](https://github.com/OpenCanoeTiming/c123-penalty-check/compare/v1.5.0...v1.5.1) (2026-09-25)
 
 
