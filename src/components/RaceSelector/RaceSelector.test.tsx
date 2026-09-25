@@ -57,6 +57,12 @@ describe('RaceSelector verification indicator', () => {
     expect(screen.queryByRole('option', { name: /✓/ })).not.toBeInTheDocument()
   })
 
+  it('marks a race whose results are not loaded yet with a dash, distinct from nothing verified', () => {
+    render(<RaceSelector {...base} getRaceCheckState={() => null} />)
+    expect(screen.getByRole('option', { name: /–$/ })).toBeInTheDocument()
+    expect(screen.queryByRole('option', { name: /✓/ })).not.toBeInTheDocument()
+  })
+
   it('renders nothing when getRaceCheckState is not provided', () => {
     render(<RaceSelector {...base} />)
     expect(screen.queryByRole('option', { name: /✓/ })).not.toBeInTheDocument()

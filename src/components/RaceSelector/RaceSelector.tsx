@@ -18,14 +18,19 @@ interface RaceSelectorProps {
   onSelectRace: (raceId: string) => void
   onlyRunning: boolean
   onToggleOnlyRunning: () => void
-  /** Per-race verification progress, keyed by raceId. Omit to show no indicator. */
-  getRaceCheckState?: (raceId: string) => RaceCheckState
+  /**
+   * Per-race verification progress, keyed by raceId, or null when the race's
+   * results are not loaded yet (so its progress is unknown). Omit to show no
+   * indicator.
+   */
+  getRaceCheckState?: (raceId: string) => RaceCheckState | null
 }
 
 /**
- * Text suffix for the per-race verification indicator: nothing while there
- * is nothing to check yet, ` checked/total` while in progress, ` ✓` once
- * every gate is checked.
+ * Text suffix for the per-race verification indicator: ` –` while the
+ * race's results are not loaded (progress unknown - must not read the same as
+ * "nothing verified yet"), nothing while there is nothing to check yet,
+ * ` checked/total` while in progress, ` ✓` once every gate is checked.
  *
  * Plain text, not markup: a native <select> never lays out an <option>'s
  * children - it paints only the option's flattened text - so an element
@@ -47,8 +52,8 @@ interface RaceSelectorProps {
  * still has an open flag falls through to the ratio branch rather than the
  * tick - it is not done, and the ratio at least doesn't claim otherwise.
  */
-function raceCheckIndicator(state: RaceCheckState | undefined): string {
-  if (!state) return ''
+function raceCheckIndicator(state: RaceCheckState | null): string {
+  if (state === null) return ' –'
   if (isProgressDone(state)) return ' ✓'
   if (state.total > 0) return ` ${state.checked}/${state.total}`
   return ''
