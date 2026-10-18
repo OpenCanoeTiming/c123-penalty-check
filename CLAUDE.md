@@ -4,7 +4,21 @@
 
 C123 Penalty Check — web application for penalty verification and correction in canoe slalom races timed with Canoe123. Tablet-optimized UI for comparing digital penalties against paper protocols.
 
-**GitHub:** OpenCanoeTiming/c123-penalty-check | **License:** MIT | **Status:** v1.1.0 — stable, maintenance mode
+**GitHub:** OpenCanoeTiming/c123-penalty-check | **License:** MIT | **Status:** Migration to the on-site contract in M4 (Rebuild 2026/27); venues run `legacy-2026` (v1.5.2)
+
+---
+
+## Rebuild 2026/27 — read first
+
+- **Design (normative):** c123-server `main`, `docs/arch/` — start at `README.md` (reading order, implementation sequence); then `CONTRACTS.md`, `DECISIONS/ADR-*`, `TEST-ARCHITECTURE.md`. Point to it, never restate it. Defaults taken without the maintainer go to `DECISIONS/LOG.md`.
+- **Legacy line:** venues run tag `legacy-2026`; branch `legacy/2026` takes `fix:` commits only. `main` is the rebuild, in place: replaced code is deleted, never kept beside the new.
+- **Releases:** rebuild code reaches no venue. Release Please PRs on `main` stay unmerged during the rebuild (no 1.x release from rebuild code); the rebuild ships as `Release-As: 2.0.0` when M6 Release 1.0 closes (see "Rebuild versioning" below).
+- **Order:** server → scoreboard → penalty-check → live-mini is the implementation order only. Everything, the new live included, is ready for the Jarní slalom (M6), its first real use: no shadow run, the legacy line is the fallback.
+- **Work items:** one issue each in project "Rebuild 2026/27" (https://github.com/orgs/OpenCanoeTiming/projects/3), milestones M0 Spike, freeze, merge · M1 Server core · M2 Tooling · M3 Scoreboard · M4 Penalty-check · M5 Live · M6 Release 1.0 (Jarní slalom). Implementation is on hold until the maintainer releases M1.
+- **Test-first:** failing tests from the vectors or obligations land before the code that passes them. Tiers and the `Clock` rule: `TEST-ARCHITECTURE.md` §3, §5.
+- **Client repos:** definition of done = `CLIENT-OBLIGATIONS.md` Common + "c123-penalty-check". A wrong obligation is fixed in c123-server `docs/arch` (same PR as the cited section, or label `obligations-unchanged`), never by deviating here.
+- **Upstream provenance** stays in the private c123-protocol-docs repo; public repos state behaviour only, never how it was established.
+- **Git:** conventional commits; Release Please owns versions and CHANGELOG; squash merges; `git add <file>`, never commit `.claude/` or `.superpowers/`. Czech with the maintainer, English in code, commits and docs.
 
 ---
 
@@ -36,7 +50,7 @@ C123 Penalty Check — web application for penalty verification and correction i
 └─────────────────────────────────────────────────────────────┘
 ```
 
-**Key principle:** c123-penalty-check communicates exclusively with c123-server, never directly with C123.
+**Key principle:** c123-penalty-check talks only to c123-server, never to Canoe123, and keeps no terminal channel of its own (CONTRACTS §7.3).
 
 ---
 
@@ -44,26 +58,30 @@ C123 Penalty Check — web application for penalty verification and correction i
 
 | Purpose | Path |
 |---------|------|
+| **Definition of done (M4)** | `../c123-server/docs/arch/CLIENT-OBLIGATIONS.md` → Common + "c123-penalty-check" |
+| **Target contract** | `../c123-server/docs/arch/CONTRACTS.md` §2.9, §2.10, §7 |
 | **Project overview** | `./PROJECT.md` |
-| **Server REST API** | `../c123-server/docs/REST-API.md` |
-| **WebSocket protocol** | `../c123-server/docs/C123-PROTOCOL.md` |
+| **Server REST API (legacy wire)** | `../c123-server/docs/REST-API.md` |
+| **WebSocket protocol (legacy wire)** | `../c123-server/docs/C123-PROTOCOL.md` |
 | **Protocol docs** | `../c123-protocol-docs/` |
 | **Recordings for testing** | `../c123-protocol-docs/recordings/` |
 | **Design system** | `../timing-design-system/` |
-| **Private resources** | `./resources-private/` (READONLY, do not mention in code) |
+| **Private resources** | `./resources-private/` (read-only, not in git; never quote or name its contents in code, commits, issues or PRs) |
 
 ---
 
 ## Important Rules
 
-1. **DO NOT MODIFY c123-server** — server is stable, changes only with explicit approval
+1. **Contract first** — this repo consumes CONTRACTS §7; it never works around the server. A missing or wrong server behaviour is an issue (or docs/arch PR) in c123-server, not client logic here.
 2. **Tablet-first** — optimized for 1024px/1366px breakpoints
 3. **Design system mandatory** — use `@opencanoetiming/timing-design-system`, no inline styles
 4. **Screenshots after visual changes** — run `./scripts/take-screenshots.sh`
 
 ---
 
-## Communication with c123-server
+## Communication with c123-server (legacy wire, until M4)
+
+Target (M4): CONTRACTS §7.1–§7.4 and CLIENT-OBLIGATIONS "c123-penalty-check" — one penalty write with an `Idempotency-Key`, no status/mark write, checks and flags on the server; this section is retired with the migration.
 
 ### WebSocket (reading data)
 
@@ -89,23 +107,14 @@ POST /api/c123/timing            { "bib": "10", "channelPosition": "Start" }
 ## Project Structure
 
 ```
-c123-penalty-check/
-├── src/
-│   ├── index.tsx             # Entry point
-│   ├── App.tsx               # Main component
-│   ├── components/           # UI components
-│   │   ├── RaceSelector/     # Race selection
-│   │   ├── PenaltyGrid/      # Penalty grid
-│   │   └── ConnectionStatus/ # Connection status
-│   ├── hooks/                # React hooks
-│   │   ├── useWebSocket.ts   # WebSocket connection
-│   │   └── useScoring.ts     # Scoring API calls
-│   ├── services/             # API communication
-│   │   └── scoringApi.ts     # REST API client
-│   ├── store/                # State management
-│   └── types/                # TypeScript types
-├── resources-private/        # Source materials (NOT in git)
-└── package.json
+src/
+├── App.tsx, main.tsx
+├── components/   # ResultsGrid, RaceSelector, FlagDialog, CheckProgress, GateGroupEditor, Settings, Header, Layout, …
+├── hooks/        # useC123WebSocket, useScoring, useChecks, useSchedule, useGateGroups, useKeyboardInput, …
+├── services/     # http, scoringApi, checksApi, coursesApi, resultsApi, scheduleApi, discovery-client, …
+├── store/  styles/  types/  utils/
+tests/            # Playwright e2e + screenshots; mock-ws-server.ts (legacy, retired in M4)
+resources-private/  # not in git
 ```
 
 ---
@@ -116,10 +125,10 @@ c123-penalty-check/
 2. **Race display** — active races from Schedule, active indicators
 3. **Competitor grid** — who will race, who is racing, who finished, penalty status
 4. **Inline editing** — keyboard control, arrow navigation
-5. **Penalty submission** — REST API POST /api/c123/scoring
+5. **Penalty submission** — through c123-server (legacy: `POST /api/c123/scoring`; target: CONTRACTS §7.3)
 6. **Gate grouping** — by segments or custom groups
 7. **Protocol verification** — marking verified protocols
-8. **Persistence** — settings in localStorage
+8. **Persistence** — UI settings and the selected race in localStorage; checks and flags on the server
 
 ---
 
@@ -139,13 +148,7 @@ npm run build
 npm test
 ```
 
-**Testing with c123-server:**
-```bash
-# In another terminal start c123-server
-cd ../c123-server && npm start
-
-# Penalty check connects to ws://localhost:27123/ws
-```
+**Testing with c123-server:** use the player recipe in `../c123-server/CLAUDE.md` ("Testing with recorded data"), or `./scripts/take-screenshots.sh`, which starts both. Behaviour tests for the migration are tier 3 (TEST-ARCHITECTURE §3.3); `tests/mock-ws-server.ts` is retired then (CLIENT-OBLIGATIONS, rendering clients, "Tests").
 
 ---
 
@@ -170,7 +173,7 @@ cd ../c123-server && npm start
 
 ## Workflow
 
-Issue-driven development. Every change starts with a GitHub issue.
+Rebuild rules: see "Rebuild 2026/27 — read first" above. Every change starts with a GitHub issue.
 
 ### 1. Rozbor (Analysis)
 - Comment on issue: restate problem, challenge the idea, define scope, identify risks
@@ -188,7 +191,7 @@ Issue-driven development. Every change starts with a GitHub issue.
 
 ### 4. PR & Review
 - Every issue → PR with `Closes #N`
-- Include test plan in PR description
+- Include the verification: commands run, exit codes, CI run link; for a migration item, the CLIENT-OBLIGATIONS lines it closes
 - Summarize what changed and why
 
 ---
@@ -244,11 +247,10 @@ This project uses **Release Please** (commit-based) for automatic versioning. **
 | `feat:` | **minor** | ✓ Features |
 | `fix:` / `perf:` | **patch** | ✓ Bug Fixes / Performance |
 | `feat!:` or `BREAKING CHANGE:` | **major** | ✓ Features |
-| `revert:` / `docs:` | none | ✓ Reverts / Documentation |
+| `revert:` | none | ✓ Reverts |
+| `docs:` | none | hidden |
 | `chore:` / `ci:` / `test:` / `style:` / `refactor:` / `build:` | **none** | hidden |
 | `chore(deps):` / `chore(deps-dev):` (dependabot) | **none** | hidden |
-
-Project is in maintenance mode — most activity is dependabot `chore(deps*)` which produces no bump. This is intentional.
 
 ### Rules for agents preparing PRs
 
@@ -259,10 +261,12 @@ Project is in maintenance mode — most activity is dependabot `chore(deps*)` wh
 5. **Never commit skill state** — `.superpowers/` and `.claude/` are local per-session tool state. Prefer `git add <file>` over `git add -A`. Already added to `.gitignore` in this repo.
 6. **Dependency bumps on `@opencanoetiming/timing-design-system`** are a separate `chore:` commit, not bundled with feature work.
 
-### Forcing a specific version
+### Rebuild versioning (maintainer decision 2026-10-18)
 
-To force a release to a specific version, add this footer to a commit in the next release cycle:
+During the rebuild, the Release Please PR on `main` is left **unmerged**: no 1.x release is cut from rebuild code (any `feat:` on `main` would otherwise propose 1.6.0). When milestone M6 Release 1.0 closes, the rebuild ships as 2.0.0, with this footer on the closing commit:
 
 ```
 Release-As: 2.0.0
 ```
+
+Venue fixes in the meantime go to `legacy/2026`.
