@@ -60,7 +60,7 @@ test.describe('Screenshot Tests - Static States', () => {
     await page.waitForSelector('[data-testid="settings-panel"]', { timeout: 5000 });
     await page.waitForTimeout(300);
     // Click Keyboard tab using data-testid
-    await page.click('[data-testid="settings-tab-keyboard"]');
+    await page.getByRole('tab', { name: 'Keyboard' }).click();
     await page.waitForTimeout(300);
     await takeDocScreenshot(page, '04-settings-keyboard');
   });
@@ -72,7 +72,7 @@ test.describe('Screenshot Tests - Static States', () => {
     await page.waitForSelector('[data-testid="settings-panel"]', { timeout: 5000 });
     await page.waitForTimeout(300);
     // Click Display tab using data-testid
-    await page.click('[data-testid="settings-tab-display"]');
+    await page.getByRole('tab', { name: 'Display' }).click();
     await page.waitForTimeout(300);
     await takeDocScreenshot(page, '05-settings-display');
   });

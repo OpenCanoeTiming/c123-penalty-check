@@ -5,37 +5,6 @@
  * Most styling is handled by the design system.
  */
 
-/* Modal body spacing for tabs */
-.settings-body {
-  padding: 0;
-}
-
-.settings-body .tabs {
-  height: 100%;
-  display: flex;
-  flex-direction: column;
-}
-
-.settings-body .tab-list {
-  padding: 0 var(--space-6);
-  border-bottom: 1px solid var(--color-border);
-  flex-shrink: 0;
-}
-
-.settings-body .tab-panels {
-  flex: 1;
-  overflow-y: auto;
-  padding: var(--space-6);
-}
-
-.settings-body .tab-panel {
-  display: none;
-}
-
-.settings-body .tab-panel.active {
-  display: block;
-}
-
 /* Section styling */
 .settings-section {
   display: flex;
@@ -57,8 +26,9 @@
   align-items: center;
 }
 
-.settings-input-group .input {
+.settings-url-input {
   flex: 1;
+  min-width: 0;
 }
 
 /* Actions row */
@@ -126,6 +96,20 @@
   display: flex;
   align-items: center;
   gap: var(--space-1);
+}
+
+.shortcut-key {
+  display: inline-block;
+  min-width: 1.5em;
+  padding: 0 var(--space-1);
+  font-size: var(--text-xs);
+  line-height: 1.6;
+  text-align: center;
+  color: var(--color-text-primary);
+  background: var(--color-bg-elevated);
+  border: 1px solid var(--color-border);
+  border-bottom-width: 2px;
+  border-radius: var(--radius-sm);
 }
 
 .shortcut-plus {

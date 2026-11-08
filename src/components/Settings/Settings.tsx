@@ -7,18 +7,9 @@
 import { useState, useCallback, useRef, useEffect } from 'react'
 import {
   Modal,
-  ModalHeader,
-  ModalTitle,
-  ModalClose,
-  ModalBody,
   Tabs,
-  TabList,
-  Tab,
-  TabPanels,
-  TabPanel,
   Input,
   Button,
-  Kbd,
   Badge,
   Select,
 } from '@opencanoetiming/timing-design-system'
@@ -46,6 +37,12 @@ export interface SettingsProps {
 }
 
 type SettingsTab = 'server' | 'display' | 'keyboard'
+
+const SETTINGS_TABS: { value: SettingsTab; label: string }[] = [
+  { value: 'display', label: 'Display' },
+  { value: 'keyboard', label: 'Keyboard' },
+  { value: 'server', label: 'Server' },
+]
 
 export function Settings({
   settings,
@@ -172,17 +169,17 @@ export function Settings({
   // Connection status badge
   const getConnectionBadge = () => {
     if (isTesting) {
-      return <Badge variant="warning">Testing...</Badge>
+      return <Badge tone="warning">Testing...</Badge>
     }
     switch (connectionState) {
       case 'connected':
-        return <Badge variant="success">Connected</Badge>
+        return <Badge tone="success">Connected</Badge>
       case 'connecting':
-        return <Badge variant="warning">Connecting...</Badge>
+        return <Badge tone="warning">Connecting...</Badge>
       case 'error':
-        return <Badge variant="error">Error</Badge>
+        return <Badge tone="error">Error</Badge>
       default:
-        return <Badge variant="neutral">Disconnected</Badge>
+        return <Badge tone="neutral">Disconnected</Badge>
     }
   }
 
@@ -190,29 +187,19 @@ export function Settings({
     <Modal
       open={true}
       onClose={onClose}
+      title="Settings"
       size="lg"
       data-testid="settings-panel"
     >
-      <ModalHeader>
-        <ModalTitle>Settings</ModalTitle>
-        <ModalClose onClick={onClose} data-testid="settings-close" />
-      </ModalHeader>
-
-      <ModalBody className="settings-body">
+        {/* Arrow keys, Home and End move between tabs (DS Tabs); only the
+            active panel is rendered. */}
         <Tabs
-          activeTab={activeTab}
-          onChange={(id) => setActiveTab(id as SettingsTab)}
-          variant="underline"
+          value={activeTab}
+          onChange={(value) => setActiveTab(value as SettingsTab)}
+          tabs={SETTINGS_TABS}
         >
-          <TabList>
-            <Tab id="display" data-testid="settings-tab-display">Display</Tab>
-            <Tab id="keyboard" data-testid="settings-tab-keyboard">Keyboard</Tab>
-            <Tab id="server" data-testid="settings-tab-server">Server</Tab>
-          </TabList>
-
-          <TabPanels>
             {/* Display Tab */}
-            <TabPanel tabId="display">
+            {activeTab === 'display' && (
               <div className="settings-section">
                 <h3 className="settings-section-title">Display Options</h3>
 
@@ -281,10 +268,10 @@ export function Settings({
                 </div>
 
               </div>
-            </TabPanel>
+            )}
 
             {/* Keyboard Tab */}
-            <TabPanel tabId="keyboard">
+            {activeTab === 'keyboard' && (
               <div className="settings-section" data-testid="settings-keyboard-content">
                 <h3 className="settings-section-title">Keyboard &amp; Touch</h3>
 
@@ -325,10 +312,10 @@ export function Settings({
                   </div>
                 </div>
               </div>
-            </TabPanel>
+            )}
 
             {/* Server Tab */}
-            <TabPanel tabId="server">
+            {activeTab === 'server' && (
               <div className="settings-section">
                 <h3 className="settings-section-title">Server Connection</h3>
 
@@ -339,12 +326,13 @@ export function Settings({
                   <div className="settings-input-group">
                     <Input
                       id="server-url"
+                      className="settings-url-input"
                       type="text"
                       value={serverUrl}
                       onChange={handleUrlChange}
                       placeholder="ws://localhost:27123/ws"
                       autoComplete="url"
-                      error={!!urlError}
+                      invalid={!!urlError}
                       data-testid="settings-server-url"
                     />
                     {getConnectionBadge()}
@@ -422,10 +410,8 @@ export function Settings({
                   </p>
                 </div>
               </div>
-            </TabPanel>
-          </TabPanels>
+            )}
         </Tabs>
-      </ModalBody>
     </Modal>
   )
 }
@@ -441,7 +427,7 @@ function Shortcut({ keys, description }: ShortcutProps) {
       <div className="shortcut-keys">
         {keys.map((key, i) => (
           <span key={i}>
-            <Kbd size="sm">{key}</Kbd>
+            <kbd className="shortcut-key">{key}</kbd>
             {i < keys.length - 1 && <span className="shortcut-plus">+</span>}
           </span>
         ))}

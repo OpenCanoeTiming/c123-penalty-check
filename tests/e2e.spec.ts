@@ -67,7 +67,7 @@ test.describe('Settings Panel Tests', () => {
     await page.waitForTimeout(300);
 
     // Click close button
-    await page.click('[data-testid="settings-close"]');
+    await page.getByRole('dialog', { name: 'Settings' }).getByRole('button', { name: 'Close' }).click();
     await page.waitForTimeout(300);
 
     // Settings should be hidden
@@ -115,7 +115,7 @@ test.describe('Settings Panel Tests', () => {
     await page.waitForTimeout(300);
 
     // Click on Keyboard tab
-    await page.click('[data-testid="settings-tab-keyboard"]');
+    await page.getByRole('tab', { name: 'Keyboard' }).click();
     await page.waitForTimeout(200);
 
     // Keyboard shortcuts content should be visible
@@ -133,7 +133,7 @@ test.describe('Settings Panel Tests', () => {
     await page.waitForTimeout(300);
 
     // Click on Display tab
-    await page.click('[data-testid="settings-tab-display"]');
+    await page.getByRole('tab', { name: 'Display' }).click();
     await page.waitForTimeout(200);
 
     // Display content should be visible (check for checkboxes)
