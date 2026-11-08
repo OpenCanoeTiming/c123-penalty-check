@@ -157,7 +157,6 @@ src/
 │   ├── useCheckedState.ts     # Verification state
 │   ├── useConnectionStatus.ts # Connection status
 │   ├── useFocusNavigation.ts  # Grid navigation
-│   ├── useFocusTrap.ts        # Modal focus management
 │   ├── useGateGroups.ts       # Gate grouping with segments
 │   ├── useKeyboardInput.ts    # Keyboard handling
 │   ├── useSchedule.ts         # Race schedule parsing

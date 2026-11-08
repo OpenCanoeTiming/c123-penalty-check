@@ -561,20 +561,16 @@ export function AppContent({ settings, updateSettings, openSettingsOnMount }: Ap
     >
       {/* Gate Group Editor Modal */}
       {showGateGroupEditor && effectiveRaceConfig && (
-        <div className="modal-overlay" onClick={() => setShowGateGroupEditor(false)}>
-          <div className="modal-content" onClick={(e) => e.stopPropagation()}>
-            <GateGroupEditor
-              totalGates={effectiveRaceConfig.nrGates}
-              groups={customGroups}
-              activeGroupId={activeGroupId}
-              onAddGroup={addGroup}
-              onUpdateGroup={updateGroup}
-              onRemoveGroup={removeGroup}
-              onSetActiveGroup={setActiveGroup}
-              onClose={() => setShowGateGroupEditor(false)}
-            />
-          </div>
-        </div>
+        <GateGroupEditor
+          totalGates={effectiveRaceConfig.nrGates}
+          groups={customGroups}
+          activeGroupId={activeGroupId}
+          onAddGroup={addGroup}
+          onUpdateGroup={updateGroup}
+          onRemoveGroup={removeGroup}
+          onSetActiveGroup={setActiveGroup}
+          onClose={() => setShowGateGroupEditor(false)}
+        />
       )}
 
       {/* Settings Modal */}
