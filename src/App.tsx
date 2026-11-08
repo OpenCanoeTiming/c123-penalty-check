@@ -541,7 +541,7 @@ export function AppContent({ settings, updateSettings, openSettingsOnMount }: Ap
             )}
             {connectionState === 'connected' && !checks.loading && !checks.available && (
               <span className="verification-unavailable">
-                <Badge variant="warning">Verification unavailable</Badge>
+                <Badge tone="warning">Verification unavailable</Badge>
                 {/* The reason is rendered as text, not just a title attribute -
                     a title tooltip never appears on a touch device, and this
                     app is built for a tablet. */}

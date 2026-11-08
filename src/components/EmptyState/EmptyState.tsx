@@ -1,11 +1,4 @@
-import {
-  Button,
-  Card,
-  CardBody,
-  CardTitle,
-  CardSubtitle,
-  type CardStatus,
-} from '@opencanoetiming/timing-design-system'
+import { Button, Card, CardBody } from '@opencanoetiming/timing-design-system'
 import './EmptyState.css'
 
 export type EmptyStateVariant = 'disconnected' | 'no-races' | 'no-competitors' | 'loading' | 'discovering'
@@ -20,24 +13,23 @@ export interface EmptyStateProps {
   }
 }
 
-const defaultContent: Record<EmptyStateVariant, { icon: string; title: string; message: string; status?: CardStatus }> = {
+// The tone of each variant (error for disconnected, info for no races / no
+// competitors) is carried by the icon colour in EmptyState.css.
+const defaultContent: Record<EmptyStateVariant, { icon: string; title: string; message: string }> = {
   disconnected: {
     icon: '⚡',
     title: 'Not connected',
     message: 'Unable to connect to the timing server. Check your connection settings.',
-    status: 'error',
   },
   'no-races': {
     icon: '📋',
     title: 'No active races',
     message: 'No races are currently active. Wait for a race to start or check the schedule.',
-    status: 'info',
   },
   'no-competitors': {
     icon: '🏁',
     title: 'No competitors',
     message: 'No competitors on course or finished yet. Waiting for the race to begin.',
-    status: 'info',
   },
   loading: {
     icon: '⏳',
@@ -61,22 +53,19 @@ export function EmptyState({
 
   return (
     <div className="empty-state-wrapper" data-testid="empty-state" data-variant={variant}>
-      <Card
-        variant="elevated"
-        padding="spacious"
-        status={content.status}
-        className={`empty-state-card empty-state-card--${variant}`}
-      >
+      <Card className={`empty-state-card empty-state-card--${variant}`}>
         <CardBody className="empty-state-card__body">
           <span className={`empty-state-card__icon ${variant === 'loading' || variant === 'discovering' ? 'empty-state-card__icon--pulse' : ''}`} aria-hidden="true">
             {content.icon}
           </span>
-          <CardTitle as="h2" className="empty-state-card__title">
+          {/* DS card-title / card-subtitle on our own elements: CardHeader
+              is a left-aligned header row, this is a centred block. */}
+          <h2 className="card-title empty-state-card__title">
             {title ?? content.title}
-          </CardTitle>
-          <CardSubtitle className="empty-state-card__message">
+          </h2>
+          <p className="card-subtitle empty-state-card__message">
             {message ?? content.message}
-          </CardSubtitle>
+          </p>
           {action && (
             <Button
               variant="primary"

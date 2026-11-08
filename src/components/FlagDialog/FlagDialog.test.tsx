@@ -76,10 +76,10 @@ describe('FlagDialog create mode', () => {
   })
 
   it('keeps the footer reachable with a long comment - header/body/footer are direct children of the modal, not wrapped in an extra div', () => {
-    // .modal-body's scrolling (overflow-y: auto; flex-grow: 1) and .modal's
-    // max-height only apply while ModalHeader/ModalBody/ModalFooter are
-    // direct flex children of .modal. A focus-trap wrapper div around them
-    // breaks that layout contract and pushes the footer (Cancel/Add flag or
+    // .modal-body's scrolling (flex: 1; overflow-y: auto) and the panel's
+    // max-height only work while header/body/footer are direct flex children
+    // of the dialog panel (.modal-content, which carries role="dialog"). A
+    // wrapper div around them would push the footer (Cancel/Add flag or
     // Cancel/Resolve) out of the dialog with nothing to scroll it back into
     // view - see task-9 review, Important 1. jsdom does not compute real
     // layout/scrolling, so this pins the DOM structure the CSS depends on
@@ -198,6 +198,59 @@ describe('FlagDialog close', () => {
     expect(onClose).toHaveBeenCalledTimes(1)
     expect(onSubmit).not.toHaveBeenCalled()
   })
+
+  it('closes on Escape without submitting', () => {
+    const onSubmit = vi.fn()
+    const onClose = vi.fn()
+    render(<FlagDialog mode="create" onSubmit={onSubmit} onClose={onClose} />)
+
+    fireEvent.keyDown(screen.getByLabelText('Comment'), { key: 'Escape' })
+
+    expect(onClose).toHaveBeenCalledTimes(1)
+    expect(onSubmit).not.toHaveBeenCalled()
+  })
+
+  it('closes from the header close button', () => {
+    const onClose = vi.fn()
+    render(<FlagDialog mode="create" onSubmit={vi.fn()} onClose={onClose} />)
+
+    fireEvent.click(screen.getByRole('button', { name: 'Close' }))
+
+    expect(onClose).toHaveBeenCalledTimes(1)
+  })
+})
+
+describe('FlagDialog focus', () => {
+  it('is a modal dialog named by its title', () => {
+    render(<FlagDialog mode="create" onSubmit={vi.fn()} onClose={vi.fn()} />)
+    const dialog = screen.getByRole('dialog', { name: 'Add flag' })
+    expect(dialog).toHaveAttribute('aria-modal', 'true')
+  })
+
+  // The operator opened the dialog to type: the first field, not the
+  // header's close button, takes focus.
+  it('focuses the comment field on open in create mode', () => {
+    render(<FlagDialog mode="create" onSubmit={vi.fn()} onClose={vi.fn()} />)
+    expect(screen.getByLabelText('Comment')).toHaveFocus()
+  })
+
+  it('focuses the resolution note on open in resolve mode', () => {
+    render(<FlagDialog mode="resolve" flag={flag} onSubmit={vi.fn()} onClose={vi.fn()} />)
+    expect(screen.getByLabelText('Resolution note (optional)')).toHaveFocus()
+  })
+
+  it('gives focus back to what had it before the dialog opened', () => {
+    const opener = document.createElement('button')
+    document.body.appendChild(opener)
+    opener.focus()
+
+    const { unmount } = render(<FlagDialog mode="create" onSubmit={vi.fn()} onClose={vi.fn()} />)
+    expect(opener).not.toHaveFocus()
+    unmount()
+
+    expect(opener).toHaveFocus()
+    opener.remove()
+  })
 })
 
 describe('FlagDialog submit failure', () => {
@@ -216,6 +269,25 @@ describe('FlagDialog submit failure', () => {
     )
 
     expect(screen.getByRole('alert')).toHaveTextContent('Could not reach the server')
+  })
+
+  // The body is the one part of the dialog that scrolls; the footer never
+  // does. The error sits in the footer beside the buttons, so a long
+  // comment can never push it out of view.
+  it('shows the failure in the footer, beside the buttons, not in the scrolling body', () => {
+    render(
+      <FlagDialog
+        mode="resolve"
+        flag={flag}
+        error="Could not reach the server"
+        onSubmit={vi.fn()}
+        onClose={vi.fn()}
+      />
+    )
+
+    const footer = screen.getByRole('button', { name: 'Resolve' }).closest('.modal-footer')
+    expect(footer).not.toBeNull()
+    expect(footer).toContainElement(screen.getByRole('alert'))
   })
 
   it('renders no alert region while there is no error', () => {
