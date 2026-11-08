@@ -6,10 +6,9 @@
  */
 
 import { useState, useCallback } from 'react'
-import { Button, Input } from '@opencanoetiming/timing-design-system'
+import { Button, Input, Modal } from '@opencanoetiming/timing-design-system'
 import type { GateGroup } from '../../types/ui'
 import { GROUP_COLORS, validateGateGroup } from '../../types/gateGroups'
-import { useFocusTrap } from '../../hooks/useFocusTrap'
 import styles from './GateGroupEditor.module.css'
 
 export interface GateGroupEditorProps {
@@ -27,8 +26,8 @@ export interface GateGroupEditorProps {
   onRemoveGroup: (groupId: string) => void
   /** Callback when active group changes */
   onSetActiveGroup: (groupId: string | null) => void
-  /** Optional callback to close the editor */
-  onClose?: () => void
+  /** Close the editor (close button, Escape, backdrop) */
+  onClose: () => void
 }
 
 interface EditingGroup {
@@ -55,9 +54,6 @@ export function GateGroupEditor({
 }: GateGroupEditorProps) {
   const [editingGroup, setEditingGroup] = useState<EditingGroup | null>(null)
   const [error, setError] = useState<string | null>(null)
-
-  // Focus trap for modal accessibility
-  const editorRef = useFocusTrap<HTMLDivElement>({ enabled: true })
 
   const startNewGroup = useCallback(() => {
     setEditingGroup({
@@ -160,175 +156,170 @@ export function GateGroupEditor({
   const gateNumbers = Array.from({ length: totalGates }, (_, i) => i + 1)
 
   return (
-    <div ref={editorRef} className={styles.editor}>
-      <div className={styles.header}>
-        <h3 className={styles.title}>Gate Groups</h3>
-        {onClose && (
-          <Button variant="ghost" size="sm" icon onClick={onClose} aria-label="Close">
-            ×
+    // The DS Modal owns the header, focus trap, Escape and focus restore.
+    <Modal open onClose={onClose} title="Gate Groups">
+      <div className={styles.editor}>
+
+        {/* Existing groups list */}
+        <div className={styles.groupsList}>
+          <GroupItem
+            group={{ id: 'all', name: 'All Gates', gates: [] }}
+            isActive={activeGroupId === null}
+            onActivate={() => onSetActiveGroup(null)}
+            onEdit={undefined}
+            onRemove={undefined}
+          />
+
+          {groups.map((group) => (
+            <GroupItem
+              key={group.id}
+              group={group}
+              isActive={activeGroupId === group.id}
+              onActivate={() => onSetActiveGroup(group.id)}
+              onEdit={() => startEditGroup(group)}
+              onRemove={() => onRemoveGroup(group.id)}
+            />
+          ))}
+        </div>
+
+        {/* Add new group button */}
+        {!editingGroup && (
+          <Button variant="secondary" onClick={startNewGroup} className={styles.addButton}>
+            + Add Group
           </Button>
         )}
-      </div>
 
-      {/* Existing groups list */}
-      <div className={styles.groupsList}>
-        <GroupItem
-          group={{ id: 'all', name: 'All Gates', gates: [] }}
-          isActive={activeGroupId === null}
-          onActivate={() => onSetActiveGroup(null)}
-          onEdit={undefined}
-          onRemove={undefined}
-        />
+        {/* Edit form */}
+        {editingGroup && (
+          <div className={styles.editForm}>
+            <h4 className={styles.formTitle}>
+              {editingGroup.id ? 'Edit Group' : 'New Group'}
+            </h4>
 
-        {groups.map((group) => (
-          <GroupItem
-            key={group.id}
-            group={group}
-            isActive={activeGroupId === group.id}
-            onActivate={() => onSetActiveGroup(group.id)}
-            onEdit={() => startEditGroup(group)}
-            onRemove={() => onRemoveGroup(group.id)}
-          />
-        ))}
-      </div>
-
-      {/* Add new group button */}
-      {!editingGroup && (
-        <Button variant="secondary" onClick={startNewGroup} className={styles.addButton}>
-          + Add Group
-        </Button>
-      )}
-
-      {/* Edit form */}
-      {editingGroup && (
-        <div className={styles.editForm}>
-          <h4 className={styles.formTitle}>
-            {editingGroup.id ? 'Edit Group' : 'New Group'}
-          </h4>
-
-          <div className={styles.formField}>
-            <label htmlFor="group-name" className={styles.label}>
-              Name
-            </label>
-            <Input
-              id="group-name"
-              type="text"
-              value={editingGroup.name}
-              onChange={handleNameChange}
-              placeholder="e.g., Judge 1, Gates 1-6"
-              autoFocus
-            />
-          </div>
-
-          <div className={styles.formField}>
-            <label className={styles.label}>Color</label>
-            <div className={styles.colorPicker}>
-              {GROUP_COLORS.map((color) => (
-                <button
-                  key={color}
-                  type="button"
-                  className={`${styles.colorSwatch} ${editingGroup.color === color ? styles.colorSelected : ''}`}
-                  style={{ backgroundColor: color }}
-                  onClick={() => handleColorChange(color)}
-                  aria-label={`Select color ${color}`}
-                />
-              ))}
-            </div>
-          </div>
-
-          <div className={styles.formField}>
-            <div className={styles.gatesHeader}>
-              <label className={styles.label}>
-                Gates ({editingGroup.gates.size} selected)
+            <div className={styles.formField}>
+              <label htmlFor="group-name" className={styles.label}>
+                Name
               </label>
-              <div className={styles.gatesActions}>
-                <Button variant="ghost" size="sm" onClick={clearGates}>
-                  Clear
-                </Button>
+              <Input
+                id="group-name"
+                type="text"
+                value={editingGroup.name}
+                onChange={handleNameChange}
+                placeholder="e.g., Judge 1, Gates 1-6"
+                autoFocus
+              />
+            </div>
+
+            <div className={styles.formField}>
+              <label className={styles.label}>Color</label>
+              <div className={styles.colorPicker}>
+                {GROUP_COLORS.map((color) => (
+                  <button
+                    key={color}
+                    type="button"
+                    className={`${styles.colorSwatch} ${editingGroup.color === color ? styles.colorSelected : ''}`}
+                    style={{ backgroundColor: color }}
+                    onClick={() => handleColorChange(color)}
+                    aria-label={`Select color ${color}`}
+                  />
+                ))}
               </div>
             </div>
 
-            {/* Quick range selectors */}
-            {totalGates >= 6 && (
-              <div className={styles.quickRanges}>
-                <button
-                  type="button"
-                  className={styles.rangeButton}
-                  onClick={() => selectGateRange(1, Math.ceil(totalGates / 2))}
-                >
-                  1-{Math.ceil(totalGates / 2)}
-                </button>
-                <button
-                  type="button"
-                  className={styles.rangeButton}
-                  onClick={() => selectGateRange(Math.ceil(totalGates / 2) + 1, totalGates)}
-                >
-                  {Math.ceil(totalGates / 2) + 1}-{totalGates}
-                </button>
-                {totalGates >= 12 && (
-                  <>
-                    <button
-                      type="button"
-                      className={styles.rangeButton}
-                      onClick={() => selectGateRange(1, Math.ceil(totalGates / 3))}
-                    >
-                      1-{Math.ceil(totalGates / 3)}
-                    </button>
-                    <button
-                      type="button"
-                      className={styles.rangeButton}
-                      onClick={() =>
-                        selectGateRange(
-                          Math.ceil(totalGates / 3) + 1,
-                          Math.ceil((2 * totalGates) / 3)
-                        )
-                      }
-                    >
-                      {Math.ceil(totalGates / 3) + 1}-{Math.ceil((2 * totalGates) / 3)}
-                    </button>
-                    <button
-                      type="button"
-                      className={styles.rangeButton}
-                      onClick={() =>
-                        selectGateRange(Math.ceil((2 * totalGates) / 3) + 1, totalGates)
-                      }
-                    >
-                      {Math.ceil((2 * totalGates) / 3) + 1}-{totalGates}
-                    </button>
-                  </>
-                )}
+            <div className={styles.formField}>
+              <div className={styles.gatesHeader}>
+                <label className={styles.label}>
+                  Gates ({editingGroup.gates.size} selected)
+                </label>
+                <div className={styles.gatesActions}>
+                  <Button variant="ghost" size="sm" onClick={clearGates}>
+                    Clear
+                  </Button>
+                </div>
               </div>
-            )}
 
-            {/* Gate checkboxes grid */}
-            <div className={styles.gatesGrid}>
-              {gateNumbers.map((gateNum) => (
-                <button
-                  key={gateNum}
-                  type="button"
-                  className={`${styles.gateCheckbox} ${editingGroup.gates.has(gateNum) ? styles.gateSelected : ''}`}
-                  onClick={() => toggleGate(gateNum)}
-                  aria-pressed={editingGroup.gates.has(gateNum)}
-                >
-                  {gateNum}
-                </button>
-              ))}
+              {/* Quick range selectors */}
+              {totalGates >= 6 && (
+                <div className={styles.quickRanges}>
+                  <button
+                    type="button"
+                    className={styles.rangeButton}
+                    onClick={() => selectGateRange(1, Math.ceil(totalGates / 2))}
+                  >
+                    1-{Math.ceil(totalGates / 2)}
+                  </button>
+                  <button
+                    type="button"
+                    className={styles.rangeButton}
+                    onClick={() => selectGateRange(Math.ceil(totalGates / 2) + 1, totalGates)}
+                  >
+                    {Math.ceil(totalGates / 2) + 1}-{totalGates}
+                  </button>
+                  {totalGates >= 12 && (
+                    <>
+                      <button
+                        type="button"
+                        className={styles.rangeButton}
+                        onClick={() => selectGateRange(1, Math.ceil(totalGates / 3))}
+                      >
+                        1-{Math.ceil(totalGates / 3)}
+                      </button>
+                      <button
+                        type="button"
+                        className={styles.rangeButton}
+                        onClick={() =>
+                          selectGateRange(
+                            Math.ceil(totalGates / 3) + 1,
+                            Math.ceil((2 * totalGates) / 3)
+                          )
+                        }
+                      >
+                        {Math.ceil(totalGates / 3) + 1}-{Math.ceil((2 * totalGates) / 3)}
+                      </button>
+                      <button
+                        type="button"
+                        className={styles.rangeButton}
+                        onClick={() =>
+                          selectGateRange(Math.ceil((2 * totalGates) / 3) + 1, totalGates)
+                        }
+                      >
+                        {Math.ceil((2 * totalGates) / 3) + 1}-{totalGates}
+                      </button>
+                    </>
+                  )}
+                </div>
+              )}
+
+              {/* Gate checkboxes grid */}
+              <div className={styles.gatesGrid}>
+                {gateNumbers.map((gateNum) => (
+                  <button
+                    key={gateNum}
+                    type="button"
+                    className={`${styles.gateCheckbox} ${editingGroup.gates.has(gateNum) ? styles.gateSelected : ''}`}
+                    onClick={() => toggleGate(gateNum)}
+                    aria-pressed={editingGroup.gates.has(gateNum)}
+                  >
+                    {gateNum}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            {error && <div className={styles.error}>{error}</div>}
+
+            <div className={styles.formActions}>
+              <Button variant="secondary" onClick={cancelEdit}>
+                Cancel
+              </Button>
+              <Button variant="primary" onClick={saveGroup}>
+                {editingGroup.id ? 'Save' : 'Create'}
+              </Button>
             </div>
           </div>
-
-          {error && <div className={styles.error}>{error}</div>}
-
-          <div className={styles.formActions}>
-            <Button variant="secondary" onClick={cancelEdit}>
-              Cancel
-            </Button>
-            <Button variant="primary" onClick={saveGroup}>
-              {editingGroup.id ? 'Save' : 'Create'}
-            </Button>
-          </div>
-        </div>
-      )}
-    </div>
+        )}
+      </div>
+    </Modal>
   )
 }
 
