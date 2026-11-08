@@ -13,7 +13,9 @@
 }
 
 .main {
-  /* No padding - grid fills the space */
+  /* No padding - grid fills the space. Grows to the free height so an
+     empty state (DS EmptyState fill) centres in it. */
+  flex: 1;
   overflow: hidden;
   display: flex;
   flex-direction: column;
