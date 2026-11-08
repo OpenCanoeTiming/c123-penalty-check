@@ -191,227 +191,227 @@ export function Settings({
       size="lg"
       data-testid="settings-panel"
     >
-        {/* Arrow keys, Home and End move between tabs (DS Tabs); only the
-            active panel is rendered. */}
-        <Tabs
-          value={activeTab}
-          onChange={(value) => setActiveTab(value as SettingsTab)}
-          tabs={SETTINGS_TABS}
-        >
-            {/* Display Tab */}
-            {activeTab === 'display' && (
-              <div className="settings-section">
-                <h3 className="settings-section-title">Display Options</h3>
+      {/* Arrow keys, Home and End move between tabs (DS Tabs); only the
+          active panel is rendered. */}
+      <Tabs
+        value={activeTab}
+        onChange={(value) => setActiveTab(value as SettingsTab)}
+        tabs={SETTINGS_TABS}
+      >
+        {/* Display Tab */}
+        {activeTab === 'display' && (
+          <div className="settings-section">
+            <h3 className="settings-section-title">Display Options</h3>
 
-                <div className="form-group">
-                  <label htmlFor="sort-select" className="form-label">
-                    Sort Competitors By
-                  </label>
-                  <Select
-                    id="sort-select"
-                    value={settings.sortBy ?? 'startOrder'}
-                    onChange={(e) =>
-                      onSettingsChange({ sortBy: e.target.value as ResultsSortOption })
-                    }
-                    data-testid="settings-sort-select"
-                  >
-                    <option value="startOrder">{RESULTS_SORT_LABELS.startOrder}</option>
-                    <option value="bib">{RESULTS_SORT_LABELS.bib}</option>
-                    <option value="rank">{RESULTS_SORT_LABELS.rank}</option>
-                  </Select>
-                  <p className="form-hint">
-                    Choose the order in which competitors appear in the grid.
-                  </p>
-                </div>
+            <div className="form-group">
+              <label htmlFor="sort-select" className="form-label">
+                Sort Competitors By
+              </label>
+              <Select
+                id="sort-select"
+                value={settings.sortBy ?? 'startOrder'}
+                onChange={(e) =>
+                  onSettingsChange({ sortBy: e.target.value as ResultsSortOption })
+                }
+                data-testid="settings-sort-select"
+              >
+                <option value="startOrder">{RESULTS_SORT_LABELS.startOrder}</option>
+                <option value="bib">{RESULTS_SORT_LABELS.bib}</option>
+                <option value="rank">{RESULTS_SORT_LABELS.rank}</option>
+              </Select>
+              <p className="form-hint">
+                Choose the order in which competitors appear in the grid.
+              </p>
+            </div>
 
-                <div className="form-group">
-                  <label htmlFor="theme-select" className="form-label">
-                    Theme
-                  </label>
-                  <Select
-                    id="theme-select"
-                    value={settings.theme ?? 'auto'}
-                    onChange={(e) =>
-                      onSettingsChange({ theme: e.target.value as ThemeMode })
-                    }
-                    data-testid="settings-theme-select"
-                  >
-                    <option value="auto">Auto (System)</option>
-                    <option value="light">Light</option>
-                    <option value="dark">Dark</option>
-                  </Select>
-                  <p className="form-hint">
-                    Choose the color theme for the application.
-                  </p>
-                </div>
+            <div className="form-group">
+              <label htmlFor="theme-select" className="form-label">
+                Theme
+              </label>
+              <Select
+                id="theme-select"
+                value={settings.theme ?? 'auto'}
+                onChange={(e) =>
+                  onSettingsChange({ theme: e.target.value as ThemeMode })
+                }
+                data-testid="settings-theme-select"
+              >
+                <option value="auto">Auto (System)</option>
+                <option value="light">Light</option>
+                <option value="dark">Dark</option>
+              </Select>
+              <p className="form-hint">
+                Choose the color theme for the application.
+              </p>
+            </div>
 
-                <div className="form-group">
-                  <label className="form-label">Gate Groups</label>
-                  {gateGroups && gateGroups.length > 0 ? (
-                    <p className="form-hint">
-                      {gateGroups.length} custom group(s) configured.
-                    </p>
-                  ) : (
-                    <p className="form-hint">No custom gate groups configured.</p>
-                  )}
-                  {onOpenGateGroupEditor && (
-                    <Button
-                      variant="secondary"
+            <div className="form-group">
+              <label className="form-label">Gate Groups</label>
+              {gateGroups && gateGroups.length > 0 ? (
+                <p className="form-hint">
+                  {gateGroups.length} custom group(s) configured.
+                </p>
+              ) : (
+                <p className="form-hint">No custom gate groups configured.</p>
+              )}
+              {onOpenGateGroupEditor && (
+                <Button
+                  variant="secondary"
+                  onClick={() => {
+                    onClose()
+                    onOpenGateGroupEditor()
+                  }}
+                >
+                  Edit Gate Groups
+                </Button>
+              )}
+            </div>
+
+          </div>
+        )}
+
+        {/* Keyboard Tab */}
+        {activeTab === 'keyboard' && (
+          <div className="settings-section" data-testid="settings-keyboard-content">
+            <h3 className="settings-section-title">Keyboard &amp; Touch</h3>
+
+            <div className="shortcuts-list">
+              <div className="shortcuts-group">
+                <h4 className="shortcuts-group-title">Touch / Click</h4>
+                <Shortcut keys={['1× tap']} description="Select cell" />
+                <Shortcut keys={['2× tap']} description="Set 0 (clear)" />
+                <Shortcut keys={['3× tap']} description="Set 2 (touch)" />
+                <Shortcut keys={['4× tap']} description="Set 50 (missed)" />
+                <Shortcut keys={['Long press']} description="Open menu" />
+                <Shortcut keys={['Right-click']} description="Open menu" />
+              </div>
+
+              <div className="shortcuts-group">
+                <h4 className="shortcuts-group-title">Penalty Entry</h4>
+                <Shortcut keys={['0']} description="Clear / 0 penalty" />
+                <Shortcut keys={['2']} description="2s touch penalty" />
+                <Shortcut keys={['5']} description="50s missed gate" />
+                <Shortcut keys={['Delete']} description="Remove penalty" />
+              </div>
+
+              <div className="shortcuts-group">
+                <h4 className="shortcuts-group-title">Navigation</h4>
+                <Shortcut keys={['Arrow Keys']} description="Move between cells" />
+                <Shortcut keys={['Tab']} description="Move to next cell" />
+                <Shortcut keys={['Shift', 'Tab']} description="Move to previous cell" />
+                <Shortcut keys={['Home']} description="First gate in row" />
+                <Shortcut keys={['End']} description="Last gate in row" />
+                <Shortcut keys={['PageUp']} description="Page up (10 rows)" />
+                <Shortcut keys={['PageDown']} description="Page down (10 rows)" />
+              </div>
+
+              <div className="shortcuts-group">
+                <h4 className="shortcuts-group-title">General</h4>
+                <Shortcut keys={['Ctrl', ',']} description="Open settings" />
+                <Shortcut keys={['Escape']} description="Close dialog / menu" />
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Server Tab */}
+        {activeTab === 'server' && (
+          <div className="settings-section">
+            <h3 className="settings-section-title">Server Connection</h3>
+
+            <div className="form-group">
+              <label htmlFor="server-url" className="form-label">
+                WebSocket URL
+              </label>
+              <div className="settings-input-group">
+                <Input
+                  id="server-url"
+                  className="settings-url-input"
+                  type="text"
+                  value={serverUrl}
+                  onChange={handleUrlChange}
+                  placeholder="ws://localhost:27123/ws"
+                  autoComplete="url"
+                  invalid={!!urlError}
+                  data-testid="settings-server-url"
+                />
+                {getConnectionBadge()}
+              </div>
+              {urlError && <p className="form-error">{urlError}</p>}
+              <p className="form-hint">
+                Enter host:port (e.g. 192.168.1.50) or a full ws:// URL.
+                Behind a TLS reverse proxy use <code>wss://</code> — REST calls
+                then follow over HTTPS.
+                Use <code>?server=host:port</code> URL param for quick override.
+              </p>
+            </div>
+
+            <div className="settings-actions">
+              <Button
+                variant="secondary"
+                onClick={handleScanNetwork}
+                disabled={isScanning}
+              >
+                {isScanning ? 'Scanning...' : 'Scan Network'}
+              </Button>
+              <Button
+                variant="secondary"
+                onClick={handleTestConnection}
+                disabled={!!urlError || isTesting}
+              >
+                Test Connection
+              </Button>
+              <Button
+                variant="primary"
+                onClick={handleSaveUrl}
+                disabled={!!urlError || serverUrl === settings.serverUrl}
+              >
+                Save & Reconnect
+              </Button>
+            </div>
+
+            {/* Connection History */}
+            {settings.serverHistory && settings.serverHistory.length > 0 && (
+              <div className="form-group">
+                <label className="form-label">Recent Servers</label>
+                <div className="settings-history">
+                  {settings.serverHistory.slice(0, 5).map((url) => (
+                    <button
+                      key={url}
+                      type="button"
+                      className="settings-history-item"
                       onClick={() => {
-                        onClose()
-                        onOpenGateGroupEditor()
+                        setLocalServerUrl(url)
+                        setUrlError(null)
                       }}
                     >
-                      Edit Gate Groups
-                    </Button>
-                  )}
-                </div>
-
-              </div>
-            )}
-
-            {/* Keyboard Tab */}
-            {activeTab === 'keyboard' && (
-              <div className="settings-section" data-testid="settings-keyboard-content">
-                <h3 className="settings-section-title">Keyboard &amp; Touch</h3>
-
-                <div className="shortcuts-list">
-                  <div className="shortcuts-group">
-                    <h4 className="shortcuts-group-title">Touch / Click</h4>
-                    <Shortcut keys={['1× tap']} description="Select cell" />
-                    <Shortcut keys={['2× tap']} description="Set 0 (clear)" />
-                    <Shortcut keys={['3× tap']} description="Set 2 (touch)" />
-                    <Shortcut keys={['4× tap']} description="Set 50 (missed)" />
-                    <Shortcut keys={['Long press']} description="Open menu" />
-                    <Shortcut keys={['Right-click']} description="Open menu" />
-                  </div>
-
-                  <div className="shortcuts-group">
-                    <h4 className="shortcuts-group-title">Penalty Entry</h4>
-                    <Shortcut keys={['0']} description="Clear / 0 penalty" />
-                    <Shortcut keys={['2']} description="2s touch penalty" />
-                    <Shortcut keys={['5']} description="50s missed gate" />
-                    <Shortcut keys={['Delete']} description="Remove penalty" />
-                  </div>
-
-                  <div className="shortcuts-group">
-                    <h4 className="shortcuts-group-title">Navigation</h4>
-                    <Shortcut keys={['Arrow Keys']} description="Move between cells" />
-                    <Shortcut keys={['Tab']} description="Move to next cell" />
-                    <Shortcut keys={['Shift', 'Tab']} description="Move to previous cell" />
-                    <Shortcut keys={['Home']} description="First gate in row" />
-                    <Shortcut keys={['End']} description="Last gate in row" />
-                    <Shortcut keys={['PageUp']} description="Page up (10 rows)" />
-                    <Shortcut keys={['PageDown']} description="Page down (10 rows)" />
-                  </div>
-
-                  <div className="shortcuts-group">
-                    <h4 className="shortcuts-group-title">General</h4>
-                    <Shortcut keys={['Ctrl', ',']} description="Open settings" />
-                    <Shortcut keys={['Escape']} description="Close dialog / menu" />
-                  </div>
+                      {url}
+                    </button>
+                  ))}
                 </div>
               </div>
             )}
 
-            {/* Server Tab */}
-            {activeTab === 'server' && (
-              <div className="settings-section">
-                <h3 className="settings-section-title">Server Connection</h3>
-
-                <div className="form-group">
-                  <label htmlFor="server-url" className="form-label">
-                    WebSocket URL
-                  </label>
-                  <div className="settings-input-group">
-                    <Input
-                      id="server-url"
-                      className="settings-url-input"
-                      type="text"
-                      value={serverUrl}
-                      onChange={handleUrlChange}
-                      placeholder="ws://localhost:27123/ws"
-                      autoComplete="url"
-                      invalid={!!urlError}
-                      data-testid="settings-server-url"
-                    />
-                    {getConnectionBadge()}
-                  </div>
-                  {urlError && <p className="form-error">{urlError}</p>}
-                  <p className="form-hint">
-                    Enter host:port (e.g. 192.168.1.50) or a full ws:// URL.
-                    Behind a TLS reverse proxy use <code>wss://</code> — REST calls
-                    then follow over HTTPS.
-                    Use <code>?server=host:port</code> URL param for quick override.
-                  </p>
-                </div>
-
-                <div className="settings-actions">
-                  <Button
-                    variant="secondary"
-                    onClick={handleScanNetwork}
-                    disabled={isScanning}
-                  >
-                    {isScanning ? 'Scanning...' : 'Scan Network'}
-                  </Button>
-                  <Button
-                    variant="secondary"
-                    onClick={handleTestConnection}
-                    disabled={!!urlError || isTesting}
-                  >
-                    Test Connection
-                  </Button>
-                  <Button
-                    variant="primary"
-                    onClick={handleSaveUrl}
-                    disabled={!!urlError || serverUrl === settings.serverUrl}
-                  >
-                    Save & Reconnect
-                  </Button>
-                </div>
-
-                {/* Connection History */}
-                {settings.serverHistory && settings.serverHistory.length > 0 && (
-                  <div className="form-group">
-                    <label className="form-label">Recent Servers</label>
-                    <div className="settings-history">
-                      {settings.serverHistory.slice(0, 5).map((url) => (
-                        <button
-                          key={url}
-                          type="button"
-                          className="settings-history-item"
-                          onClick={() => {
-                            setLocalServerUrl(url)
-                            setUrlError(null)
-                          }}
-                        >
-                          {url}
-                        </button>
-                      ))}
-                    </div>
-                  </div>
-                )}
-
-                <div className="form-group">
-                  <label htmlFor="client-id" className="form-label">
-                    Client ID
-                  </label>
-                  <Input
-                    id="client-id"
-                    type="text"
-                    value={settings.clientId ?? 'c123-penalty-check'}
-                    onChange={(e) => onSettingsChange({ clientId: e.target.value })}
-                    placeholder="c123-penalty-check"
-                    data-testid="settings-client-id"
-                  />
-                  <p className="form-hint">
-                    Identifier sent to server to distinguish this client from others.
-                    Use unique names like "penalty-1", "penalty-finish", etc.
-                  </p>
-                </div>
-              </div>
-            )}
-        </Tabs>
+            <div className="form-group">
+              <label htmlFor="client-id" className="form-label">
+                Client ID
+              </label>
+              <Input
+                id="client-id"
+                type="text"
+                value={settings.clientId ?? 'c123-penalty-check'}
+                onChange={(e) => onSettingsChange({ clientId: e.target.value })}
+                placeholder="c123-penalty-check"
+                data-testid="settings-client-id"
+              />
+              <p className="form-hint">
+                Identifier sent to server to distinguish this client from others.
+                Use unique names like "penalty-1", "penalty-finish", etc.
+              </p>
+            </div>
+          </div>
+        )}
+      </Tabs>
     </Modal>
   )
 }
