@@ -32,6 +32,18 @@ describe('CheckProgress', () => {
     expect(screen.getByText('3/5')).not.toHaveClass('check-progress__text--complete')
   })
 
+  // The DS ProgressBar takes a 0-100 percentage, not value/max: passing the
+  // raw checked count would draw 3 of 5 as a 3 % bar.
+  it('fills the bar by the checked share, not the raw count', () => {
+    render(<CheckProgress progress={progress({ checked: 3, total: 5, openFlags: 0 })} />)
+    expect(screen.getByRole('progressbar')).toHaveAttribute('aria-valuenow', '60')
+  })
+
+  it('names the bar after its label', () => {
+    render(<CheckProgress progress={progress({ checked: 3, total: 5 })} label="Verified" />)
+    expect(screen.getByRole('progressbar', { name: 'Verified' })).toBeInTheDocument()
+  })
+
   it('renders nothing when there is nothing to check yet', () => {
     render(<CheckProgress progress={progress({ checked: 0, total: 0, openFlags: 0 })} />)
     expect(screen.queryByRole('progressbar')).not.toBeInTheDocument()

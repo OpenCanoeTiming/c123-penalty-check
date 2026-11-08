@@ -3,5 +3,10 @@
   flex: 1;
   display: flex;
   justify-content: flex-start;
-  padding-left: var(--space-4);
+  min-width: 0;
+}
+
+/* The gear glyph reads small at the control's base text size */
+.settingsButton {
+  font-size: var(--text-xl);
 }

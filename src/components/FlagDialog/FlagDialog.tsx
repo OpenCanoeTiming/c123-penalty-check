@@ -6,19 +6,15 @@
  * optional resolution note.
  */
 
-import { useId, useState } from 'react'
+import { useId, useRef, useState, type RefObject } from 'react'
 import {
   Modal,
-  ModalHeader,
-  ModalTitle,
-  ModalClose,
-  ModalBody,
-  ModalFooter,
+  FormField,
+  Textarea,
   Button,
   Radio,
 } from '@opencanoetiming/timing-design-system'
 import type { FlagEntry } from '../../types/checks'
-import { useFocusTrap } from '../../hooks/useFocusTrap'
 import styles from './FlagDialog.module.css'
 
 export interface FlagDialogSubmitInput {
@@ -75,7 +71,10 @@ export function FlagDialog({
   const [suggestedValue, setSuggestedValue] = useState<number | null>(null)
   const [resolution, setResolution] = useState('')
 
-  const dialogRef = useFocusTrap<HTMLDivElement>({ enabled: true })
+  // The field the operator opened the dialog to fill. Passed to Modal
+  // explicitly: DS 1.0 Modal's default initial focus lands on the header
+  // close button, not on the first field in the body as documented.
+  const firstFieldRef = useRef<HTMLTextAreaElement>(null)
   const commentId = useId()
   const resolutionId = useId()
 
@@ -99,118 +98,103 @@ export function FlagDialog({
     })
   }
 
-  return (
-    // The focus-trap ref goes on Modal itself (a forwardRef onto the .modal
-    // element), not a wrapper div around its children - .modal-body's
-    // scrolling and .modal's max-height both depend on ModalHeader/Body/
-    // Footer being direct flex children of .modal. A wrapper div breaks that
-    // layout contract: the body never gets a definite height, never
-    // scrolls, and a long comment pushes the footer out of the dialog with
-    // no way to reach it (see task-9 review, Important 1).
-    <Modal open onClose={onClose} size="sm" ref={dialogRef}>
-      <ModalHeader>
-        <ModalTitle>{isCreate ? 'Add flag' : 'Resolve flag'}</ModalTitle>
-        <ModalClose onClick={onClose} />
-      </ModalHeader>
-
-      <ModalBody>
-        {isCreate ? (
-          <>
-            <div className={styles.formField}>
-              <label htmlFor={commentId} className={styles.label}>
-                Comment
-              </label>
-              <textarea
-                id={commentId}
-                className={styles.textarea}
-                value={comment}
-                onChange={(e) => setComment(e.target.value)}
-                placeholder="What is being disputed or should be reviewed?"
-                rows={3}
-                required
-              />
-            </div>
-
-            <div className={styles.formField}>
-              <span className={styles.label}>Suggested value (optional)</span>
-              <div className={styles.radioGroup}>
-                {SUGGESTED_VALUE_OPTIONS.map((option) => (
-                  <Radio
-                    key={option.label}
-                    name="flag-suggested-value"
-                    checked={suggestedValue === option.value}
-                    onChange={() => setSuggestedValue(option.value)}
-                  >
-                    {option.label}
-                  </Radio>
-                ))}
-              </div>
-            </div>
-          </>
-        ) : (
-          <>
-            <div className={styles.formField}>
-              <span className={styles.label}>Comment</span>
-              <p className={styles.readOnlyText}>{flag?.comment}</p>
-            </div>
-
-            <div className={styles.formField}>
-              <span className={styles.label}>Suggested value</span>
-              <p className={styles.readOnlyText}>
-                {formatSuggestedValue(flag?.suggestedValue)}
-              </p>
-            </div>
-
-            <div className={styles.formField}>
-              <label htmlFor={resolutionId} className={styles.label}>
-                Resolution note (optional)
-              </label>
-              <textarea
-                id={resolutionId}
-                className={styles.textarea}
-                value={resolution}
-                onChange={(e) => setResolution(e.target.value)}
-                placeholder="How was this resolved?"
-                rows={3}
-              />
-            </div>
-          </>
-        )}
-      </ModalBody>
-
-      {/* A direct child of .modal, deliberately not inside ModalBody. The
-          body is the one element that scrolls (flex-grow: 1; overflow-y:
-          auto), so an error placed inside it can sit below the fold on a
-          long comment - exactly when the operator most needs to see it.
-          Sitting between body and footer, it is always on screen. This does
-          not break the layout contract the comment on <Modal> describes:
-          that one is about not *wrapping* header/body/footer, which would
-          cost the body its definite height; another flex-shrink: 0 sibling
-          alongside them costs it nothing. */}
+  const footer = (
+    <>
+      {/* In the footer, not the body: the body is the one part of the dialog
+          that scrolls, so an error inside it could sit below the fold on a
+          long comment - exactly when the operator most needs to see it. The
+          footer never scrolls. */}
       {error && (
-        <div className={styles.error} role="alert">
+        <div className={`form-error ${styles.error}`} role="alert">
           {error}
         </div>
       )}
+      <Button variant="secondary" onClick={onClose}>
+        Cancel
+      </Button>
+      <Button
+        variant="primary"
+        onClick={handleSubmit}
+        disabled={isSubmitDisabled}
+      >
+        {submitting
+          ? isCreate
+            ? 'Adding…'
+            : 'Resolving…'
+          : isCreate
+            ? 'Add flag'
+            : 'Resolve'}
+      </Button>
+    </>
+  )
 
-      <ModalFooter>
-        <Button variant="secondary" onClick={onClose}>
-          Cancel
-        </Button>
-        <Button
-          variant="primary"
-          onClick={handleSubmit}
-          disabled={isSubmitDisabled}
-        >
-          {submitting
-            ? isCreate
-              ? 'Adding…'
-              : 'Resolving…'
-            : isCreate
-              ? 'Add flag'
-              : 'Resolve'}
-        </Button>
-      </ModalFooter>
+  // The DS Modal traps Tab, closes on Escape, focuses the first field in
+  // the body and gives focus back to the opener on close.
+  return (
+    <Modal
+      open
+      onClose={onClose}
+      title={isCreate ? 'Add flag' : 'Resolve flag'}
+      footer={footer}
+      // DS types initialFocus as RefObject<HTMLElement>; React 19's
+      // useRef(null) is RefObject<T | null>, hence the cast.
+      initialFocus={firstFieldRef as RefObject<HTMLElement>}
+    >
+      {isCreate ? (
+        <>
+          <FormField label="Comment" htmlFor={commentId}>
+            <Textarea
+              ref={firstFieldRef}
+              id={commentId}
+              value={comment}
+              onChange={(e) => setComment(e.target.value)}
+              placeholder="What is being disputed or should be reviewed?"
+              rows={3}
+              required
+            />
+          </FormField>
+
+          <div className="form-group">
+            <span className="form-label">Suggested value (optional)</span>
+            <div className={styles.radioGroup}>
+              {SUGGESTED_VALUE_OPTIONS.map((option) => (
+                <Radio
+                  key={option.label}
+                  name="flag-suggested-value"
+                  checked={suggestedValue === option.value}
+                  onChange={() => setSuggestedValue(option.value)}
+                  label={option.label}
+                />
+              ))}
+            </div>
+          </div>
+        </>
+      ) : (
+        <>
+          <div className="form-group">
+            <span className="form-label">Comment</span>
+            <p className={styles.readOnlyText}>{flag?.comment}</p>
+          </div>
+
+          <div className="form-group">
+            <span className="form-label">Suggested value</span>
+            <p className={styles.readOnlyText}>
+              {formatSuggestedValue(flag?.suggestedValue)}
+            </p>
+          </div>
+
+          <FormField label="Resolution note (optional)" htmlFor={resolutionId}>
+            <Textarea
+              ref={firstFieldRef}
+              id={resolutionId}
+              value={resolution}
+              onChange={(e) => setResolution(e.target.value)}
+              placeholder="How was this resolved?"
+              rows={3}
+            />
+          </FormField>
+        </>
+      )}
     </Modal>
   )
 }

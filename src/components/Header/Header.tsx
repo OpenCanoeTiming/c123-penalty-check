@@ -1,11 +1,4 @@
-import {
-  Header as DSHeader,
-  HeaderBrand,
-  HeaderTitle,
-  HeaderStatus,
-  LiveBadge,
-  Button,
-} from '@opencanoetiming/timing-design-system'
+import { AppHeader, Badge, Button } from '@opencanoetiming/timing-design-system'
 import { RaceSelector } from '../RaceSelector'
 import type { ProcessedRace } from '../../hooks/useSchedule'
 import styles from './Header.module.css'
@@ -37,11 +30,30 @@ export function Header({
   getRaceCheckState,
 }: HeaderProps) {
   return (
-    <DSHeader variant="compact">
-      <HeaderBrand>
-        <HeaderTitle>C123-PENALTY-CHECK</HeaderTitle>
-      </HeaderBrand>
-
+    <AppHeader
+      compact
+      title="C123-PENALTY-CHECK"
+      status={
+        isConnected && (
+          <Badge tone="live" dot>
+            LIVE
+          </Badge>
+        )
+      }
+      actions={
+        <Button
+          variant="ghost"
+          size="sm"
+          icon
+          onClick={onOpenSettings}
+          aria-label="Settings"
+          title="Settings (Ctrl+,)"
+          className={styles.settingsButton}
+        >
+          ⚙
+        </Button>
+      }
+    >
       <div className={styles.raceSelector}>
         <RaceSelector
           races={races}
@@ -52,21 +64,6 @@ export function Header({
           getRaceCheckState={getRaceCheckState}
         />
       </div>
-
-      <HeaderStatus>
-        {isConnected && <LiveBadge />}
-        <Button
-          variant="ghost"
-          size="sm"
-          icon
-          onClick={onOpenSettings}
-          aria-label="Settings"
-          title="Settings (Ctrl+,)"
-          style={{ fontSize: '1.25rem' }}
-        >
-          ⚙
-        </Button>
-      </HeaderStatus>
-    </DSHeader>
+    </AppHeader>
   )
 }

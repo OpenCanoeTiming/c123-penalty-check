@@ -34,11 +34,13 @@ export function CheckProgress({
   return (
     <div className={`check-progress ${compact ? 'check-progress--compact' : ''}`}>
       <span className="check-progress__label">{label}</span>
+      {/* No DS `label`: it stacks a progress-row above the track, and this
+          is one inline footer row. The visible label stays ours. */}
       <ProgressBar
-        value={checked}
-        max={total}
-        variant={isComplete ? 'success' : 'default'}
+        value={(checked / total) * 100}
+        tone={isComplete ? 'success' : 'accent'}
         size={compact ? 'sm' : 'md'}
+        ariaLabel={label}
         className="check-progress__bar"
       />
       <span className={`check-progress__text ${isComplete ? 'check-progress__text--complete' : ''}`}>
