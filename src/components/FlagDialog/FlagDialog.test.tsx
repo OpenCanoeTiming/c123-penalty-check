@@ -271,10 +271,10 @@ describe('FlagDialog submit failure', () => {
     expect(screen.getByRole('alert')).toHaveTextContent('Could not reach the server')
   })
 
-  // The body is the one part of the dialog that scrolls; the footer never
-  // does. The error sits in the footer beside the buttons, so a long
+  // The body is the one part of the dialog that scrolls. The error sits in
+  // the Modal's message slot, pinned between body and footer, so a long
   // comment can never push it out of view.
-  it('shows the failure in the footer, beside the buttons, not in the scrolling body', () => {
+  it('pins the failure between the scrolling body and the footer', () => {
     render(
       <FlagDialog
         mode="resolve"
@@ -285,9 +285,13 @@ describe('FlagDialog submit failure', () => {
       />
     )
 
-    const footer = screen.getByRole('button', { name: 'Resolve' }).closest('.modal-footer')
-    expect(footer).not.toBeNull()
-    expect(footer).toContainElement(screen.getByRole('alert'))
+    const alert = screen.getByRole('alert')
+    const message = alert.closest('.modal-message')
+    expect(message).not.toBeNull()
+    expect(alert.closest('.modal-body')).toBeNull()
+    // Order in the panel: body, message, footer
+    expect(message!.previousElementSibling).toHaveClass('modal-body')
+    expect(message!.nextElementSibling).toHaveClass('modal-footer')
   })
 
   it('renders no alert region while there is no error', () => {
