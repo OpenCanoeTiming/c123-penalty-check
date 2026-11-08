@@ -20,21 +20,8 @@ export default defineConfig({
   plugins: [
     react(),
   ],
-  server: {
-    fs: {
-      // Allow serving fonts from linked timing-design-system package
-      allow: ['.', '../timing-design-system'],
-    },
-  },
   resolve: {
     dedupe: ['react', 'react-dom'],
-    alias: {
-      // Bypass package exports to access source CSS files directly
-      '@opencanoetiming/timing-design-system/src': resolve(
-        __dirname,
-        'node_modules/@opencanoetiming/timing-design-system/src'
-      ),
-    },
   },
   test: {
     globals: true,

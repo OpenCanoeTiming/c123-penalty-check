@@ -23,13 +23,13 @@
 
 .nextLabel {
   font-size: var(--text-sm);
-  color: var(--color-text-tertiary);
+  color: var(--color-text-muted);
   white-space: nowrap;
 }
 
 .noRaces {
   font-size: var(--text-sm);
-  color: var(--color-text-tertiary);
+  color: var(--color-text-muted);
   font-style: italic;
 }
 
