@@ -19,6 +19,13 @@ body,
   height: 100%;
 }
 
+/* A flex column, so a screen rendered outside the Layout (the discovery
+   empty state) can centre with DS EmptyState fill. */
+#root {
+  display: flex;
+  flex-direction: column;
+}
+
 /* ==========================================================================
    Footer Content Layout
    ========================================================================== */
