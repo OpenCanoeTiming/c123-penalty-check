@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback, useMemo, useRef } from 'react'
-import { Badge } from '@opencanoetiming/timing-design-system'
+import { Badge, Spinner } from '@opencanoetiming/timing-design-system'
 import { Layout, Header, ResultsGrid, GateGroupEditor, CheckProgress, Settings, EmptyState, FlagDialog } from './components'
 import type { FlagDialogSubmitInput } from './components'
 import { useC123WebSocket } from './hooks/useC123WebSocket'
@@ -535,7 +535,7 @@ export function AppContent({ settings, updateSettings, openSettingsOnMount }: Ap
             C123 Penalty Check v1.1.0 &bull; Open Canoe Timing
             {pendingCount > 0 && (
               <span className="pending-writes" title={`${pendingCount} pending write${pendingCount > 1 ? 's' : ''}`}>
-                <span className="loading-spinner" aria-hidden="true" />
+                <Spinner size="sm" aria-hidden="true" />
                 <span className="pending-count">{pendingCount}</span>
               </span>
             )}

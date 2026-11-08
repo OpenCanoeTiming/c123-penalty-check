@@ -740,7 +740,7 @@ export function ResultsGrid({
     >
       {/* Screen-reader-only feedback for keyboard actions that intentionally
           do nothing, e.g. Space on an empty gate */}
-      <div role="status" aria-live="polite" className="visually-hidden">
+      <div role="status" aria-live="polite" className="sr-only">
         {announcement}
       </div>
 
