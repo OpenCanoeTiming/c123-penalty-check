@@ -5,6 +5,23 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.6.0](https://github.com/OpenCanoeTiming/c123-penalty-check/compare/v1.5.2...v1.6.0) (2026-11-08)
+
+
+### Features
+
+* move header, empty state, check progress and flag dialog to DS 1.0 ([0353472](https://github.com/OpenCanoeTiming/c123-penalty-check/commit/03534726f7edd57fc0217af0d3cf0e06e0466c02)), closes [#172](https://github.com/OpenCanoeTiming/c123-penalty-check/issues/172)
+* move settings to DS 1.0 Modal and Tabs ([d1c66e4](https://github.com/OpenCanoeTiming/c123-penalty-check/commit/d1c66e40a932bd9ac8c52f3de0d9b82660c88e10)), closes [#172](https://github.com/OpenCanoeTiming/c123-penalty-check/issues/172)
+* open the gate-group editor in the DS 1.0 Modal ([ace09d4](https://github.com/OpenCanoeTiming/c123-penalty-check/commit/ace09d49cad9b32397e3abbdd0798316ae6d0562)), closes [#172](https://github.com/OpenCanoeTiming/c123-penalty-check/issues/172)
+* pin the flag dialog error in the DS 1.1 Modal message slot ([967f6c6](https://github.com/OpenCanoeTiming/c123-penalty-check/commit/967f6c6428574e680966351ba5506c9e54defd70))
+* render empty states with the DS 1.1 EmptyState ([1a52bd6](https://github.com/OpenCanoeTiming/c123-penalty-check/commit/1a52bd643e668c5a89456d3c92f0823a023a32f7))
+
+
+### Bug Fixes
+
+* give empty states free height to centre in ([836f74b](https://github.com/OpenCanoeTiming/c123-penalty-check/commit/836f74b651db65e20af69ceeb7880d275176ef0d))
+* stop nesting two banner landmarks in the layout ([2270faa](https://github.com/OpenCanoeTiming/c123-penalty-check/commit/2270faa523c20670dd05d090bd71141c6231d140)), closes [#172](https://github.com/OpenCanoeTiming/c123-penalty-check/issues/172)
+
 ## [1.5.2](https://github.com/OpenCanoeTiming/c123-penalty-check/compare/v1.5.1...v1.5.2) (2026-09-25)
 
 
