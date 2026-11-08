@@ -6,13 +6,14 @@
  * optional resolution note.
  */
 
-import { useId, useRef, useState, type RefObject } from 'react'
+import { useId, useState } from 'react'
 import {
   Modal,
   FormField,
   Textarea,
   Button,
   Radio,
+  Alert,
 } from '@opencanoetiming/timing-design-system'
 import type { FlagEntry } from '../../types/checks'
 import styles from './FlagDialog.module.css'
@@ -71,10 +72,6 @@ export function FlagDialog({
   const [suggestedValue, setSuggestedValue] = useState<number | null>(null)
   const [resolution, setResolution] = useState('')
 
-  // The field the operator opened the dialog to fill. Passed to Modal
-  // explicitly: DS 1.0 Modal's default initial focus lands on the header
-  // close button, not on the first field in the body as documented.
-  const firstFieldRef = useRef<HTMLTextAreaElement>(null)
   const commentId = useId()
   const resolutionId = useId()
 
@@ -100,15 +97,6 @@ export function FlagDialog({
 
   const footer = (
     <>
-      {/* In the footer, not the body: the body is the one part of the dialog
-          that scrolls, so an error inside it could sit below the fold on a
-          long comment - exactly when the operator most needs to see it. The
-          footer never scrolls. */}
-      {error && (
-        <div className={`form-error ${styles.error}`} role="alert">
-          {error}
-        </div>
-      )}
       <Button variant="secondary" onClick={onClose}>
         Cancel
       </Button>
@@ -129,22 +117,22 @@ export function FlagDialog({
   )
 
   // The DS Modal traps Tab, closes on Escape, focuses the first field in
-  // the body and gives focus back to the opener on close.
+  // the body (the comment or resolution note) and gives focus back to the
+  // opener on close. The error goes in its message slot, pinned between
+  // the scrolling body and the footer, so a long comment never pushes it
+  // below the fold - exactly when the operator most needs to see it.
   return (
     <Modal
       open
       onClose={onClose}
       title={isCreate ? 'Add flag' : 'Resolve flag'}
       footer={footer}
-      // DS types initialFocus as RefObject<HTMLElement>; React 19's
-      // useRef(null) is RefObject<T | null>, hence the cast.
-      initialFocus={firstFieldRef as RefObject<HTMLElement>}
+      message={error && <Alert tone="error" live>{error}</Alert>}
     >
       {isCreate ? (
         <>
           <FormField label="Comment" htmlFor={commentId}>
             <Textarea
-              ref={firstFieldRef}
               id={commentId}
               value={comment}
               onChange={(e) => setComment(e.target.value)}
@@ -185,7 +173,6 @@ export function FlagDialog({
 
           <FormField label="Resolution note (optional)" htmlFor={resolutionId}>
             <Textarea
-              ref={firstFieldRef}
               id={resolutionId}
               value={resolution}
               onChange={(e) => setResolution(e.target.value)}
