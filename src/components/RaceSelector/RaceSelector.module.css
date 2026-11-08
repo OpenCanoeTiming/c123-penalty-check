@@ -5,10 +5,9 @@
 }
 
 .navButton {
-  /* Compact navigation buttons */
-  padding: var(--space-1) var(--space-2);
-  min-width: 32px;
-  min-height: 32px;
+  /* Keep the DS icon button square: in this flex row it would otherwise
+     shrink below its size when the select takes the space. */
+  flex: none;
 }
 
 .navButton:disabled {
@@ -48,18 +47,6 @@
   }
 }
 
-/* Touch devices - larger touch targets */
-@media (pointer: coarse) {
-  .navButton {
-    min-width: 44px;
-    min-height: 44px;
-  }
-
-  .select {
-    min-height: 44px;
-  }
-}
-
 .filterLabel {
   display: flex;
   align-items: center;
@@ -77,6 +64,13 @@
 .filterText {
   font-size: var(--text-sm);
   color: var(--color-text-secondary);
+}
+
+/* Touch: the whole label is the tap target, at the DS control height */
+@media (pointer: coarse) {
+  .filterLabel {
+    min-height: var(--control-h);
+  }
 }
 
 /* Hide filter label text on smaller screens, keep checkbox */
