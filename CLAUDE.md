@@ -10,12 +10,12 @@ C123 Penalty Check — web application for penalty verification and correction i
 
 ## Rebuild 2026/27 — read first
 
-- **Design (normative):** c123-server `main`, `docs/arch/` — start at `README.md` (reading order, implementation sequence); then `CONTRACTS.md`, `DECISIONS/ADR-*`, `TEST-ARCHITECTURE.md`. Point to it, never restate it. Defaults taken without the maintainer go to `DECISIONS/LOG.md`.
+- **Design (normative):** c123-server `main`, `docs/arch/` — start at `README.md` (reading order, implementation sequence); then `CONTRACTS.md`, `DECISIONS/ADR-*`, `TEST-ARCHITECTURE.md`. Point to it, never restate it. A default for a case nobody recorded gets no rule; a maintainer ruling is one row in `docs/arch/RULINGS.md`.
 - **Legacy line:** venues run tag `legacy-2026`; branch `legacy/2026` takes `fix:` commits only. `main` is the rebuild, in place: replaced code is deleted, never kept beside the new.
 - **Releases:** rebuild code reaches no venue. Release Please PRs on `main` stay unmerged during the rebuild (no 1.x release from rebuild code); the rebuild ships as `Release-As: 2.0.0` when M6 Release 1.0 closes (see "Rebuild versioning" below).
-- **Order:** server → scoreboard → penalty-check → live-mini is the implementation order only. Everything, the new live included, is ready for the Jarní slalom (M6), its first real use: no shadow run, the legacy line is the fallback.
-- **Work items:** one issue each in project "Rebuild 2026/27" (https://github.com/orgs/OpenCanoeTiming/projects/3), milestones M0 Spike, freeze, merge · M1 Server core · M2 Tooling · M3 Scoreboard · M4 Penalty-check · M5 Live · M6 Release 1.0 (Jarní slalom). Implementation is on hold until the maintainer releases M1.
-- **Test-first:** failing tests from the vectors or obligations land before the code that passes them. Tiers and the `Clock` rule: `TEST-ARCHITECTURE.md` §3, §5.
+- **Target:** the Jarní slalom, early April 2027, slalom only. Everything runs on the new line, the new live included: no shadow run, the legacy line is the fallback. Order of work: server shell → scoreboard → penalty-check → live-mini.
+- **Work items:** one issue each in project "Rebuild 2026/27" (https://github.com/orgs/OpenCanoeTiming/projects/3), milestones M2 Server shell · M3 Scoreboard · M4 Penalty-check · M5 Live · M6 Release 1.0 (Jarní slalom). The milestone `Hardening (after Jarní slalom)` is a parking place: nobody works on it before the race.
+- **How a change is made:** c123-server `CONTRIBUTING.md`. The failing test is its own commit before the code that passes it; a review blocks only for a defect; no rule or test for a situation nobody recorded. Tiers and the `Clock` rule: `TEST-ARCHITECTURE.md` §3, §5.
 - **Client repos:** definition of done = `CLIENT-OBLIGATIONS.md` Common + "c123-penalty-check". A wrong obligation is fixed in c123-server `docs/arch` (same PR as the cited section, or label `obligations-unchanged`), never by deviating here.
 - **Upstream provenance** stays in the private c123-protocol-docs repo; public repos state behaviour only, never how it was established.
 - **Git:** conventional commits; Release Please owns versions and CHANGELOG; squash merges; `git add <file>`, never commit `.claude/` or `.superpowers/`. Czech with the maintainer, English in code, commits and docs.
